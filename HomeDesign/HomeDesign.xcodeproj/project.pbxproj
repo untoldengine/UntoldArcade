@@ -1,0 +1,514 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		037E801D2FEB3323008B96FB /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 037E801C2FEB3323008B96FB /* UntoldEngine */; };
+		037E801F2FEB3323008B96FB /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 037E801E2FEB3323008B96FB /* UntoldEngineAR */; };
+		037E80212FEB3323008B96FB /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 037E80202FEB3323008B96FB /* UntoldEngineXR */; };
+		037E80232FEB4CC1008B96FB /* SnapGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037E80222FEB4CC1008B96FB /* SnapGrid.swift */; };
+		1AF6E956524073D29123C6DC /* FurnitureLoadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F850891E89CE8A8FE245AE /* FurnitureLoadQueue.swift */; };
+		232A6411B2EC46B13CDC3682 /* FurnitureLoadQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4759457BE6E3253613ECE58 /* FurnitureLoadQueueTests.swift */; };
+		2337743EFF0B3673796E06B9 /* HomeDesignStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB07162ADA83BD2D2EE7491B /* HomeDesignStoreTests.swift */; };
+		414BE98B13E2E6DF5A47DC39 /* HomeDesignApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD1918333851F81A5AB952D /* HomeDesignApp.swift */; };
+		4BD8596A4918073425BC0F2B /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731BF0C16A3869B22C5E8C78 /* GameSceneUtils.swift */; };
+		50742A5A71EA90D01A20EB3D /* HomeItemsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A776648CB4BFBD7C4DEE95 /* HomeItemsPanelView.swift */; };
+		5EDBF74BF9458CC760E67B42 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BFE18CCED8C3C1892303D9 /* GameScene.swift */; };
+		A75A119D12EC2F438AE7BBDB /* HomeDesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328F8C8BF0D57990DE5FA3C2 /* HomeDesignStore.swift */; };
+		B92B3F6DA8CEC04F8793D513 /* SnapGridTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18319CBAB59BBD115C5FD028 /* SnapGridTests.swift */; };
+		C8E8DF92C610FD2729641A3E /* SnapGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F8192E1DBB868299D25C57 /* SnapGrid.swift */; };
+		E8931693B7B459B4A326871B /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = 12BF5E54F21ADF44BD1DFE00 /* GameData */; };
+		EFF108CFBD7C72E192B7208B /* HomeItemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55ACFE6CF7A7FF856873C267 /* HomeItemTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AD2B5264147F0B7E01E400C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60B760E05E64F714C7C5B507 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8EC54A3B76ECD0A2E1B4E23E;
+			remoteInfo = HomeDesign;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		02E81BCB2282D64F9D5DDC9D /* HomeDesignTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HomeDesignTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		037E80222FEB4CC1008B96FB /* SnapGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapGrid.swift; sourceTree = "<group>"; };
+		12BF5E54F21ADF44BD1DFE00 /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/HomeDesign/GameData; sourceTree = SOURCE_ROOT; };
+		18319CBAB59BBD115C5FD028 /* SnapGridTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapGridTests.swift; sourceTree = "<group>"; };
+		1BD1918333851F81A5AB952D /* HomeDesignApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDesignApp.swift; sourceTree = "<group>"; };
+		328F8C8BF0D57990DE5FA3C2 /* HomeDesignStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDesignStore.swift; sourceTree = "<group>"; };
+		55ACFE6CF7A7FF856873C267 /* HomeItemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeItemTests.swift; sourceTree = "<group>"; };
+		63F8192E1DBB868299D25C57 /* SnapGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapGrid.swift; sourceTree = "<group>"; };
+		64A776648CB4BFBD7C4DEE95 /* HomeItemsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeItemsPanelView.swift; sourceTree = "<group>"; };
+		721273FBCB8440799C3602E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		731BF0C16A3869B22C5E8C78 /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
+		A0F850891E89CE8A8FE245AE /* FurnitureLoadQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureLoadQueue.swift; sourceTree = "<group>"; };
+		A58A09F756FC55B4C9980C81 /* HomeDesign.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeDesign.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB07162ADA83BD2D2EE7491B /* HomeDesignStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDesignStoreTests.swift; sourceTree = "<group>"; };
+		E2BFE18CCED8C3C1892303D9 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		E4759457BE6E3253613ECE58 /* FurnitureLoadQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureLoadQueueTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		555C04AF9BA20993FE8B4DAF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				037E80212FEB3323008B96FB /* UntoldEngineXR in Frameworks */,
+				037E801D2FEB3323008B96FB /* UntoldEngine in Frameworks */,
+				037E801F2FEB3323008B96FB /* UntoldEngineAR in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2CFCA51921735468303D5C37 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				B069A1A32D78B5241E92C470 /* HomeDesign */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		4724F3F88CDFF045BB1D49E9 /* HomeDesignTests */ = {
+			isa = PBXGroup;
+			children = (
+				E4759457BE6E3253613ECE58 /* FurnitureLoadQueueTests.swift */,
+				DB07162ADA83BD2D2EE7491B /* HomeDesignStoreTests.swift */,
+				55ACFE6CF7A7FF856873C267 /* HomeItemTests.swift */,
+				18319CBAB59BBD115C5FD028 /* SnapGridTests.swift */,
+			);
+			name = HomeDesignTests;
+			path = Tests/HomeDesignTests;
+			sourceTree = "<group>";
+		};
+		B069A1A32D78B5241E92C470 /* HomeDesign */ = {
+			isa = PBXGroup;
+			children = (
+				A0F850891E89CE8A8FE245AE /* FurnitureLoadQueue.swift */,
+				E2BFE18CCED8C3C1892303D9 /* GameScene.swift */,
+				731BF0C16A3869B22C5E8C78 /* GameSceneUtils.swift */,
+				1BD1918333851F81A5AB952D /* HomeDesignApp.swift */,
+				328F8C8BF0D57990DE5FA3C2 /* HomeDesignStore.swift */,
+				64A776648CB4BFBD7C4DEE95 /* HomeItemsPanelView.swift */,
+				037E80222FEB4CC1008B96FB /* SnapGrid.swift */,
+				721273FBCB8440799C3602E2 /* Info.plist */,
+				63F8192E1DBB868299D25C57 /* SnapGrid.swift */,
+			);
+			path = HomeDesign;
+			sourceTree = "<group>";
+		};
+		C5395AE8C8080E6C5AF49C49 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A58A09F756FC55B4C9980C81 /* HomeDesign.app */,
+				02E81BCB2282D64F9D5DDC9D /* HomeDesignTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E6AAB12383504BE03A1B35C4 = {
+			isa = PBXGroup;
+			children = (
+				12BF5E54F21ADF44BD1DFE00 /* GameData */,
+				4724F3F88CDFF045BB1D49E9 /* HomeDesignTests */,
+				2CFCA51921735468303D5C37 /* Sources */,
+				C5395AE8C8080E6C5AF49C49 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		01F7A0179EE38EECE29D4830 /* HomeDesignTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EEF591A3A5978C6C901B3DFF /* Build configuration list for PBXNativeTarget "HomeDesignTests" */;
+			buildPhases = (
+				E10A1839EB68BAC062B1AAD8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1A31BA50A18FB4A66B7D0751 /* PBXTargetDependency */,
+			);
+			name = HomeDesignTests;
+			packageProductDependencies = (
+			);
+			productName = HomeDesignTests;
+			productReference = 02E81BCB2282D64F9D5DDC9D /* HomeDesignTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8EC54A3B76ECD0A2E1B4E23E /* HomeDesign */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2B40989CE587E66150E7EC6D /* Build configuration list for PBXNativeTarget "HomeDesign" */;
+			buildPhases = (
+				E4B55EC3A20E52A294F72510 /* Sources */,
+				4070A0EF062E75A6D97D45B5 /* Resources */,
+				555C04AF9BA20993FE8B4DAF /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HomeDesign;
+			packageProductDependencies = (
+				037E801C2FEB3323008B96FB /* UntoldEngine */,
+				037E801E2FEB3323008B96FB /* UntoldEngineAR */,
+				037E80202FEB3323008B96FB /* UntoldEngineXR */,
+			);
+			productName = HomeDesign;
+			productReference = A58A09F756FC55B4C9980C81 /* HomeDesign.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		60B760E05E64F714C7C5B507 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8EC54A3B76ECD0A2E1B4E23E = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 6620801E62FE0C64BFF0F75E /* Build configuration list for PBXProject "HomeDesign" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E6AAB12383504BE03A1B35C4;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				037E801B2FEB3323008B96FB /* XCLocalSwiftPackageReference "../../UntoldEngine" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C5395AE8C8080E6C5AF49C49 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8EC54A3B76ECD0A2E1B4E23E /* HomeDesign */,
+				01F7A0179EE38EECE29D4830 /* HomeDesignTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4070A0EF062E75A6D97D45B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E8931693B7B459B4A326871B /* GameData in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E10A1839EB68BAC062B1AAD8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				232A6411B2EC46B13CDC3682 /* FurnitureLoadQueueTests.swift in Sources */,
+				2337743EFF0B3673796E06B9 /* HomeDesignStoreTests.swift in Sources */,
+				EFF108CFBD7C72E192B7208B /* HomeItemTests.swift in Sources */,
+				B92B3F6DA8CEC04F8793D513 /* SnapGridTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E4B55EC3A20E52A294F72510 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1AF6E956524073D29123C6DC /* FurnitureLoadQueue.swift in Sources */,
+				037E80232FEB4CC1008B96FB /* SnapGrid.swift in Sources */,
+				5EDBF74BF9458CC760E67B42 /* GameScene.swift in Sources */,
+				4BD8596A4918073425BC0F2B /* GameSceneUtils.swift in Sources */,
+				414BE98B13E2E6DF5A47DC39 /* HomeDesignApp.swift in Sources */,
+				A75A119D12EC2F438AE7BBDB /* HomeDesignStore.swift in Sources */,
+				50742A5A71EA90D01A20EB3D /* HomeItemsPanelView.swift in Sources */,
+				C8E8DF92C610FD2729641A3E /* SnapGrid.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1A31BA50A18FB4A66B7D0751 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8EC54A3B76ECD0A2E1B4E23E /* HomeDesign */;
+			targetProxy = AD2B5264147F0B7E01E400C6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		41342BF02DA113677EED4F39 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ULLT5J9F2U;
+				INFOPLIST_FILE = Sources/HomeDesign/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.homedesign;
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		6EB2F8167C50AAAF2E05C1A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = ULLT5J9F2U;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.homedesign.tests;
+				SDKROOT = xros;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HomeDesign.app/HomeDesign";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		8209AAB40BCC6E699A4594E3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8C561589D8D4FC23D9A95604 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		94283F3DEF77C60CF158C98A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = ULLT5J9F2U;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.homedesign.tests;
+				SDKROOT = xros;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HomeDesign.app/HomeDesign";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		AC80A7A424CC351C22598E98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ULLT5J9F2U;
+				INFOPLIST_FILE = Sources/HomeDesign/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.homedesign;
+				SDKROOT = xros;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2B40989CE587E66150E7EC6D /* Build configuration list for PBXNativeTarget "HomeDesign" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC80A7A424CC351C22598E98 /* Debug */,
+				41342BF02DA113677EED4F39 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6620801E62FE0C64BFF0F75E /* Build configuration list for PBXProject "HomeDesign" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8209AAB40BCC6E699A4594E3 /* Debug */,
+				8C561589D8D4FC23D9A95604 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EEF591A3A5978C6C901B3DFF /* Build configuration list for PBXNativeTarget "HomeDesignTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6EB2F8167C50AAAF2E05C1A5 /* Debug */,
+				94283F3DEF77C60CF158C98A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		037E801B2FEB3323008B96FB /* XCLocalSwiftPackageReference "../../UntoldEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../UntoldEngine;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		037E801C2FEB3323008B96FB /* UntoldEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngine;
+		};
+		037E801E2FEB3323008B96FB /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngineAR;
+		};
+		037E80202FEB3323008B96FB /* UntoldEngineXR */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngineXR;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 60B760E05E64F714C7C5B507 /* Project object */;
+}

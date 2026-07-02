@@ -1,0 +1,53 @@
+name: HomeDesign
+
+packages:
+  UntoldEngine:
+    url: https://github.com/untoldengine/UntoldEngine.git
+    branch: develop
+
+targets:
+  HomeDesign:
+    type: application
+    platform: visionOS
+    deploymentTarget: 26.0
+    sources:
+      - path: Sources
+        excludes:
+          - "HomeDesign/GameData"
+      - path: Sources/HomeDesign/GameData
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: UntoldEngine
+        product: UntoldEngineXR
+      - package: UntoldEngine
+        product: UntoldEngineAR
+    settings:
+      base:
+                PRODUCT_BUNDLE_IDENTIFIER: com.untoldengine.homedesign
+                SWIFT_VERSION: 5.0
+                MARKETING_VERSION: "1.0"
+                CURRENT_PROJECT_VERSION: "1"
+                INFOPLIST_FILE: Sources/HomeDesign/Info.plist
+                CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+        Release:
+                  SWIFT_COMPILATION_MODE: wholemodule
+                  SWIFT_OPTIMIZATION_LEVEL: -Onone
+                  DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+
+  HomeDesignTests:
+    type: bundle.unit-test
+    platform: visionOS
+    deploymentTarget: 26.0
+    sources:
+      - Tests/HomeDesignTests
+    dependencies:
+      - target: HomeDesign
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.untoldengine.homedesign.tests
+        SWIFT_VERSION: 5.0
