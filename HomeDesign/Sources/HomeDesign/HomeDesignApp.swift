@@ -10,7 +10,9 @@ import SwiftUI
 import Combine
 import Foundation
 import CompositorServices
+import UntoldEngine
 import UntoldEngineXR
+import CoolWater
 
 
 
@@ -35,7 +37,7 @@ struct HomeDesignApp: App {
 
     @State private var immersionStyle: ImmersionStyle = .mixed
 
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         WindowGroup {
             ContentView()
         }
@@ -58,6 +60,11 @@ struct HomeDesignApp: App {
 
             // init + retain XR system
             if XRHolder.shared.xr == nil {
+
+                guard installCoolWater() else {
+                    print("❌ CoolWater installation failed — aborting XR init")
+                    return
+                }
 
                 if let xr = UntoldEngineXR(layerRenderer: layerRenderer) {
                     XRHolder.shared.xr = xr
@@ -96,6 +103,19 @@ struct HomeDesignApp: App {
         })
     }
         .immersionStyle(selection: $immersionStyle, in: .mixed)
+    }
+
+    /// Installs the CoolWater rendering extension. Must be called once, before
+    /// `UntoldEngineXR(layerRenderer:)` creates the renderer — the plugin registry
+    /// owns the extension's complete lifecycle from that point on.
+    private func installCoolWater() -> Bool {
+        switch registerCoolWaterPlugin() {
+        case .installed, .replaced:
+            return true
+        case let .rejected(failure):
+            print("❌ CoolWater installation rejected:", failure)
+            return false
+        }
     }
 }
 

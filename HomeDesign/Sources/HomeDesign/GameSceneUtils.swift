@@ -8,7 +8,9 @@
 
 import Foundation
 import simd
+import Metal
 import UntoldEngine
+import CoolWater
 
 // Undo actions the app can reverse. Single-level: only the most recent action
 // is kept. Drag and scale are not tracked here — the engine anchored-drag
@@ -156,6 +158,26 @@ extension GameScene {
             setEntityStaticBatchHierarchy(entityId: floorplanEntity)
             setBatching(.enabled(true))
             generateBatches()
+
+            // The pool marker isn't necessarily a top-level authored entity — in an
+            // imported multi-part asset (e.g. a SketchUp villa), it can be a named node
+            // deep inside the asset's own hierarchy, only reachable by name once the
+            // asset instance's overrides have applied (which has happened by now, since
+            // loadUntoldScene's completion only fires after all async loads finish).
+            let poolCandidates = getAllGameEntities().filter {
+                $0 != floorplanEntity
+                    && isFloorplanDescendant($0)
+                    && getEntityName(entityId: $0).lowercased().contains(poolMarkerModelName)
+            }
+            if let poolEntityId = poolCandidates.first {
+                registerPoolMarker(entityId: poolEntityId)
+            } else {
+                // Never leave the extension at its default identity transform. That
+                // would render a 2x2 demo pool at the scene origin when marker lookup
+                // fails, obscuring the actual problem.
+                setCoolWaterModelMatrix(Self.hiddenWaterMatrix)
+                Logger.log(message: "⚠️ No pool marker found in the floor-plan hierarchy")
+            }
         } else {
             Logger.log(message: "⚠️ No room-shell entity found in floor plan scene — calibration will not work")
         }
@@ -462,6 +484,138 @@ extension GameScene {
         Logger.log(message: "💡 Ambient lighting: \(ambientLightingEnabled ? "on" : "off")")
     }
 
+    // MARK: - Water
+
+    /// Capture the pool marker's transform, then remove it — it's a
+    /// pure positioning proxy for CoolWater's pool and is never itself rendered (it's
+    /// already authored with opacity 0). Loads the pool's art as soon as it's found;
+    /// visibility/position are handled separately, every frame, by `updateWaterMatrix`
+    /// (the pool may still be hidden behind calibration/miniature-mode gating at this
+    /// point).
+    ///
+    func registerPoolMarker(entityId: EntityID) {
+        guard let markerWorld = scene.get(component: WorldTransformComponent.self, for: entityId)?.space else {
+            Logger.log(message: "⚠️ Pool marker has no world transform")
+            return
+        }
+
+        // Store the marker relative to the floor-plan root. This retains every nested
+        // parent translation and rotation while allowing the floor plan's live scale to
+        // continue affecting the water after the marker entity has been removed.
+        let floorplanWorld = floorplanEntity.flatMap {
+            scene.get(component: WorldTransformComponent.self, for: $0)?.space
+        } ?? matrix_identity_float4x4
+        let inverseFloorplanWorld = simd_inverse(floorplanWorld)
+        var relativeTransform = simd_mul(inverseFloorplanWorld, markerWorld)
+
+        // Imported SketchUp parts have identity node translations and bake their real
+        // placement into mesh vertices. Transform the mesh center through the marker's
+        // complete hierarchy so the water lands on the visible pool rather than at the
+        // asset root.
+        if let local = scene.get(component: LocalTransformComponent.self, for: entityId) {
+            let localCenter = (local.boundingBox.min + local.boundingBox.max) / 2
+            let worldCenter = markerWorld * simd_float4(localCenter, 1)
+            let floorplanCenter = inverseFloorplanWorld * worldCenter
+            relativeTransform.columns.3 = simd_float4(
+                floorplanCenter.x,
+                floorplanCenter.y,
+                floorplanCenter.z,
+                1
+            )
+        }
+
+        // The marker's scale describes its proxy mesh, not the water. Strip it while
+        // retaining the marker origin and orientation; CoolWater uses an explicit scale.
+        func normalizedAxis(_ column: simd_float4) -> simd_float4 {
+            let axis = simd_float3(column.x, column.y, column.z)
+            let length = simd_length(axis)
+            return length > 0.0001 ? column / length : column
+        }
+        relativeTransform.columns.0 = normalizedAxis(relativeTransform.columns.0)
+        relativeTransform.columns.1 = normalizedAxis(relativeTransform.columns.1)
+        relativeTransform.columns.2 = normalizedAxis(relativeTransform.columns.2)
+
+        poolPlacement = PoolPlacement(relativeTransform: relativeTransform)
+        destroyEntity(entityId: entityId)
+        let origin = simd_float3(relativeTransform.columns.3.x,
+                                 relativeTransform.columns.3.y,
+                                 relativeTransform.columns.3.z)
+        Logger.log(message: "🏊 Pool marker origin: \(origin), water scale: \(Self.waterScale)")
+        setupWaterAssets()
+    }
+
+    /// CoolWater's authored pool spans -1...1 on X/Z, so its model scale is half
+    /// the desired 8.74 x 16.6 metre footprint. Y must remain non-zero because the
+    /// renderer inverts this matrix for camera rays and real-world occlusion.
+    private static let waterScale = simd_float3(8.74 / 2, 0.6, 16.6 / 2)
+
+    /// Loads the pool's art and seeds the simulation. Runs once.
+    private func setupWaterAssets() {
+        guard !waterAssetsLoaded else { return }
+        waterAssetsLoaded = true
+
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            Logger.log(message: "❌ Water: no Metal device")
+            return
+        }
+        if let tiles = WaterAssets.loadTexture(device: device, name: "tiles", ext: "jpg", srgb: true, mipmapped: true) {
+            setCoolWaterTilesTexture(tiles)
+        }
+        if let sky = WaterAssets.loadCubemap(device: device) {
+            setCoolWaterSkyTexture(sky)
+        }
+        setCoolWaterLightDirection(simd_float3(2.0, 2.0, -1.0))
+        seedCoolWaterRipples(count: 8)
+        Logger.log(message: "💧 Water assets loaded")
+    }
+
+    /// Injects one subtle ripple at a random point in the pool's local space so the
+    /// water stays visibly alive — the ripples seeded in `setupWaterAssets` decay to a
+    /// flat surface after a few seconds otherwise. Called on a timer from `update()`,
+    /// entirely independent of the (hidden) sphere.
+    func spawnAmbientRipple() {
+        let x = Float.random(in: -0.8 ... 0.8)
+        let z = Float.random(in: -0.8 ... 0.8)
+        addCoolWaterDrop(center: simd_float2(x, z), radius: 0.03, strength: Bool.random() ? 0.01 : -0.01)
+        Logger.log(message: "💧 Ambient ripple at (\(x), \(z))")
+    }
+
+    /// Pushes the pool's scene-local model matrix every frame — CoolWater needs it refreshed
+    /// continuously even when stationary, or it flickers out (buffered frame uniforms).
+    /// Hidden (degenerate matrix, parked well below the floor) until calibration
+    /// completes and while in miniature/bird's-eye mode, matching how furniture
+    /// interaction and floor-plan resize are already scoped in `handleInput()`.
+    /// No-ops entirely if the loaded floor plan has no pool marker.
+    ///
+    /// The stored marker transform is relative to `floorplanEntity`. Composing it with
+    /// the floor plan's current world transform preserves the complete hierarchy,
+    /// including future translation, rotation, and scale changes.
+    func updateWaterMatrix() {
+        guard let pool = poolPlacement else { return }
+
+        guard calibrationComplete, !isMiniatureMode else {
+            setCoolWaterModelMatrix(Self.hiddenWaterMatrix)
+            return
+        }
+
+        let floorplanWorld = floorplanEntity.flatMap {
+            scene.get(component: WorldTransformComponent.self, for: $0)?.space
+        } ?? matrix_identity_float4x4
+        // RenderPassContext.camera already contains SceneRootTransform through the
+        // engine's effective view matrix. Keep this model in entity/scene-local space;
+        // multiplying the scene root here would apply teleport/scale twice.
+        let model = floorplanWorld * pool.relativeTransform
+            * simd_float4x4(waterScale: Self.waterScale)
+        setCoolWaterModelMatrix(model)
+    }
+
+    /// Scaled to near-zero and parked well below the floor — CoolWater has no native
+    /// visibility toggle, so a degenerate transform is the standard way to hide
+    /// something that's always present in the render graph once installed.
+    private static let hiddenWaterMatrix = simd_float4x4(
+        waterTranslation: simd_float3(0, -1000, 0)
+    ) * simd_float4x4(waterScale: simd_float3(repeating: 0.0001))
+
     // MARK: - Rotation
 
     /// Snap-rotate the selected entity by the given degrees around the Y axis.
@@ -510,4 +664,36 @@ extension GameScene {
         }
     }
 
+}
+
+/// Name (prefix-matched — the engine may append e.g. ".root") of the node that marks
+/// where a pool should be placed in a floor plan scene — a pure positioning proxy,
+/// never itself rendered. Can be a standalone top-level entity or a named node inside
+/// an imported multi-part asset (e.g. a SketchUp villa) — either is found by name once
+/// the scene finishes loading.
+let poolMarkerModelName = "pool"
+
+/// The pool marker's transform relative to the floor-plan root, combined with the live
+/// floor-plan and scene-root transforms every frame to get the water's world matrix.
+struct PoolPlacement {
+    var relativeTransform: simd_float4x4
+}
+
+private extension simd_float4x4 {
+    init(waterTranslation t: simd_float3) {
+        self.init(
+            simd_float4(1, 0, 0, 0),
+            simd_float4(0, 1, 0, 0),
+            simd_float4(0, 0, 1, 0),
+            simd_float4(t.x, t.y, t.z, 1)
+        )
+    }
+    init(waterScale s: simd_float3) {
+        self.init(
+            simd_float4(s.x, 0, 0, 0),
+            simd_float4(0, s.y, 0, 0),
+            simd_float4(0, 0, s.z, 0),
+            simd_float4(0, 0, 0, 1)
+        )
+    }
 }

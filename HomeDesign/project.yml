@@ -4,6 +4,8 @@ packages:
   UntoldEngine:
     url: https://github.com/untoldengine/UntoldEngine.git
     branch: develop
+  CoolWater:
+    path: Vendor/CoolWater
 
 targets:
   HomeDesign:
@@ -19,9 +21,13 @@ targets:
         buildPhase: resources
     dependencies:
       - package: UntoldEngine
+        product: UntoldEngine
+      - package: UntoldEngine
         product: UntoldEngineXR
       - package: UntoldEngine
         product: UntoldEngineAR
+      - package: CoolWater
+        product: CoolWater
     settings:
       base:
                 PRODUCT_BUNDLE_IDENTIFIER: com.untoldengine.homedesign

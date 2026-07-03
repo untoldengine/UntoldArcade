@@ -28,6 +28,10 @@ class GameScene {
     var isMiniatureMode: Bool = false
     var ambientLightingEnabled: Bool = true  // matches the initial realWorldLightingContribution set in configureEngineSystems()
     var floorPlanLoadRequested: Bool = false
+    var poolPlacement: PoolPlacement? = nil  // set once, from the scene's "pool" marker, if any
+    var waterAssetsLoaded: Bool = false
+    var waterRippleTimer: Float = 0
+    static let waterRippleInterval: Float = 2.5
     var isAnimatingScale: Bool = false
     var scaleAnimTarget: Float = 1.0
     var fullScaleScenePosition: simd_float3 = .zero
@@ -84,11 +88,27 @@ class GameScene {
     // MARK: - Game Loop
 
     /// Called every frame - add custom game logic here
-    func update(deltaTime _: Float) {
+    func update(deltaTime: Float) {
         if gameMode == false { return }
 
         // Animate the scene scale-in after the user taps to place the floor plan.
         animateScaleIn()
+
+        // No-ops if the loaded floor plan has no pool marker. Refreshed every frame —
+        // CoolWater needs the model matrix rewritten continuously even when stationary,
+        // or it flickers out (buffered frame uniforms).
+        updateWaterMatrix()
+
+        // Keep the water visibly rippling for as long as it's actually shown — the
+        // seeded ripples from setupWaterAssets decay to a flat surface after a few
+        // seconds otherwise. Independent of the (hidden) sphere entirely.
+        if poolPlacement != nil, calibrationComplete, !isMiniatureMode {
+            waterRippleTimer += deltaTime
+            if waterRippleTimer > Self.waterRippleInterval {
+                waterRippleTimer = 0
+                spawnAmbientRipple()
+            }
+        }
 
         // Track floor plan scale and notify SwiftUI when it changes.
         // Threshold avoids firing Task { @MainActor } every frame at 90 Hz.

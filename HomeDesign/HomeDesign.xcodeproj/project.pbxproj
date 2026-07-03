@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0381B26B2FF79A9F00219038 /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 0381B26A2FF79A9F00219038 /* UntoldEngine */; };
-		0381B26D2FF79A9F00219038 /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 0381B26C2FF79A9F00219038 /* UntoldEngineAR */; };
-		0381B26F2FF79A9F00219038 /* UntoldEngineShaderSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 0381B26E2FF79A9F00219038 /* UntoldEngineShaderSupport */; };
-		0381B2712FF79A9F00219038 /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 0381B2702FF79A9F00219038 /* UntoldEngineXR */; };
 		0658D6C67F8681266A4AA112 /* SceneManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1808AFA601E2A14A048F9118 /* SceneManifest.swift */; };
 		1AF6E956524073D29123C6DC /* FurnitureLoadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F850891E89CE8A8FE245AE /* FurnitureLoadQueue.swift */; };
 		1FFAD3A99D184D497E740E9D /* FurnitureCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF895B886E773243F9F132C8 /* FurnitureCatalog.swift */; };
@@ -21,11 +17,16 @@
 		4F3B77D95B92F9FF177DCE75 /* SceneManifestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1590DC6E7DAD44EC81709500 /* SceneManifestTests.swift */; };
 		50742A5A71EA90D01A20EB3D /* HomeItemsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A776648CB4BFBD7C4DEE95 /* HomeItemsPanelView.swift */; };
 		5EDBF74BF9458CC760E67B42 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BFE18CCED8C3C1892303D9 /* GameScene.swift */; };
+		77279923DFDE41256CE1C6BA /* CoolWater in Frameworks */ = {isa = PBXBuildFile; productRef = 89DD95B5789A367F1E00DCC6 /* CoolWater */; };
+		77F601879A3D91896B774256 /* WaterAssets.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE91A88392AC2C06817A2C4E /* WaterAssets.swift */; };
 		8ED0A52BA5E954C28B5FAD30 /* FloorPlanOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1EF9D74D129BEB03872369 /* FloorPlanOption.swift */; };
+		9980C832E38E255E57580256 /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = CE0B6DBDAF56BCD73F2BE222 /* UntoldEngine */; };
 		9C89D2B185E118C4CB2FECAE /* FloorPlanOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32A55BAA295487091CC4C47 /* FloorPlanOptionTests.swift */; };
+		A29A0B48100EC8787DD9297C /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 4043A59DF3DB39777E842AE3 /* UntoldEngineXR */; };
 		A75A119D12EC2F438AE7BBDB /* HomeDesignStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328F8C8BF0D57990DE5FA3C2 /* HomeDesignStore.swift */; };
 		B92B3F6DA8CEC04F8793D513 /* SnapGridTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18319CBAB59BBD115C5FD028 /* SnapGridTests.swift */; };
 		BD810532BFBA5C19102C28C0 /* SurfaceClassification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F033D109DEACED9E0B9F57 /* SurfaceClassification.swift */; };
+		BFAA1DEABAA57E8C4CB19D06 /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = A635ADFABA0E7DDB2A999B8A /* UntoldEngineAR */; };
 		C6B7C2326619EE79201C3CD2 /* SurfaceClassificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD2B04ABCF696B421C75E2E2 /* SurfaceClassificationTests.swift */; };
 		C8E8DF92C610FD2729641A3E /* SnapGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F8192E1DBB868299D25C57 /* SnapGrid.swift */; };
 		E8931693B7B459B4A326871B /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = 12BF5E54F21ADF44BD1DFE00 /* GameData */; };
@@ -57,10 +58,12 @@
 		721273FBCB8440799C3602E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		731BF0C16A3869B22C5E8C78 /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
 		8A1EF9D74D129BEB03872369 /* FloorPlanOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloorPlanOption.swift; sourceTree = "<group>"; };
+		A051D73E26A181CF81B07818 /* CoolWater */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CoolWater; path = Vendor/CoolWater; sourceTree = SOURCE_ROOT; };
 		A0F850891E89CE8A8FE245AE /* FurnitureLoadQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureLoadQueue.swift; sourceTree = "<group>"; };
 		A32A55BAA295487091CC4C47 /* FloorPlanOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloorPlanOptionTests.swift; sourceTree = "<group>"; };
 		A58A09F756FC55B4C9980C81 /* HomeDesign.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HomeDesign.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BD2B04ABCF696B421C75E2E2 /* SurfaceClassificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurfaceClassificationTests.swift; sourceTree = "<group>"; };
+		CE91A88392AC2C06817A2C4E /* WaterAssets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterAssets.swift; sourceTree = "<group>"; };
 		DB07162ADA83BD2D2EE7491B /* HomeDesignStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDesignStoreTests.swift; sourceTree = "<group>"; };
 		E2BFE18CCED8C3C1892303D9 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		E4759457BE6E3253613ECE58 /* FurnitureLoadQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurnitureLoadQueueTests.swift; sourceTree = "<group>"; };
@@ -72,10 +75,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0381B2712FF79A9F00219038 /* UntoldEngineXR in Frameworks */,
-				0381B26B2FF79A9F00219038 /* UntoldEngine in Frameworks */,
-				0381B26F2FF79A9F00219038 /* UntoldEngineShaderSupport in Frameworks */,
-				0381B26D2FF79A9F00219038 /* UntoldEngineAR in Frameworks */,
+				9980C832E38E255E57580256 /* UntoldEngine in Frameworks */,
+				A29A0B48100EC8787DD9297C /* UntoldEngineXR in Frameworks */,
+				BFAA1DEABAA57E8C4CB19D06 /* UntoldEngineAR in Frameworks */,
+				77279923DFDE41256CE1C6BA /* CoolWater in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +108,14 @@
 			path = Tests/HomeDesignTests;
 			sourceTree = "<group>";
 		};
+		7590EAFCB48E5D0DDB8E667A /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				A051D73E26A181CF81B07818 /* CoolWater */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 		B069A1A32D78B5241E92C470 /* HomeDesign */ = {
 			isa = PBXGroup;
 			children = (
@@ -120,6 +131,7 @@
 				1808AFA601E2A14A048F9118 /* SceneManifest.swift */,
 				63F8192E1DBB868299D25C57 /* SnapGrid.swift */,
 				46F033D109DEACED9E0B9F57 /* SurfaceClassification.swift */,
+				CE91A88392AC2C06817A2C4E /* WaterAssets.swift */,
 			);
 			path = HomeDesign;
 			sourceTree = "<group>";
@@ -138,6 +150,7 @@
 			children = (
 				12BF5E54F21ADF44BD1DFE00 /* GameData */,
 				4724F3F88CDFF045BB1D49E9 /* HomeDesignTests */,
+				7590EAFCB48E5D0DDB8E667A /* Packages */,
 				2CFCA51921735468303D5C37 /* Sources */,
 				C5395AE8C8080E6C5AF49C49 /* Products */,
 			);
@@ -178,10 +191,10 @@
 			);
 			name = HomeDesign;
 			packageProductDependencies = (
-				0381B26A2FF79A9F00219038 /* UntoldEngine */,
-				0381B26C2FF79A9F00219038 /* UntoldEngineAR */,
-				0381B26E2FF79A9F00219038 /* UntoldEngineShaderSupport */,
-				0381B2702FF79A9F00219038 /* UntoldEngineXR */,
+				CE0B6DBDAF56BCD73F2BE222 /* UntoldEngine */,
+				4043A59DF3DB39777E842AE3 /* UntoldEngineXR */,
+				A635ADFABA0E7DDB2A999B8A /* UntoldEngineAR */,
+				89DD95B5789A367F1E00DCC6 /* CoolWater */,
 			);
 			productName = HomeDesign;
 			productReference = A58A09F756FC55B4C9980C81 /* HomeDesign.app */;
@@ -211,7 +224,8 @@
 			mainGroup = E6AAB12383504BE03A1B35C4;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0381B2692FF79A9F00219038 /* XCLocalSwiftPackageReference "../../../UntoldEngine" */,
+				C0312BAA89641912DBE09036 /* XCRemoteSwiftPackageReference "UntoldEngine" */,
+				F299E383EF0EAC7E21EF4E06 /* XCLocalSwiftPackageReference "Vendor/CoolWater" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C5395AE8C8080E6C5AF49C49 /* Products */;
@@ -265,6 +279,7 @@
 				0658D6C67F8681266A4AA112 /* SceneManifest.swift in Sources */,
 				C8E8DF92C610FD2729641A3E /* SnapGrid.swift in Sources */,
 				BD810532BFBA5C19102C28C0 /* SurfaceClassification.swift in Sources */,
+				77F601879A3D91896B774256 /* WaterAssets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -514,28 +529,42 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		0381B2692FF79A9F00219038 /* XCLocalSwiftPackageReference "../../../UntoldEngine" */ = {
+		F299E383EF0EAC7E21EF4E06 /* XCLocalSwiftPackageReference "Vendor/CoolWater" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../UntoldEngine;
+			relativePath = Vendor/CoolWater;
 		};
 /* End XCLocalSwiftPackageReference section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		0381B26A2FF79A9F00219038 /* UntoldEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UntoldEngine;
+/* Begin XCRemoteSwiftPackageReference section */
+		C0312BAA89641912DBE09036 /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/untoldengine/UntoldEngine.git";
+			requirement = {
+				branch = develop;
+				kind = branch;
+			};
 		};
-		0381B26C2FF79A9F00219038 /* UntoldEngineAR */ = {
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4043A59DF3DB39777E842AE3 /* UntoldEngineXR */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = C0312BAA89641912DBE09036 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineXR;
+		};
+		89DD95B5789A367F1E00DCC6 /* CoolWater */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CoolWater;
+		};
+		A635ADFABA0E7DDB2A999B8A /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C0312BAA89641912DBE09036 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldEngineAR;
 		};
-		0381B26E2FF79A9F00219038 /* UntoldEngineShaderSupport */ = {
+		CE0B6DBDAF56BCD73F2BE222 /* UntoldEngine */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UntoldEngineShaderSupport;
-		};
-		0381B2702FF79A9F00219038 /* UntoldEngineXR */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UntoldEngineXR;
+			package = C0312BAA89641912DBE09036 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngine;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
