@@ -12,19 +12,7 @@ struct HomeItem: Identifiable {
     let modelName: String
 
     static func discover() -> [HomeItem] {
-        guard let thumbnailDir = Bundle.main.url(
-            forResource: "Thumbnails",
-            withExtension: nil,
-            subdirectory: "GameData"
-        ) else { return [] }
-
-        let pngFiles = (try? FileManager.default.contentsOfDirectory(
-            at: thumbnailDir,
-            includingPropertiesForKeys: nil
-        ))?.filter { $0.pathExtension == "png" }
-          .sorted { $0.lastPathComponent < $1.lastPathComponent } ?? []
-
-        return pngFiles.map { url in
+        FurnitureCatalog.modelThumbnailURLs().map { url in
             let name = url.deletingPathExtension().lastPathComponent
             return HomeItem(
                 id: name,

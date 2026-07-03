@@ -10,6 +10,17 @@ enum PlacementSurface: Sendable, Equatable {
     case wall
 }
 
+/// Snapshot of how many of a floor plan's models have finished loading, backed by the
+/// engine's `AssetLoadingState` (see `GameSceneUtils.loadSelectedFloorPlan`).
+struct LoadProgress: Sendable, Equatable {
+    let completed: Int
+    let total: Int
+
+    var fraction: Double {
+        total > 0 ? Double(completed) / Double(total) : 0
+    }
+}
+
 enum PanelAction: Sendable {
     case remove
     case rotateLeft
@@ -17,6 +28,7 @@ enum PanelAction: Sendable {
     case duplicate
     case resetFloorPlanScale
     case toggleMiniature
+    case toggleAmbientLighting
     case undo
 }
 
@@ -29,6 +41,7 @@ final class HomeDesignStore {
     private var _pendingAction: PanelAction? = nil
     private var _snapEnabled: Bool = true
     private var _placementSurface: PlacementSurface = .floor
+    private var _selectedFloorPlanName: String? = nil
 
     init() {}
 
@@ -54,6 +67,13 @@ final class HomeDesignStore {
     var placementSurface: PlacementSurface {
         get { lock.withLock { _placementSurface } }
         set { lock.withLock { _placementSurface = newValue } }
+    }
+
+    /// Thread-safe floor plan choice — the scene name GameScene should load via
+    /// `loadUntoldScene(named:)`. Written once from the picker UI, read from the game loop.
+    var selectedFloorPlanName: String? {
+        get { lock.withLock { _selectedFloorPlanName } }
+        set { lock.withLock { _selectedFloorPlanName = newValue } }
     }
 
     /// Post a selection-changed notification to SelectionStore on the main thread.
@@ -90,6 +110,34 @@ final class HomeDesignStore {
             SelectionStore.shared.isMiniatureMode = isMiniature
         }
     }
+
+    /// Post a floor-plan loading-progress update to SelectionStore on the main thread.
+    /// `nil` means no floor plan load is in flight.
+    func notifyFloorPlanLoadProgress(_ progress: LoadProgress?) {
+        Task { @MainActor in
+            SelectionStore.shared.floorPlanLoadProgress = progress
+        }
+    }
+
+    /// Post an ambient-lighting-toggle notification to SelectionStore on the main thread.
+    func notifyAmbientLightingChanged(_ enabled: Bool) {
+        Task { @MainActor in
+            SelectionStore.shared.ambientLightingEnabled = enabled
+        }
+    }
+
+    /// Show a short-lived on-screen notice (e.g. a failed asset load or a
+    /// missed calibration tap) so failures are visible instead of console-only.
+    /// A newer message won't be clobbered by an older one's auto-dismiss.
+    func notifyTransient(_ message: String) {
+        Task { @MainActor in
+            SelectionStore.shared.transientNotice = message
+            try? await Task.sleep(for: .seconds(3))
+            if SelectionStore.shared.transientNotice == message {
+                SelectionStore.shared.transientNotice = nil
+            }
+        }
+    }
 }
 
 /// Main-thread observable store for SwiftUI to react to game-loop state changes.
@@ -101,7 +149,11 @@ final class SelectionStore: ObservableObject {
     @Published var floorPlanScale: Float = 1.0
     @Published var snapEnabled: Bool = true
     @Published var placementSurface: PlacementSurface = .floor
+    @Published var selectedFloorPlanName: String? = nil
+    @Published var floorPlanLoadProgress: LoadProgress? = nil
     @Published var calibrationComplete: Bool = false
     @Published var isMiniatureMode: Bool = false
+    @Published var ambientLightingEnabled: Bool = true
+    @Published var transientNotice: String? = nil
     private init() {}
 }

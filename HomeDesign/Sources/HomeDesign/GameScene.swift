@@ -26,6 +26,8 @@ class GameScene {
     var calibratedFloorEntityY: Float = 0.0  // entity-space Y of floor plan floor (saved at calibration)
     var savedRealFloorY: Float = 0.0          // ARKit real-world floor Y (saved at calibration)
     var isMiniatureMode: Bool = false
+    var ambientLightingEnabled: Bool = true  // matches the initial realWorldLightingContribution set in configureEngineSystems()
+    var floorPlanLoadRequested: Bool = false
     var isAnimatingScale: Bool = false
     var scaleAnimTarget: Float = 1.0
     var fullScaleScenePosition: simd_float3 = .zero
@@ -40,19 +42,7 @@ class GameScene {
         // Configure game Systems
         configureEngineSystems()
 
-        // Load your scene here
-
-        let floorplan = createEntity()
-        floorplanEntity = floorplan
-        setEntityMeshAsync(entityId: floorplan, filename: "FloorPlan", withExtension: "untold") { success in
-            if success {
-                // Start at miniature scale so the user can place it on their real floor.
-                scaleSceneTo(0.05)
-                setSceneReady(true)
-            }
-        }
-
-
+        // The floor plan loads once the user picks one from the picker UI — see update().
     }
 
     // MARK: - Setup Methods
@@ -61,15 +51,33 @@ class GameScene {
     private func configureEngineSystems() {
         gameMode = true
         AnimationSystem.shared.isEnabled = true
-        InputSystem.shared.registerXREvents()
-        InputSystem.shared.setXRSpatialPickingBackendPreference(.octreeGPUPreferred)
-        InputSystem.shared.setXRTwoHandRotateAxisMode(.dynamicSnapped)
+        
+        registerXREvents()
+        setInput(.xr(.pickingBackend(.octreeGPUPreferred)))
+        setInput(.xr(.twoHandRotateAxisMode(.dynamicSnapped)))
         
         setRendering(.antiAliasing(.msaa))
         
         // Enables XR probe IBL lighting.
         setRendering(.environment(.lightingMode(.realWorldEstimate)))
-        setRendering(.environment(.realWorldLightingContribution(0.3)))
+        setRendering(.environment(.realWorldLightingContribution(1.0)))
+        setPostFX(.ssao(.enabled(false)))
+        setRendering(.postProcessing(.disabled))
+        
+        TextureStreamingSystem.shared.enabled = true
+        TextureStreamingSystem.shared.apply(.balanced)
+
+        // Distances appropriate for the scene after its 0.05 scale.
+        TextureStreamingSystem.shared.upgradeRadius = 0.15
+        TextureStreamingSystem.shared.downgradeRadius = 0.75
+
+        // Conservative visionOS tiers.
+        TextureStreamingSystem.shared.maxTextureDimension = 512
+        TextureStreamingSystem.shared.minimumTextureDimension = 192
+
+        // Reduce upload spikes.
+        TextureStreamingSystem.shared.maxConcurrentOps = 1
+        TextureStreamingSystem.shared.updateInterval = 0.3
         
     }
 
@@ -90,6 +98,12 @@ class GameScene {
                 lastReportedFloorPlanScale = scale
                 HomeDesignStore.shared.notifyFloorPlanScaleChanged(scale)
             }
+        }
+
+        // Load the user's chosen floor plan the first time it's available.
+        if !floorPlanLoadRequested, let sceneName = HomeDesignStore.shared.selectedFloorPlanName {
+            floorPlanLoadRequested = true
+            loadSelectedFloorPlan(named: sceneName)
         }
 
         // Don't start a new load while an item is awaiting placement confirmation
@@ -133,6 +147,8 @@ class GameScene {
                     }()
 
                     placeFloorPlanOnFloor(at: floorHit.worldPosition, room: roomEntityPos)
+                } else {
+                    HomeDesignStore.shared.notifyTransient("No floor detected — point at open floor and tap again")
                 }
             }
             return
@@ -203,104 +219,48 @@ class GameScene {
         }
 
         // ── Normal mode ──────────────────────────────────────────────────────
+        // This demo is a viewer: users pick a floor plan, place it, and look around it.
+        // Furniture is never selectable, draggable, rotatable, duplicable, or removable —
+        // only floor-plan-level actions (resize, bird's-eye/room navigation) remain.
 
         // Consume any pending panel action from the UI
         if let action = HomeDesignStore.shared.consumeAction() {
             switch action {
-            case .remove:               removeSelectedEntity()
-            case .rotateLeft:           rotateSelectedEntityBy(degrees: -90)
-            case .rotateRight:          rotateSelectedEntityBy(degrees: 90)
-            case .duplicate:            duplicateSelectedEntity()
-            case .resetFloorPlanScale:  resetFloorPlanScale()
-            case .toggleMiniature:      toggleMiniatureMode(headPosition: state.rayOriginWorld,
-                                                             gazeDirection: state.rayDirectionWorld)
-            case .undo:                 performUndo()
+            case .resetFloorPlanScale:
+                resetFloorPlanScale()
+            case .toggleMiniature:
+                toggleMiniatureMode(headPosition: state.rayOriginWorld, gazeDirection: state.rayDirectionWorld)
+            case .toggleAmbientLighting:
+                toggleAmbientLighting()
+            case .remove, .rotateLeft, .rotateRight, .duplicate, .undo:
+                break // Furniture manipulation is disabled in this demo.
             }
         }
 
-        if state.spatialTapActive {
-            if let entityId = state.pickedEntityId {
-                if isFloorplanDescendant(entityId) {
-                    if isMiniatureMode {
-                        // Bird's eye: tap a room to enter it at full scale
-                        if let visualHit = state.pickedEntityWorldPosition {
-                            let entityRoomPos = SceneRootTransform.shared.visualWorldToSceneLocal(visualHit)
-                            enterRoom(at: entityRoomPos, headPosition: state.rayOriginWorld)
-                        }
-                    } else {
-                        // Full scale: tap teleports within the floor plan
-                        if let hitPos = state.pickedEntityWorldPosition {
-                            deselectEntity()
-                            Logger.log(message: "Teleporting to: \(hitPos)")
-                            translateSceneBy(delta: simd_float3(-hitPos.x, 0, -hitPos.z))
-                        }
-                    }
-                } else if let root = placedFurnitureRoot(for: entityId) {
-                    // Tap on placed furniture → toggle selection
-                    if selectedEntity == root {
-                        deselectEntity()
-                    } else {
-                        selectEntity(root)
-                    }
-                } else {
-                    deselectEntity()
+        if state.spatialTapActive,
+           let entityId = state.pickedEntityId,
+           isFloorplanDescendant(entityId) {
+            if isMiniatureMode {
+                // Bird's eye: tap a room to enter it at full scale
+                if let visualHit = state.pickedEntityWorldPosition {
+                    let entityRoomPos = SceneRootTransform.shared.visualWorldToSceneLocal(visualHit)
+                    enterRoom(at: entityRoomPos, headPosition: state.rayOriginWorld)
                 }
             } else {
-                // Tap on empty space → deselect
-                deselectEntity()
+                // Full scale: tap teleports within the floor plan
+                if let hitPos = state.pickedEntityWorldPosition {
+                    Logger.log(message: "Teleporting to: \(hitPos)")
+                    translateSceneBy(delta: simd_float3(-hitPos.x, 0, -hitPos.z))
+                }
             }
         }
 
-        // Two-hand gestures: scale + rotate.
-        // Priority: selected entity → furniture root under ray → floor plan (if looking at it)
-        let twoHandTarget: EntityID?
-        if let selected = selectedEntity {
-            twoHandTarget = selected
-        } else if let picked = state.pickedEntityId {
-            if let furnitureRoot = placedFurnitureRoot(for: picked) {
-                twoHandTarget = furnitureRoot
-            } else if isFloorplanDescendant(picked) {
-                twoHandTarget = floorplanEntity
-            } else {
-                twoHandTarget = nil
-            }
-        } else {
-            twoHandTarget = nil
-        }
-        if let target = twoHandTarget {
+        // Two-hand resize/rotate applies to the floor plan only, while looking at it.
+        if let target = floorplanEntity,
+           let picked = state.pickedEntityId,
+           isFloorplanDescendant(picked) {
             SpatialManipulationSystem.shared.applyTwoHandZoomIfNeeded(from: state, entityId: target)
             SpatialManipulationSystem.shared.applyTwoHandRotateIfNeeded(from: state, entityId: target)
-        }
-
-        // Single-hand pinch-drag with surface-aware plane and snap.
-        // Wall items use their stored drag plane (.xy or .yz); floor items use .xz.
-        if !state.spatialZoomActive && !state.spatialRotateActive {
-            let dragTarget = selectedEntity
-                ?? state.pickedEntityId.flatMap { placedFurnitureRoot(for: $0) }
-
-            let dragPlane: SpatialDragPlane
-            let snapFn: ((simd_float3) -> simd_float3)?
-
-            if let target = dragTarget, let wallPlane = wallItems[target] {
-                dragPlane = wallPlane
-                if HomeDesignStore.shared.snapEnabled {
-                    snapFn = wallPlane == .yz ? { snapToGridYZ($0) } : { snapToGridXY($0) }
-                } else {
-                    snapFn = nil
-                }
-            } else {
-                dragPlane = .xz
-                snapFn = HomeDesignStore.shared.snapEnabled ? { snapToGrid($0) } : nil
-            }
-
-            SpatialManipulationSystem.shared.processAnchoredPinchDragLifecycle(
-                from: state,
-                entityId: dragTarget,
-                dragPlane: dragPlane,
-                positionTransform: snapFn
-            )
-        } else {
-            SpatialManipulationSystem.shared.endAnchoredPinchDrag()
         }
     }
 

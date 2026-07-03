@@ -40,7 +40,7 @@ struct HomeDesignApp: App {
             ContentView()
         }
         .windowStyle(.plain)
-        .defaultSize(width: 600, height: 400)
+        .defaultSize(width: 640, height: 480)
 
         WindowGroup("Furniture", id: "FurniturePanel") {
             HomeItemsPanelView()
@@ -101,111 +101,264 @@ struct HomeDesignApp: App {
 
 struct ContentView: View {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
-    @Environment(\.openWindow) private var openWindow
     @ObservedObject private var selectionStore = SelectionStore.shared
     @State private var experienceStarted = false
+    @State private var floorPlans: [FloorPlanOption] = FloorPlanOption.discover()
 
     var body: some View {
-        VStack(spacing: 30) {
-            Text("HomeDesign")
-                .font(.extraLargeTitle)
-                .fontWeight(.bold)
+        VStack(spacing: 20) {
+            if let notice = selectionStore.transientNotice {
+                noticeBanner(notice)
+            }
+
+            Spacer(minLength: 0)
+
+            // Deliberately not animated: these branches swap to entirely different
+            // content, and an implicit crossfade transition briefly renders the
+            // outgoing and incoming stage overlapping at partial opacity (visible as
+            // two stages of text/cards stacked on top of each other mid-transition).
+            // A clean instant cut reads better than that glitch.
+            Group {
+                if !experienceStarted {
+                    welcomeStage
+                } else if selectionStore.selectedFloorPlanName == nil {
+                    floorPlanPickerStage
+                } else if let progress = selectionStore.floorPlanLoadProgress {
+                    floorPlanLoadingStage(progress)
+                } else if !selectionStore.calibrationComplete {
+                    calibrationStage
+                } else {
+                    postCalibrationStage
+                }
+            }
+            .transaction { $0.animation = nil }
+
+            Spacer(minLength: 0)
 
             Text("Powered by Untold Engine")
-                .font(.title)
-                .foregroundColor(.secondary)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 48)
+        .padding(.vertical, 28)
+        .animation(.spring(response: 0.3), value: selectionStore.transientNotice)
+    }
 
-            if !experienceStarted {
-                // ── Pre-launch controls ──────────────────────────────────────
-                Button(action: {
-                    experienceStarted = true
-                    Task { await openImmersiveSpace(id: "ImmersiveSpace") }
-                }) {
-                    Label("Start Experience", systemImage: "visionpro.fill")
-                        .frame(minWidth: 250)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+    // MARK: - Stages
 
-                Button { openWindow(id: "EngineStatsPanel") } label: {
-                    Label("Engine Stats", systemImage: "chart.xyaxis.line")
-                        .frame(minWidth: 250)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+    private var welcomeStage: some View {
+        VStack(spacing: 16) {
+            Text("HomeDesign")
+                .font(.system(size: 48, weight: .bold))
 
-            } else if !selectionStore.calibrationComplete {
-                // ── Calibration prompt ───────────────────────────────────────
-                VStack(spacing: 16) {
-                    Image(systemName: "arrow.down.to.line.circle.fill")
-                        .font(.system(size: 52))
-                        .foregroundStyle(.tint)
+            Text("Decorate real rooms in mixed reality")
+                .font(.title3)
+                .foregroundStyle(.secondary)
 
-                    Text("Look at your floor and tap\nto place the floor plan")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .multilineTextAlignment(.center)
+            Button(action: {
+                experienceStarted = true
+                Task { await openImmersiveSpace(id: "ImmersiveSpace") }
+            }) {
+                Label("Start Experience", systemImage: "visionpro.fill")
+                    .frame(minWidth: 260)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.top, 8)
+        }
+    }
 
-                    Text("Make sure you're standing in your room\nwith the floor visible.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(28)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+    private var floorPlanPickerStage: some View {
+        stageCard {
+            VStack(spacing: 4) {
+                Text("Choose a Floor Plan")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Text("Pick a starting layout — you can rearrange everything after.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
 
+            if floorPlans.isEmpty {
+                Text("No floor plans found in GameData/Scenes.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
             } else {
-                // ── Post-calibration controls ────────────────────────────────
-
-                // Room-entry hint shown while in bird's eye mode
-                if selectionStore.isMiniatureMode {
-                    VStack(spacing: 8) {
-                        Image(systemName: "hand.tap.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.tint)
-                        Text("Tap a room on the floor plan\nto enter it at full scale")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .multilineTextAlignment(.center)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(floorPlans) { plan in
+                            FloorPlanCard(option: plan) {
+                                selectionStore.selectedFloorPlanName = plan.sceneName
+                                HomeDesignStore.shared.selectedFloorPlanName = plan.sceneName
+                            }
+                        }
                     }
-                    .padding(20)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 4)
+                    .padding(.top, 4)
                 }
-
-                if !selectionStore.isMiniatureMode {
-                    Button { openWindow(id: "FurniturePanel") } label: {
-                        Label("Furniture Catalog", systemImage: "sofa.fill")
-                            .frame(minWidth: 250)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                }
-
-                Button {
-                    HomeDesignStore.shared.requestAction(.toggleMiniature)
-                } label: {
-                    Label(
-                        selectionStore.isMiniatureMode ? "Full Scale" : "Bird's Eye View",
-                        systemImage: selectionStore.isMiniatureMode
-                            ? "arrow.up.left.and.arrow.down.right"
-                            : "binoculars.fill"
-                    )
-                    .frame(minWidth: 250)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-
-                Button { openWindow(id: "EngineStatsPanel") } label: {
-                    Label("Engine Stats", systemImage: "chart.xyaxis.line")
-                        .frame(minWidth: 250)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
             }
         }
-        .padding(60)
-        .animation(.spring(response: 0.4), value: experienceStarted)
-        .animation(.spring(response: 0.4), value: selectionStore.calibrationComplete)
+    }
+
+    private func floorPlanLoadingStage(_ progress: LoadProgress) -> some View {
+        stageCard {
+            ProgressView(value: progress.fraction)
+                .progressViewStyle(.linear)
+                .frame(width: 220)
+
+            Text("Loading Floor Plan")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("\(progress.completed) of \(progress.total) models loaded")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    private var calibrationStage: some View {
+        stageCard {
+            Image(systemName: "arrow.down.to.line.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.tint)
+
+            Text("Look at your floor and tap\nto place the floor plan")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+
+            Text("Make sure you're standing in your room\nwith the floor visible.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var postCalibrationStage: some View {
+        stageCard {
+            // Room-entry hint shown while in bird's eye mode
+            if selectionStore.isMiniatureMode {
+                VStack(spacing: 8) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.tint)
+                    Text("Tap a room on the floor plan\nto enter it at full scale")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .multilineTextAlignment(.center)
+                }
+            } else {
+                // Teleport hint shown while at full scale
+                VStack(spacing: 8) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.tint)
+                    Text("Tap the floor to teleport there")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
+            Button {
+                HomeDesignStore.shared.requestAction(.toggleMiniature)
+            } label: {
+                Label(
+                    selectionStore.isMiniatureMode ? "Full Scale" : "Bird's Eye View",
+                    systemImage: selectionStore.isMiniatureMode
+                        ? "arrow.up.left.and.arrow.down.right"
+                        : "binoculars.fill"
+                )
+                .frame(minWidth: 250)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+
+            Button {
+                HomeDesignStore.shared.requestAction(.toggleAmbientLighting)
+            } label: {
+                Label(
+                    selectionStore.ambientLightingEnabled ? "Ambient Light: On" : "Ambient Light: Off",
+                    systemImage: selectionStore.ambientLightingEnabled ? "sun.max.fill" : "sun.max"
+                )
+                .frame(minWidth: 250)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+        }
+    }
+
+    // MARK: - Shared pieces
+
+    private func stageCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 16, content: content)
+            .padding(28)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func noticeBanner(_ message: String) -> some View {
+        Text(message)
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.red.opacity(0.85), in: RoundedRectangle(cornerRadius: 14))
+            .foregroundStyle(.white)
+            .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+struct FloorPlanCard: View {
+    let option: FloorPlanOption
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .center, spacing: 10) {
+                FloorPlanThumbnailView(url: option.thumbnailURL)
+                    .frame(width: 160, height: 110)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Text(option.displayName)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .padding(14)
+            .frame(width: 188)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .scaleEffect(isHovered ? 1.03 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
+            .onHover { isHovered = $0 }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct FloorPlanThumbnailView: View {
+    let url: URL?
+
+    var body: some View {
+        if let url,
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.secondary.opacity(0.15))
+                .overlay {
+                    Image(systemName: "square.split.bottomrightquarter.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.secondary)
+                }
+        }
     }
 }
 

@@ -61,6 +61,120 @@ extension GameScene {
         }
     }
 
+    // MARK: - Floor Plan Loading
+
+    /// Load the user's chosen pre-furnished floor plan and register its contents:
+    /// the room shell becomes `floorplanEntity`; any entity whose model matches a
+    /// known catalog item becomes selectable/movable furniture, exactly like an
+    /// item placed from the catalog — just without the placement-flow side effects
+    /// (no ghost material, no undo entry, no auto-select).
+    func loadSelectedFloorPlan(named sceneName: String) {
+        let modelBaseNames = SceneManifest.modelBaseNames(sceneName: sceneName)
+        let priorEntities = Set(getAllGameEntities())
+        let totalToLoad = modelBaseNames?.count ?? 0
+
+        // `AssetLoadingState` is the engine's own per-entity mesh-load tracker — every
+        // `setEntityMeshAsync` call (including the ones `loadUntoldScene` makes internally
+        // for each entity) brackets itself with start/finishLoading. `loadingCount()` is
+        // engine-wide, not scoped to this scene, but nothing else loads concurrently during
+        // this window (the furniture catalog is gated behind `isSceneReady()`, which stays
+        // false until this load finishes), so `total - loadingCount()` is a reliable count
+        // of how many of *this* scene's models have finished.
+        var progressTask: Task<Void, Never>?
+        if totalToLoad > 0 {
+            HomeDesignStore.shared.notifyFloorPlanLoadProgress(LoadProgress(completed: 0, total: totalToLoad))
+            progressTask = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    guard !Task.isCancelled else { return }
+                    let stillLoading = await AssetLoadingState.shared.loadingCount()
+                    let completed = min(totalToLoad, max(0, totalToLoad - stillLoading))
+                    HomeDesignStore.shared.notifyFloorPlanLoadProgress(LoadProgress(completed: completed, total: totalToLoad))
+                }
+            }
+        }
+
+        loadUntoldScene(named: sceneName) { [weak self] success in
+            guard let self else { return }
+            progressTask?.cancel()
+            HomeDesignStore.shared.notifyFloorPlanLoadProgress(nil)
+            guard success else {
+                Logger.log(message: "❌ Failed to load floor plan scene: \(sceneName)")
+                HomeDesignStore.shared.notifyTransient("Couldn't load floor plan")
+                return
+            }
+            self.registerLoadedFloorPlan(modelBaseNames: modelBaseNames, priorEntities: priorEntities)
+            // Start at miniature scale so the user can place it on their real floor.
+            scaleSceneTo(0.05)
+            setSceneReady(true)
+        }
+    }
+
+    /// Sorts the entities spawned by `loadUntoldScene` into the room shell
+    /// (`floorplanEntity`) and pre-placed furniture (registered like placed items).
+    ///
+    /// Live entities can't be queried for their asset after loading (see
+    /// `SceneManifest`), so identification instead correlates by creation order:
+    /// `deserializeScene` calls `createEntity()` for every *authored* top-level entity
+    /// synchronously, in file order, before any async mesh loading (which may spawn
+    /// additional derived child entities later, always at higher IDs) completes. So the
+    /// lowest N new entity IDs — N = the manifest's entity count — are exactly the
+    /// authored entities, in the same order as `modelBaseNames`.
+    private func registerLoadedFloorPlan(modelBaseNames: [String?]?, priorEntities: Set<EntityID>) {
+        guard let modelBaseNames else {
+            Logger.log(message: "⚠️ Could not read floor plan scene manifest — nothing will be selectable")
+            return
+        }
+
+        let knownModels = Set(FurnitureCatalog.knownModelNames())
+
+        let newEntities = getAllGameEntities()
+            .filter { !priorEntities.contains($0) }
+            .sorted()
+
+        guard newEntities.count >= modelBaseNames.count else {
+            Logger.log(message: "⚠️ Floor plan scene spawned fewer entities (\(newEntities.count)) than authored (\(modelBaseNames.count)) — registration may be incomplete")
+            return
+        }
+
+        let authoredEntities = newEntities.prefix(modelBaseNames.count)
+
+        for (entityId, modelName) in zip(authoredEntities, modelBaseNames) {
+            guard let modelName else { continue } // camera, light, empty group — not interactive
+            if knownModels.contains(modelName) {
+                registerPreplacedFurniture(entityId: entityId, modelName: modelName)
+            } else {
+                floorplanEntity = entityId
+            }
+        }
+
+        if let floorplanEntity {
+            // Quick test: the room shell never moves relative to itself once loaded
+            // (only the whole scene root rigidly translates/scales during calibration),
+            // so it's a safe static-batching candidate — unlike furniture, which needs
+            // independent per-entity transforms for select/drag/rotate.
+            setEntityStaticBatchHierarchy(entityId: floorplanEntity)
+            setBatching(.enabled(true))
+            generateBatches()
+        } else {
+            Logger.log(message: "⚠️ No room-shell entity found in floor plan scene — calibration will not work")
+        }
+    }
+
+    /// Register a furniture entity that came pre-placed in a loaded floor plan scene.
+    /// Wall vs. floor and drag plane are inferred from its authored transform since,
+    /// unlike interactive placement, there's no live gaze direction to read.
+    func registerPreplacedFurniture(entityId: EntityID, modelName: String) {
+        placedFurnitureEntities.append(entityId)
+        furnitureModelNames[entityId] = modelName
+
+        let position = getLocalPosition(entityId: entityId)
+        let rotation = getAxisRotations(entityId: entityId)
+        if case .wall(let dragPlane) = classifySurface(entityY: position.y, yRotationDegrees: rotation.y) {
+            wallItems[entityId] = dragPlane
+        }
+    }
+
     // MARK: - Calibration
 
     /// Anchor the scene and start the scale-in animation.
@@ -229,6 +343,7 @@ extension GameScene {
                 Logger.log(message: "🪑 \(modelName) loaded — look at the floor and tap to place")
             } else {
                 Logger.log(message: "❌ Failed to load mesh: \(modelName)")
+                HomeDesignStore.shared.notifyTransient("Couldn't load \(modelName)")
             }
             setSceneReady(success)
         }
@@ -333,6 +448,18 @@ extension GameScene {
         scaleTo(entityId: fp, scale: simd_float3(1, 1, 1))
         HomeDesignStore.shared.notifyFloorPlanScaleChanged(1.0)
         Logger.log(message: "↺ Floor plan scale reset")
+    }
+
+    // MARK: - Lighting
+
+    /// Toggle the real-world (ARKit passthrough) lighting contribution between fully off
+    /// and fully on, so users can compare the scene under pure scripted lighting vs. lit
+    /// by their actual room.
+    func toggleAmbientLighting() {
+        ambientLightingEnabled.toggle()
+        setRendering(.environment(.realWorldLightingContribution(ambientLightingEnabled ? 1.0 : 0.0)))
+        HomeDesignStore.shared.notifyAmbientLightingChanged(ambientLightingEnabled)
+        Logger.log(message: "💡 Ambient lighting: \(ambientLightingEnabled ? "on" : "off")")
     }
 
     // MARK: - Rotation

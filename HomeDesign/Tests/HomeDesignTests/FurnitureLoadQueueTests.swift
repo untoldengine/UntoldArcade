@@ -32,24 +32,28 @@ final class FurnitureLoadQueueTests: XCTestCase {
         XCTAssertNil(queue.dequeue())
     }
 
-    // MARK: - Single-slot behaviour (last write wins)
+    // MARK: - FIFO behaviour (no tap is dropped)
 
-    func testDoubleEnqueue_LastValueWins() {
+    func testDoubleEnqueue_DequeuesInOrder() {
         queue.enqueue("bed_01_01")
         queue.enqueue("bed_01_02")
+        XCTAssertEqual(queue.dequeue(), "bed_01_01")
         XCTAssertEqual(queue.dequeue(), "bed_01_02")
     }
 
-    func testTripleEnqueue_LastValueWins() {
+    func testTripleEnqueue_DequeuesInOrder() {
         queue.enqueue("bed_01_01")
         queue.enqueue("bed_01_02")
         queue.enqueue("bed_01_03")
+        XCTAssertEqual(queue.dequeue(), "bed_01_01")
+        XCTAssertEqual(queue.dequeue(), "bed_01_02")
         XCTAssertEqual(queue.dequeue(), "bed_01_03")
     }
 
-    func testDequeueAfterDoubleEnqueue_IsNilOnSecondCall() {
+    func testDequeueAfterDoubleEnqueue_IsNilOnThirdCall() {
         queue.enqueue("bed_01_01")
         queue.enqueue("bed_01_02")
+        _ = queue.dequeue()
         _ = queue.dequeue()
         XCTAssertNil(queue.dequeue())
     }
@@ -83,10 +87,10 @@ final class FurnitureLoadQueueTests: XCTestCase {
         }
 
         waitForExpectations(timeout: 5)
-        // After all concurrent ops the queue holds at most one value — just verify no crash
+        // Just verify no crash — exact interleaving of concurrent enqueue/dequeue is undefined.
     }
 
-    func testConcurrentEnqueue_FinalStateIsValid() {
+    func testConcurrentEnqueue_AllItemsSurvive() {
         let group = DispatchGroup()
 
         for i in 0..<100 {
@@ -98,10 +102,12 @@ final class FurnitureLoadQueueTests: XCTestCase {
         }
 
         group.wait()
-        // Either nil (if dequeued between writes) or a valid "model_N" string
-        let result = queue.dequeue()
-        if let name = result {
-            XCTAssertTrue(name.hasPrefix("model_"))
+
+        var drained: [String] = []
+        while let name = queue.dequeue() {
+            drained.append(name)
         }
+        XCTAssertEqual(drained.count, 100)
+        XCTAssertTrue(drained.allSatisfy { $0.hasPrefix("model_") })
     }
 }

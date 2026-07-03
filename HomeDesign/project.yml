@@ -51,3 +51,4 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.untoldengine.homedesign.tests
         SWIFT_VERSION: 5.0
+        GENERATE_INFOPLIST_FILE: YES
