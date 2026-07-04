@@ -1,15 +1,16 @@
 # 🎮 UntoldArcade
 
-**UntoldArcade** is a collection of demo games built with the [Untold Engine](https://github.com/untoldengine/UntoldEngine).  
+**UntoldArcade** is a collection of demos built with the [Untold Engine](https://github.com/untoldengine/UntoldEngine).  
 These demos give game developers a **quick look** at what the engine can do.
 
 The demos included are:
 
-- ⚽ **SoccerArcade** – a small macOS arcade-style soccer prototype showcasing the engine's ECS, rendering, and input systems.
-- 🥽 **UntoldAR** – an AR demo showcasing augmented reality capabilities on iOS devices.
-- 🌐 **UntoldImmersive** – an immersive demo built for Apple Vision Pro, demonstrating spatial computing features.
-- **UntoldiOS** - an ios demo showcasing the engine on iOS devices
+- 🏠 **HomeDesign** – a visionOS mixed-reality demo: pick a pre-furnished floor plan, place it on your real floor, and walk through it at full scale or from a bird's-eye view. Also shows off the engine's Rendering Extension system by integrating **CoolWater** (below) to render a real-time animated pool.
 - 🛠️ **SceneBuilder** – a declarative scene-building demo using SwiftUI-style syntax to construct 3D scenes programmatically.
+
+### Rendering Extensions
+
+- 💧 **CoolWater** – a reusable Rendering Extension package (owns its own shader library, pipelines, and render-graph passes) that draws an animated water surface with reflection/refraction and ripple simulation. Ships with its own standalone visionOS example (`CoolWater/Examples/CoolWaterVisionOS`) and is also consumed directly by **HomeDesign** as a real-world integration example.
 
 ---
 
@@ -17,7 +18,7 @@ The demos included are:
 
 - **Xcode 26.1** or later
 - **macOS 26.01+** (for macOS demos)
-- **iOS 26.01+** (for iOS/AR demos)
+- **iOS 26.01+** (for iOS demos)
 - **visionOS 26.01+** (for Vision Pro demos)
 - Metal-capable GPU
 
@@ -35,21 +36,17 @@ cd UntoldArcade
 Each demo is a standalone Xcode project. Navigate to the demo folder and open the `.xcodeproj` file:
 
 ```bash
-# For SoccerArcade
-open SoccerArcade/SoccerArcade.xcodeproj
-
-# For UntoldAR
-open UntoldAR/UntoldAR.xcodeproj
-
-# For UntoldImmersive (requires Vision Pro simulator or device)
-open UntoldImmersive/UntoldImmersive.xcodeproj
-
-# For UntoldiOS 
-open UntoldiOS/UntoldiOS.xcodeproj
+# For HomeDesign (visionOS)
+open HomeDesign/HomeDesign.xcodeproj
 
 # For SceneBuilder
 open SceneBuilder/SceneBuilder.xcodeproj
+
+# For the CoolWater rendering extension's own example (visionOS)
+open CoolWater/Examples/CoolWaterVisionOS/CoolWaterVisionOS.xcodeproj
 ```
+
+> HomeDesign's Xcode project is generated from `project.yml` via [XcodeGen](https://github.com/yonaskolb/XcodeGen). If you add/remove source files or change dependencies, re-run `xcodegen generate` inside `HomeDesign/` before opening/building.
 
 ### 3. Build and run
 - Select your target device (Mac, iPhone, iPad, or Vision Pro simulator)
@@ -66,44 +63,22 @@ Game developers: The workspace is already configured to fetch the engine from it
 
 ```bash
 UntoldArcade/
-├── SoccerArcade/              # Arcade-style soccer game
-│   ├── Sources/               # Game source code
-│   └── Resources/             # Game assets
-├── UntoldAR/                  # AR demo for iOS
-│   ├── Sources/               # Game source code
-│   └── Resources/             # Game assets
-├── UntoldImmersive/           # Vision Pro immersive demo
-│   ├── Sources/               # Game source code
-│   └── Resources/             # Game assets
-├── UntoldiOS/                 # iOS demo
-│   ├── Sources/               # Game source code
-│   └── Resources/             # Game assets
-└── SceneBuilder/              # Declarative scene-building demo
-    ├── Sources/               # Demo source code
-    └── Resources/             # Demo assets
-
+├── HomeDesign/                # visionOS mixed-reality floor-plan/home-design demo
+│   ├── Sources/                # App source code + bundled GameData (models, scenes, thumbnails)
+│   ├── Vendor/CoolWater/       # Vendored copy of the CoolWater rendering extension
+│   └── Tests/                  # Unit tests
+├── CoolWater/                  # Rendering Extension: real-time animated water
+│   ├── Sources/                 # Extension source (shaders, simulation, render passes)
+│   ├── Examples/                # Standalone visionOS consumer example
+│   └── Tests/                   # Unit tests
+└── SceneBuilder/                # Declarative scene-building demo
+    ├── Sources/                  # Demo source code
+    └── Resources/                 # Demo assets
 ```
-
-## Untold Editor
-
-The demo game scenes in this repo were created using **[UntoldEditor](https://github.com/untoldengine/UntoldEditor)**, the official scene editor for Untold Engine.  
-
-**UntoldEditor** gives developers a visual way to:
-- Import and organize assets (models, textures, animations, sounds).
-- Place entities, lights, and cameras into a scene.
-- Attach components and configure properties.
-- Save scenes to a JSON/scene file format that games can load at runtime.
-- Preview gameplay directly in the editor before exporting.
-
-This means the demos here (like **SoccerArcade**) aren’t just sample code — they also showcase the workflow:
-1. Build and preview a scene in **UntoldEditor**.  
-2. Load the scene into a demo game.  
-3. Run it in Xcode to see the editor-authored content come alive with the engine.  
-
 
 ## 🤝 Contributing
 
-We welcome contributions! If you’d like to:
+We welcome contributions! If you'd like to:
 - Add a new demo game
 - Improve existing demos
 - Enhance documentation

@@ -1,0 +1,2 @@
+*.untoldscene filter=lfs diff=lfs merge=lfs -text
+*.untold filter=lfs diff=lfs merge=lfs -text
