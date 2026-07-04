@@ -48,8 +48,19 @@ struct FloorPlanOption: Identifiable {
         }
     }
 
+    /// Scene names don't otherwise encode a presentable name (e.g. "floorplanA" has no
+    /// separator `formatDisplayName` could split on), so known ones are named explicitly
+    /// here; anything else falls back to the generic formatting below.
+    private static let displayNameOverrides: [String: String] = [
+        "floorplanA": "Apartment",
+        "floorplanB": "Villa",
+    ]
+
     static func formatDisplayName(_ id: String) -> String {
-        id.split(whereSeparator: { $0 == "_" || $0 == "-" })
+        if let override = displayNameOverrides[id] {
+            return override
+        }
+        return id.split(whereSeparator: { $0 == "_" || $0 == "-" })
             .map { $0.capitalized }
             .joined(separator: " ")
     }

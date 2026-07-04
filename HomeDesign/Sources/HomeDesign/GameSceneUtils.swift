@@ -577,7 +577,7 @@ extension GameScene {
         let x = Float.random(in: -0.8 ... 0.8)
         let z = Float.random(in: -0.8 ... 0.8)
         addCoolWaterDrop(center: simd_float2(x, z), radius: 0.03, strength: Bool.random() ? 0.01 : -0.01)
-        Logger.log(message: "💧 Ambient ripple at (\(x), \(z))")
+        //Logger.log(message: "💧 Ambient ripple at (\(x), \(z))")
     }
 
     /// Pushes the pool's scene-local model matrix every frame — CoolWater needs it refreshed

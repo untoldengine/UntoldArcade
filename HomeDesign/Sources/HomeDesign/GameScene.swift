@@ -66,7 +66,7 @@ class GameScene {
         setRendering(.environment(.lightingMode(.realWorldEstimate)))
         setRendering(.environment(.realWorldLightingContribution(1.0)))
         setPostFX(.ssao(.enabled(false)))
-        setRendering(.postProcessing(.disabled))
+        setRendering(.postProcessing(.enabled))
         
         TextureStreamingSystem.shared.enabled = true
         TextureStreamingSystem.shared.apply(.balanced)
