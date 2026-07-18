@@ -46,6 +46,8 @@ public enum CoolWaterPluginContract {
     public static let scenePassID = "com.untoldengine.coolwater.scene.pass"
     public static let occlusionPipelineID: RenderPipelineType =
         "com.untoldengine.coolwater.scene.occlusion"
+    public static let wallCausticsPipelineID: RenderPipelineType =
+        "com.untoldengine.coolwater.scene.wall-caustics"
     public static let shaderFunctionNames = [
         "coolWaterDropKernel",
         "coolWaterUpdateKernel",
@@ -62,6 +64,8 @@ public enum CoolWaterPluginContract {
         "coolWaterSurfaceVertex",
         "coolWaterSurfaceAboveFragment",
         "coolWaterSurfaceBelowFragment",
+        "coolWaterWallCausticsVertex",
+        "coolWaterWallCausticsFragment",
     ]
 }
 

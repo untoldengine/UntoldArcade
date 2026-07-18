@@ -12,6 +12,11 @@ public struct CoolWaterOcclusionMesh: @unchecked Sendable {
     public let indexCount: Int
     public let indexType: MTLIndexType
     public let transform: simd_float4x4
+    /// Optional per-vertex normals (ARKit provides them). Used by the wall-caustics
+    /// projection for a smooth surface normal; occlusion (depth-only) ignores them.
+    public let normalBuffer: MTLBuffer?
+    public let normalOffset: Int
+    public let normalStride: Int
 
     public init(
         vertexBuffer: MTLBuffer,
@@ -21,7 +26,10 @@ public struct CoolWaterOcclusionMesh: @unchecked Sendable {
         indexOffset: Int,
         indexCount: Int,
         indexType: MTLIndexType,
-        transform: simd_float4x4
+        transform: simd_float4x4,
+        normalBuffer: MTLBuffer? = nil,
+        normalOffset: Int = 0,
+        normalStride: Int = 0
     ) {
         self.vertexBuffer = vertexBuffer
         self.vertexOffset = vertexOffset
@@ -31,6 +39,9 @@ public struct CoolWaterOcclusionMesh: @unchecked Sendable {
         self.indexCount = indexCount
         self.indexType = indexType
         self.transform = transform
+        self.normalBuffer = normalBuffer
+        self.normalOffset = normalOffset
+        self.normalStride = normalStride
     }
 }
 

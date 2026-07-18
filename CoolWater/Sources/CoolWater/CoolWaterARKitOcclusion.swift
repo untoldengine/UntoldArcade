@@ -58,6 +58,7 @@ public final class CoolWaterARKitOcclusionProvider: @unchecked Sendable {
             case .added, .updated:
                 let geometry = anchor.geometry
                 let faces = geometry.faces
+                let normals = geometry.normals
                 meshesByID[anchor.id] = CoolWaterOcclusionMesh(
                     vertexBuffer: geometry.vertices.buffer,
                     vertexOffset: geometry.vertices.offset,
@@ -66,7 +67,10 @@ public final class CoolWaterARKitOcclusionProvider: @unchecked Sendable {
                     indexOffset: 0,
                     indexCount: faces.count * 3,
                     indexType: faces.bytesPerIndex == 2 ? .uint16 : .uint32,
-                    transform: anchor.originFromAnchorTransform
+                    transform: anchor.originFromAnchorTransform,
+                    normalBuffer: normals.buffer,
+                    normalOffset: normals.offset,
+                    normalStride: normals.stride
                 )
             }
             setCoolWaterOcclusionMeshes(Array(meshesByID.values))

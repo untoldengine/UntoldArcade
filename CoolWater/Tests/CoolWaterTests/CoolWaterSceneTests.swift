@@ -29,7 +29,9 @@ final class CoolWaterSceneTests: XCTestCase {
     }
 
     func testSceneUniformLayoutMatchesMetalABI() {
-        XCTAssertEqual(MemoryLayout<CoolWaterSceneUniforms>.stride, 128)
+        // 64 (mvp) + 16 (eye) + 16 (light) + 16 (sphereCenter) + 16 (sphereRadius
+        // padded) + 16 (ambient) = 144.
+        XCTAssertEqual(MemoryLayout<CoolWaterSceneUniforms>.stride, 144)
         XCTAssertEqual(MemoryLayout<CoolWaterSceneUniforms>.alignment, 16)
     }
 
