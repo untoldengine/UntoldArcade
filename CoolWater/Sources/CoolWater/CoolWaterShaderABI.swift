@@ -7,6 +7,8 @@ struct CoolWaterSceneUniforms {
     var light: SIMD3<Float>
     var sphereCenter: SIMD3<Float>
     var sphereRadius: Float
+    /// Multiplicative ambient tint from the environment (neutral = `(1,1,1,1)`).
+    var ambient: SIMD4<Float>
 }
 
 enum CoolWaterSceneBufferIndex: Int {
@@ -28,4 +30,24 @@ enum CoolWaterSimulationBufferIndex: Int {
     case oldCenter = 3
     case newCenter = 4
     case sphereRadius = 5
+}
+
+/// CPU representation of `CoolWaterWallCausticsParams` in Metal.
+struct CoolWaterWallCausticsParams {
+    /// `(tint.rgb, additive strength)`.
+    var tintStrength: SIMD4<Float>
+    /// `(wallScale, maxDistance, floorLevel, bandWidth)`.
+    var config: SIMD4<Float>
+    /// `(light direction xyz, unused)`.
+    var light: SIMD4<Float>
+    /// `(pool world-space centre xyz, unused)`.
+    var poolCenter: SIMD4<Float>
+    /// `(lateralExtent, heightPerDistance, blurRadius, unused)`.
+    var config2: SIMD4<Float>
+    // (field order matches CoolWaterWallCausticsParams in the Metal header)
+}
+
+enum CoolWaterWallCausticsBufferIndex: Int {
+    case inversePoolModel = 0
+    case params = 1
 }

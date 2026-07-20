@@ -430,7 +430,7 @@ fragment float4 coolWaterPoolFragment(WaterScenePosOut in [[stage_in]],
     if (point.y < info.r) {
         color.rgb *= water::underwaterColor * 1.2;
     }
-    return float4(water::linearFromSRGB(color.rgb), color.a);
+    return float4(water::linearFromSRGB(color.rgb * u.ambient.xyz), color.a);
 }
 
 // ===========================================================================
@@ -458,7 +458,7 @@ fragment float4 coolWaterSphereFragment(WaterScenePosOut in [[stage_in]],
     if (point.y < info.r) {
         color.rgb *= water::underwaterColor * 1.2;
     }
-    return float4(water::linearFromSRGB(color.rgb), color.a);
+    return float4(water::linearFromSRGB(color.rgb * u.ambient.xyz), color.a);
 }
 
 // ===========================================================================
@@ -533,7 +533,7 @@ fragment float4 coolWaterSurfaceAboveFragment(WaterSurfaceOut in [[stage_in]],
                                           texture2d<float> causticTex [[texture(CoolWaterSceneCausticsTextureIndex)]],
                                           texturecube<float> sky [[texture(CoolWaterSceneSkyTextureIndex)]]) {
     float4 c = shadeWaterSurface(in.worldPos, true, u, sky, tiles, waterTex, causticTex);
-    return float4(water::linearFromSRGB(c.rgb), c.a);
+    return float4(water::linearFromSRGB(c.rgb * u.ambient.xyz), c.a);
 }
 
 fragment float4 coolWaterSurfaceBelowFragment(WaterSurfaceOut in [[stage_in]],
@@ -543,5 +543,125 @@ fragment float4 coolWaterSurfaceBelowFragment(WaterSurfaceOut in [[stage_in]],
                                           texture2d<float> causticTex [[texture(CoolWaterSceneCausticsTextureIndex)]],
                                           texturecube<float> sky [[texture(CoolWaterSceneSkyTextureIndex)]]) {
     float4 c = shadeWaterSurface(in.worldPos, false, u, sky, tiles, waterTex, causticTex);
-    return float4(water::linearFromSRGB(c.rgb), c.a);
+    return float4(water::linearFromSRGB(c.rgb * u.ambient.xyz), c.a);
+}
+
+// ===========================================================================
+// Wall caustics: project the water's caustic light onto the surrounding real
+// WALLS (vertical surfaces only) — the water sits flush with the floor, so its
+// reflected light lands on the walls, not the coplanar floor.
+//
+// The projection is FLAT on the wall plane (a natural-looking rectangular band),
+// which needs the wall's orientation. We use the mesh's SMOOTH per-vertex normal
+// (from ARKit, interpolated → continuous across triangles) rather than a
+// per-triangle derivative normal. The derivative normal jumped at every
+// reconstruction-mesh triangle edge, tearing the animated caustic along a grid
+// of seams; the interpolated normal is continuous, so the pattern is stable.
+// ===========================================================================
+
+struct WallCausticsOut {
+    float4 position [[position]];
+    float3 world;
+    float3 normal;
+};
+
+vertex WallCausticsOut coolWaterWallCausticsVertex(uint vid [[vertex_id]],
+                                                   device const uchar *vertexBytes [[buffer(0)]],
+                                                   constant uint &stride [[buffer(1)]],
+                                                   constant uint &offset [[buffer(2)]],
+                                                   constant float4x4 &mvp [[buffer(3)]],
+                                                   constant float4x4 &meshToWorld [[buffer(4)]],
+                                                   device const uchar *normalBytes [[buffer(5)]],
+                                                   constant uint &normalStride [[buffer(6)]],
+                                                   constant uint &normalOffset [[buffer(7)]]) {
+    device const float *p = (device const float *)(vertexBytes + offset + vid * stride);
+    float4 local = float4(p[0], p[1], p[2], 1.0);
+    device const float *np = (device const float *)(normalBytes + normalOffset + vid * normalStride);
+    float3 localNormal = float3(np[0], np[1], np[2]);
+
+    WallCausticsOut out;
+    out.position = mvp * local;
+    out.world = (meshToWorld * local).xyz;
+    // ARKit anchor transform is rigid, so the rotation part transforms normals.
+    out.normal = (meshToWorld * float4(localNormal, 0.0)).xyz;
+    return out;
+}
+
+fragment float4 coolWaterWallCausticsFragment(WallCausticsOut in [[stage_in]],
+                                              constant float4x4 &invPoolModel [[buffer(CoolWaterWallCausticsInversePoolIndex)]],
+                                              constant CoolWaterWallCausticsParams &params [[buffer(CoolWaterWallCausticsParamsIndex)]],
+                                              texture2d<float> causticTex [[texture(CoolWaterWallCausticsTexIndex)]]) {
+    // Clamp both axes: one caustic copy is mapped into the reflection window (no
+    // tiling). Trilinear mip filtering anti-aliases the filaments.
+    constexpr sampler causticSampler(address::clamp_to_edge, filter::linear, mip_filter::linear);
+
+    float3 world = in.world;
+
+    // Smooth interpolated surface normal (continuous across triangles).
+    float3 n = normalize(in.normal);
+
+    // Walls only: reject near-horizontal surfaces (floor/ceiling have |n.y|≈1).
+    float verticality = smoothstep(0.35, 0.65, 1.0 - abs(n.y));
+    if (verticality <= 0.001) { discard_fragment(); }
+
+    float wallScale = params.config.x;
+    float maxDistance = params.config.y;
+    float floorLevel = params.config.z;
+    float bandWidth = max(params.config.w, 1e-3);
+    float lateralExtent = max(params.config2.x, 1e-3);
+    float heightPerDistance = params.config2.y;
+    float blurRadius = params.config2.z;
+    float strength = params.tintStrength.a;
+    float3 poolCenter = params.poolCenter.xyz;
+
+    float3 l = (invPoolModel * float4(world, 1.0)).xyz;
+
+    // Don't paint inside the pool's own opening.
+    if (abs(l.x) < 1.0 && abs(l.z) < 1.0 && l.y < floorLevel + 0.05) {
+        discard_fragment();
+    }
+
+    // Flat wall frame: horizontal normal + horizontal tangent along the wall.
+    float3 nHoriz = float3(n.x, 0.0, n.z);
+    float nHorizLen = length(nHoriz);
+    if (nHorizLen < 1e-4) { discard_fragment(); }
+    nHoriz /= nHorizLen;
+    float3 tangent = normalize(cross(float3(0.0, 1.0, 0.0), nHoriz));
+
+    // Perpendicular pool→wall distance (≈ constant across a flat wall) sets the
+    // band height: far walls catch the reflection high, near walls near the floor.
+    float perpDist = abs(dot(world - poolCenter, nHoriz));
+    float bandCenterY = poolCenter.y + heightPerDistance * perpDist;
+
+    float along = dot(world - poolCenter, tangent);       // lateral position on wall
+    float heightFromBand = world.y - bandCenterY;
+
+    // One caustic copy across the [-lateralExtent, +lateralExtent] × band window.
+    float2 win = float2(along / (2.0 * lateralExtent), heightFromBand / (2.0 * bandWidth));
+    float2 uv = win * wallScale + 0.5;
+
+    float caustic;
+    if (blurRadius > 1e-5) {
+        float sum = 0.0;
+        for (int j = -1; j <= 1; ++j) {
+            for (int i = -1; i <= 1; ++i) {
+                sum += causticTex.sample(causticSampler, uv + float2(float(i), float(j)) * blurRadius).r;
+            }
+        }
+        caustic = sum * (1.0 / 9.0);
+    } else {
+        caustic = causticTex.sample(causticSampler, uv).r;
+    }
+
+    // Windows: lateral + vertical (blend the copy out at its edges) and overall
+    // fade with pool→wall distance.
+    float lateralFade = saturate(1.0 - abs(along) / lateralExtent);
+    float heightFade = saturate(1.0 - abs(heightFromBand) / bandWidth);
+    float distFade = saturate(1.0 - perpDist / max(maxDistance, 1e-3));
+
+    float intensity = caustic * strength * verticality * lateralFade * heightFade * distFade;
+    if (intensity <= 0.001) { discard_fragment(); }
+
+    float3 rgb = params.tintStrength.rgb * intensity;
+    return float4(rgb, intensity);   // additive contribution over passthrough
 }

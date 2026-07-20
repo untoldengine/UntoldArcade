@@ -56,6 +56,16 @@ final class WaterXRGame {
 
         // Real-world occlusion: real surfaces occlude the water.
         occlusion.start()
+
+        // Project the water caustics onto the surrounding room walls.
+        setCoolWaterWallCausticsEnabled(true)
+
+        // Real-world environment lighting: switch the engine to its real-world
+        // estimate mode (same knobs VisionDome's light portals use) so the water
+        // can be tinted by the room's ambient light. `update()` forwards the
+        // engine's current ambient into CoolWater each frame.
+        setRendering(.environment(.lightingMode(.realWorldEstimate)))
+        setRendering(.environment(.realWorldLightingContribution(0.3)))
     }
 
     private func loadArt() {
@@ -188,6 +198,12 @@ final class WaterXRGame {
 
         setCoolWaterSphereCenter(ballLocal)
         updateModel()
+
+        // Forward the engine's current environment lighting into the water tint.
+        // `tintColor` is populated when a real-world estimate is published; it
+        // falls back to neutral white otherwise, leaving only ambient intensity.
+        let envTint = RuntimeEnvironmentLightingStore.shared.latestXRLighting()?.tintColor ?? simd_float3(1, 1, 1)
+        setCoolWaterEnvironmentLight(color: envTint, intensity: ambientIntensity)
     }
 
     func handleInput() {}

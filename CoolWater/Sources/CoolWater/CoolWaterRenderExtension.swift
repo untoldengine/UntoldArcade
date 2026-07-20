@@ -18,6 +18,7 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
     private var sceneGeometryInitialized = false
     private var defaultTilesTexture: MTLTexture?
     private var defaultSkyTexture: MTLTexture?
+    private var readOnlyDepthState: MTLDepthStencilState?
 
     func registerShaderLibraries(_ registry: RenderShaderLibraryRegistry) {
         registry.registerLibrary(
@@ -49,7 +50,10 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
                 label: "CoolWater Caustics",
                 size: .fixed(width: 1024, height: 1024),
                 pixelFormat: .rgba16Float,
-                usage: [.renderTarget, .shaderRead]
+                usage: [.renderTarget, .shaderRead],
+                // Mip chain so the wall projection can sample trilinearly (crisp up
+                // close, smooth at range) — anti-aliases the caustic filaments.
+                mipMapLevels: 11
             )
         )
         registry.registerBuffer(
@@ -155,6 +159,17 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
             reverseZCompatible: true,
             blendMode: .none,
             name: "CoolWater Real-Scene Occlusion"
+        )
+        registry.registerScenePipeline(
+            CoolWaterPluginContract.wallCausticsPipelineID,
+            vertexShader: "coolWaterWallCausticsVertex",
+            fragmentShader: "coolWaterWallCausticsFragment",
+            vertexShaderLibrary: library,
+            fragmentShaderLibrary: library,
+            depthEnabled: true,
+            reverseZCompatible: true,
+            blendMode: .additive,
+            name: "CoolWater Wall Caustics"
         )
     }
 
@@ -484,7 +499,8 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
                 eye: .zero,
                 light: lightDirection,
                 sphereCenter: lastSphereCenter,
-                sphereRadius: lastSphereRadius
+                sphereRadius: lastSphereRadius,
+                ambient: SIMD4<Float>(1, 1, 1, 1)   // caustic light map is unaffected by ambient
             )
             let waterTexture = currentTextureIsA ? textureA : textureB
             encoder.label = "CoolWater Caustics Pass"
@@ -517,6 +533,14 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
                 indexBufferOffset: 0
             )
             encoder.endEncoding()
+
+            // Refresh the mip chain so the wall projection samples it trilinearly.
+            if caustics.mipmapLevelCount > 1,
+               let blit = context.commandBuffer.makeBlitCommandEncoder() {
+                blit.label = "CoolWater Caustics Mipmaps"
+                blit.generateMipmaps(for: caustics)
+                blit.endEncoding()
+            }
         }
     }
 
@@ -554,6 +578,7 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
             initializeGridIfNeeded(vertices: gridVertices, indices: gridIndices)
             initializeSceneGeometryIfNeeded(poolVertices: poolVertices, sphereVertices: sphereVertices)
             let appearance = CoolWaterAppearance.shared.state()
+            let ambientFactor = CoolWaterAppearance.shared.ambientFactor()
             ensureDefaultArt(device: context.device)
             guard let tiles = validTilesTexture(appearance.tilesTexture) ?? defaultTilesTexture,
                   let sky = validSkyTexture(appearance.skyTexture) ?? defaultSkyTexture,
@@ -572,7 +597,8 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
                 eye: SIMD3<Float>(localEye4.x, localEye4.y, localEye4.z),
                 light: lightDirection,
                 sphereCenter: lastSphereCenter,
-                sphereRadius: lastSphereRadius
+                sphereRadius: lastSphereRadius,
+                ambient: SIMD4<Float>(ambientFactor, 1)
             )
 
             encoder.pushDebugGroup("CoolWater Scene")
@@ -633,6 +659,105 @@ final class CoolWaterRenderExtension: RenderExtension, @unchecked Sendable {
             encoder.setDepthStencilState(abovePipeline.depthState)
             encoder.setCullMode(.front)
             drawGrid(encoder, indexBuffer: gridIndices)
+
+            // Immersion extras, drawn after the water so they depth-test against
+            // both the real-scene occluder and the water/pool/sphere.
+            drawWallCaustics(
+                encoder,
+                context: context,
+                caustics: caustics,
+                poolModelMatrix: model,
+                ambientFactor: ambientFactor
+            )
+        }
+    }
+
+    /// Read-only reverse-Z depth state: transparent extras test against the
+    /// scene depth without writing (so they don't cull one another).
+    private func readOnlyDepthState(device: MTLDevice) -> MTLDepthStencilState? {
+        if let state = readOnlyDepthState { return state }
+        let descriptor = MTLDepthStencilDescriptor()
+        descriptor.depthCompareFunction = sceneDepthCompareFunction(.lessEqual, reverseZCompatible: true)
+        descriptor.isDepthWriteEnabled = false
+        readOnlyDepthState = device.makeDepthStencilState(descriptor: descriptor)
+        return readOnlyDepthState
+    }
+
+    /// Additively projects the water caustics onto the reconstructed real-scene
+    /// meshes (walls + floor) so the room looks lit by the pool. AR-only in
+    /// practice: does nothing when no occlusion meshes are present.
+    private func drawWallCaustics(
+        _ encoder: MTLRenderCommandEncoder,
+        context: RenderPassContext,
+        caustics: MTLTexture,
+        poolModelMatrix: simd_float4x4,
+        ambientFactor: simd_float3
+    ) {
+        guard CoolWaterWallCaustics.shared.isEnabled else { return }
+        let meshes = CoolWaterOcclusionStore.shared.snapshot()
+        guard !meshes.isEmpty,
+              let pipeline = context.renderPipelines.pipeline(
+                  CoolWaterPluginContract.wallCausticsPipelineID
+              ),
+              let pipelineState = pipeline.pipelineState,
+              let depthState = readOnlyDepthState(device: context.device)
+        else { return }
+
+        encoder.pushDebugGroup("CoolWater Wall Caustics")
+        defer { encoder.popDebugGroup() }
+        encoder.setRenderPipelineState(pipelineState)
+        encoder.setDepthStencilState(depthState)
+        encoder.setCullMode(.none)
+
+        var inversePoolModel = simd_inverse(poolModelMatrix)
+        var params = CoolWaterWallCaustics.shared.params(lightDirection: lightDirection)
+        // Pool world-space centre, for centring the wall projection.
+        let poolCenter4 = poolModelMatrix * SIMD4<Float>(0, 0, 0, 1)
+        params.poolCenter = SIMD4<Float>(poolCenter4.x, poolCenter4.y, poolCenter4.z, 0)
+        // Tint the room caustics by the same ambient factor as the water.
+        params.tintStrength.x *= ambientFactor.x
+        params.tintStrength.y *= ambientFactor.y
+        params.tintStrength.z *= ambientFactor.z
+        encoder.setFragmentBytes(
+            &inversePoolModel,
+            length: MemoryLayout<simd_float4x4>.stride,
+            index: CoolWaterWallCausticsBufferIndex.inversePoolModel.rawValue
+        )
+        encoder.setFragmentBytes(
+            &params,
+            length: MemoryLayout<CoolWaterWallCausticsParams>.stride,
+            index: CoolWaterWallCausticsBufferIndex.params.rawValue
+        )
+        encoder.setFragmentTexture(caustics, index: 0)
+
+        // Needs per-vertex normals for the smooth wall frame; skip meshes without.
+        for mesh in meshes where mesh.indexCount > 0 && mesh.vertexStride > 0
+            && mesh.normalBuffer != nil && mesh.normalStride > 0 {
+            guard let normalBuffer = mesh.normalBuffer else { continue }
+            encoder.useResource(mesh.vertexBuffer, usage: .read, stages: .vertex)
+            encoder.useResource(mesh.indexBuffer, usage: .read, stages: .vertex)
+            encoder.useResource(normalBuffer, usage: .read, stages: .vertex)
+            var stride = UInt32(mesh.vertexStride)
+            var offset = UInt32(max(0, mesh.vertexOffset))
+            var mvp = context.camera.viewProjectionMatrix * mesh.transform
+            var meshToWorld = mesh.transform
+            var normalStride = UInt32(mesh.normalStride)
+            var normalOffset = UInt32(max(0, mesh.normalOffset))
+            encoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
+            encoder.setVertexBytes(&stride, length: MemoryLayout<UInt32>.stride, index: 1)
+            encoder.setVertexBytes(&offset, length: MemoryLayout<UInt32>.stride, index: 2)
+            encoder.setVertexBytes(&mvp, length: MemoryLayout<simd_float4x4>.stride, index: 3)
+            encoder.setVertexBytes(&meshToWorld, length: MemoryLayout<simd_float4x4>.stride, index: 4)
+            encoder.setVertexBuffer(normalBuffer, offset: 0, index: 5)
+            encoder.setVertexBytes(&normalStride, length: MemoryLayout<UInt32>.stride, index: 6)
+            encoder.setVertexBytes(&normalOffset, length: MemoryLayout<UInt32>.stride, index: 7)
+            encoder.drawIndexedPrimitives(
+                type: .triangle,
+                indexCount: mesh.indexCount,
+                indexType: mesh.indexType,
+                indexBuffer: mesh.indexBuffer,
+                indexBufferOffset: max(0, mesh.indexOffset)
+            )
         }
     }
 
