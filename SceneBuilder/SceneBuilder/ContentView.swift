@@ -33,16 +33,22 @@ struct ContentView : View {
 //    }
     
     var body: some View {
-        SceneBuilderView()
+        PBRCubeDemo()
+        //CubeWaveDemo()
+        //SceneBuilderView()
         //TestView()
     }
 }
 
+// Per-frame state lives in a reference type so mutating it from the update
+// handler never invalidates the SwiftUI body (which would re-run the scene builder).
+final class SpinState {
+    var yawDegrees: Float = 0
+}
+
 // Scene Builder style to create a scene with hierarchy
 struct SceneBuilderView: View {
-    @State var playerAngle: Float = 0
-    
-    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    @State private var spin = SpinState()
     var rootID: EntityID = createEntity()
     
     var renderer: UntoldRenderer?
@@ -101,9 +107,9 @@ struct SceneBuilderView: View {
             // Rotate the player to face forward along the Y axis.
             .rotateTo(angle: 0, axis: [.y])
         }
-        .onReceive(timer) { _ in
-            playerAngle += 1
-            rotateTo(entityId: rootID, pitch: 0, yaw: playerAngle, roll: 0)
+        .onUpdate { event in
+            spin.yawDegrees += Float(event.deltaTime) * 45 // deg/sec, frame-rate independent
+            rotateTo(entityId: rootID, pitch: 0, yaw: spin.yawDegrees, roll: 0)
         }
     }
 }
@@ -119,13 +125,13 @@ struct TestView : View
     
     var body: some View {
         SceneView().onInit {
-            setEntityMesh(entityId: player, filename: "redplayer", withExtension: "usdc", flip: false)
+            setEntityMesh(entityId: player, filename: "redplayer", withExtension: "usdc")
             updateMaterialRoughness(entityId: player, roughness: 0.5)
             updateMaterialTexture(entityId: player, textureType: .baseColor, path: LoadingSystem.shared.resourceURL(forResource: "soccer-player-1", withExtension: "png")!)
             rotateTo(entityId: player, angle: 0, axis: simd_float3(0.0, 1.0, 0.0))
 
             let ball = createEntity()
-            setEntityMesh(entityId: ball, filename: "ball", withExtension: "usdc", flip: false)
+            setEntityMesh(entityId: ball, filename: "ball", withExtension: "usdc")
             updateMaterialTexture(entityId: ball, textureType: .baseColor, path: LoadingSystem.shared.resourceURL(forResource: "Ball Texture_Diffuse", withExtension:"jpg")! )
             updateMaterialTexture(entityId: ball, textureType: .normal, path: LoadingSystem.shared.resourceURL( forResource: "Ball_Normal_Map", withExtension:"png")! )
             translateBy(entityId: ball, position: simd_float3(0, 0, 1))
