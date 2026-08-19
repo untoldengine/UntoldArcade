@@ -1,0 +1,42 @@
+name: BedroomTwin
+
+packages:
+  UntoldEngine:
+    url: https://github.com/untoldengine/UntoldEngine.git
+    branch: develop
+
+targets:
+  BedroomTwin:
+    type: application
+    platform: visionOS
+    deploymentTarget: 2.0
+    sources:
+      - path: Sources
+        excludes:
+          - "BedroomTwin/GameData"
+      - path: Sources/BedroomTwin/GameData
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: UntoldEngine
+        product: UntoldEngineXR
+      - package: UntoldEngine
+        product: UntoldEngineAR
+    settings:
+      base:
+                PRODUCT_BUNDLE_IDENTIFIER: com.untoldengine.bedroomtwin
+                SWIFT_VERSION: 5.0
+                MARKETING_VERSION: "1.0"
+                CURRENT_PROJECT_VERSION: "1"
+                INFOPLIST_FILE: Sources/BedroomTwin/Info.plist
+                UNTOLD_ENGINE_PACKAGE_ROOT: "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine"
+                MTL_HEADER_SEARCH_PATHS: "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include"
+                CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+        Release:
+                  SWIFT_COMPILATION_MODE: wholemodule
+                  SWIFT_OPTIMIZATION_LEVEL: -Onone
+                  DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
