@@ -1,0 +1,375 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		018171218987E7B3AF33D366 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 516F62229E1685E62781C402 /* GameScene.swift */; };
+		109EB30A27967D96C7A9C3B1 /* ArchvizViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D149CA2F37E8BCEAEC616ED /* ArchvizViewerApp.swift */; };
+		3DC2BD6CCD503E53336D3A25 /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72F1F52A4FB39B449BE2187 /* GameSceneUtils.swift */; };
+		4AA296EF93BC2B8077FA6A5F /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = 72B5E5749B4886EEE29DABB5 /* GameData */; };
+		54B08580AFDF48E300513AFD /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 60F683462F0DBEB6F3EF492E /* UntoldEngineXR */; };
+		E928C88B77B8AA12026753EC /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = EF11F3675E2EFCE210F4C914 /* UntoldEngineAR */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		516F62229E1685E62781C402 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		5D149CA2F37E8BCEAEC616ED /* ArchvizViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchvizViewerApp.swift; sourceTree = "<group>"; };
+		72B5E5749B4886EEE29DABB5 /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/ArchvizViewer/GameData; sourceTree = SOURCE_ROOT; };
+		A0E81BBF9AB019B1ED008A26 /* ArchvizViewer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ArchvizViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F4791F6B4643B6C2B0D04D71 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F72F1F52A4FB39B449BE2187 /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7A5CE37C53FC740977CF951F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				54B08580AFDF48E300513AFD /* UntoldEngineXR in Frameworks */,
+				E928C88B77B8AA12026753EC /* UntoldEngineAR in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		190BE3B22B0E14651B9D62D6 /* ArchvizViewer */ = {
+			isa = PBXGroup;
+			children = (
+				5D149CA2F37E8BCEAEC616ED /* ArchvizViewerApp.swift */,
+				516F62229E1685E62781C402 /* GameScene.swift */,
+				F72F1F52A4FB39B449BE2187 /* GameSceneUtils.swift */,
+				F4791F6B4643B6C2B0D04D71 /* Info.plist */,
+			);
+			path = ArchvizViewer;
+			sourceTree = "<group>";
+		};
+		32C4C4EEC7E9306624DE2A18 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				190BE3B22B0E14651B9D62D6 /* ArchvizViewer */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		8185B5952220FFD945E5F478 = {
+			isa = PBXGroup;
+			children = (
+				72B5E5749B4886EEE29DABB5 /* GameData */,
+				32C4C4EEC7E9306624DE2A18 /* Sources */,
+				B126AE792FAC91198A8D038B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B126AE792FAC91198A8D038B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A0E81BBF9AB019B1ED008A26 /* ArchvizViewer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		93E83D2B1D067D32E6C8594B /* ArchvizViewer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DDA9535FEF7DD4EDEBE3EE0C /* Build configuration list for PBXNativeTarget "ArchvizViewer" */;
+			buildPhases = (
+				BDB423E544ECBD10C057D6C4 /* Sources */,
+				04F0FD14E97D60BD74634F61 /* Resources */,
+				7A5CE37C53FC740977CF951F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ArchvizViewer;
+			packageProductDependencies = (
+				60F683462F0DBEB6F3EF492E /* UntoldEngineXR */,
+				EF11F3675E2EFCE210F4C914 /* UntoldEngineAR */,
+			);
+			productName = ArchvizViewer;
+			productReference = A0E81BBF9AB019B1ED008A26 /* ArchvizViewer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		51A7F29E5A3C43CD70B21E2E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					93E83D2B1D067D32E6C8594B = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 82D63D1E76F54EC3079EE3F9 /* Build configuration list for PBXProject "ArchvizViewer" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8185B5952220FFD945E5F478;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7DF0C4806FD21E9815C244E6 /* XCRemoteSwiftPackageReference "UntoldEngine" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B126AE792FAC91198A8D038B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				93E83D2B1D067D32E6C8594B /* ArchvizViewer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		04F0FD14E97D60BD74634F61 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4AA296EF93BC2B8077FA6A5F /* GameData in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BDB423E544ECBD10C057D6C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				109EB30A27967D96C7A9C3B1 /* ArchvizViewerApp.swift in Sources */,
+				018171218987E7B3AF33D366 /* GameScene.swift in Sources */,
+				3DC2BD6CCD503E53336D3A25 /* GameSceneUtils.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		25F4C36460BF03DF2C01E142 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		780D770C3DFD6A6CB427D57C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				INFOPLIST_FILE = Sources/ArchvizViewer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include";
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.archvizviewer;
+				SDKROOT = xros;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				UNTOLD_ENGINE_PACKAGE_ROOT = "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine";
+				XROS_DEPLOYMENT_TARGET = 2.0;
+			};
+			name = Debug;
+		};
+		85B4ABF4706488EB1E4D2D8D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				INFOPLIST_FILE = Sources/ArchvizViewer/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include";
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.archvizviewer;
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				UNTOLD_ENGINE_PACKAGE_ROOT = "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine";
+				XROS_DEPLOYMENT_TARGET = 2.0;
+			};
+			name = Release;
+		};
+		879439B47726DF408573F1C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		82D63D1E76F54EC3079EE3F9 /* Build configuration list for PBXProject "ArchvizViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				879439B47726DF408573F1C4 /* Debug */,
+				25F4C36460BF03DF2C01E142 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DDA9535FEF7DD4EDEBE3EE0C /* Build configuration list for PBXNativeTarget "ArchvizViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				780D770C3DFD6A6CB427D57C /* Debug */,
+				85B4ABF4706488EB1E4D2D8D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7DF0C4806FD21E9815C244E6 /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/untoldengine/UntoldEngine.git";
+			requirement = {
+				branch = develop;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		60F683462F0DBEB6F3EF492E /* UntoldEngineXR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7DF0C4806FD21E9815C244E6 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineXR;
+		};
+		EF11F3675E2EFCE210F4C914 /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7DF0C4806FD21E9815C244E6 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineAR;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 51A7F29E5A3C43CD70B21E2E /* Project object */;
+}
