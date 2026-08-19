@@ -47,6 +47,11 @@ struct BedroomTwinApp: App {
         }
         .defaultSize(width: 720, height: 340)
 
+        WindowGroup("Object Info", id: "TwinInfoPanel") {
+            TwinInfoWindowView(store: TwinInfoWindowStore.shared)
+        }
+        .defaultSize(width: 420, height: 260)
+
     ImmersiveSpace(id: "ImmersiveSpace") {
 
         CompositorLayer(configuration: UntoldEngineConfiguration(), renderer: { layerRenderer in
@@ -111,6 +116,7 @@ struct ContentView: View {
         Button(action: {
             Task {
                 await openImmersiveSpace(id: "ImmersiveSpace")
+                openWindow(id: "TwinInfoPanel")
             }
         }) {
                 Label("Start Experience", systemImage: "visionpro.fill")
@@ -129,6 +135,64 @@ struct ContentView: View {
             .controlSize(.large)
         }
         .padding(60)
+    }
+}
+
+struct TwinInfoWindowView: View {
+    @ObservedObject var store: TwinInfoWindowStore
+
+    var body: some View {
+        Group {
+            if let info = store.selected {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(info.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(statusColor(info.status))
+                            .frame(width: 10, height: 10)
+                        Text(info.status)
+                            .font(.headline)
+                    }
+
+                    Text(info.detail)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    Text("Updated \(store.lastUpdated.formatted(date: .omitted, time: .standard))")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "hand.tap")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("Tap an object in the room to see its live status")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .padding(20)
+    }
+
+    private func statusColor(_ status: String) -> Color {
+        switch status.lowercased() {
+        case "on", "online", "open", "enabled":
+            return .green
+        case "off", "offline", "closed":
+            return .red
+        default:
+            return .yellow
+        }
     }
 }
 

@@ -187,6 +187,10 @@ class GameScene {
 
             if let info = selectedTwinObject {
                 Logger.log(message: "\(info.title): \(info.status) - \(info.detail)")
+                Task { @MainActor in
+                    TwinInfoWindowStore.shared.selected = info
+                    TwinInfoWindowStore.shared.lastUpdated = Date()
+                }
             }
         } else if state.spatialTapActive {
             // Tapped empty space (nothing pickable under the ray) — cycle view modes for the demo.
@@ -205,6 +209,16 @@ class GameScene {
         // Add your custom input handling here
     }
 
+}
+
+@MainActor
+final class TwinInfoWindowStore: ObservableObject {
+    static let shared = TwinInfoWindowStore()
+
+    @Published var selected: TwinObjectInfo?
+    @Published var lastUpdated: Date = Date()
+
+    private init() {}
 }
 
 @MainActor
