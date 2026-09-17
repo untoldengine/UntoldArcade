@@ -357,7 +357,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/untoldengine/UntoldEngine";
 			requirement = {
-				branch = develop;
+				branch = "feature/room-surface-store";
 				kind = branch;
 			};
 		};

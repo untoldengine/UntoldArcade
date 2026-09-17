@@ -30,16 +30,25 @@ public struct CoolBallHandPose: Sendable {
 
 #if os(visionOS)
 import ARKit
+import UntoldEngine
 
 /// visionOS adapter running the demo's own ARKitSession — hand tracking for
 /// grab/swat input and plane detection for real-surface colliders. Fresh
 /// provider instances on every start: ARKit providers are one-shot.
+///
+/// Plane geometry is kept in a `RoomSurfaceStore` rather than a raw
+/// `[UUID: CoolBallWorldPlane]` mirror of ARKit's anchor set: ARKit reports
+/// `.removed` the instant it stops confirming a plane — typically just
+/// because the user looked away — and mirroring that 1:1 made the ball fall
+/// through walls and floors that were still physically there the moment
+/// they left view. The store retains a surface across that "unconfirmed"
+/// gap and only drops it after it stays unconfirmed for a long time.
 public final class CoolBallSpatialSession: @unchecked Sendable {
     private let session = ARKitSession()
     private let lock = NSLock()
     private var updateTask: Task<Void, Never>?
     private var poses: [CoolBallHandSide: CoolBallHandPose] = [:]
-    private var planesByID: [UUID: CoolBallWorldPlane] = [:]
+    private let surfaceStore = RoomSurfaceStore()
     private var handTrackingProvider: HandTrackingProvider?
     private var worldTracking: WorldTrackingProvider?
     /// Called with the full plane set on every plane change (any thread).
@@ -114,13 +123,13 @@ public final class CoolBallSpatialSession: @unchecked Sendable {
             let task = updateTask
             updateTask = nil
             poses.removeAll()
-            planesByID.removeAll()
             handTrackingProvider = nil
             worldTracking = nil
             return task
         }
         task?.cancel()
         session.stop()
+        surfaceStore.removeAll()
     }
 
     /// Pose predicted for `timestamp` (systemUptime timebase); falls back to
@@ -151,7 +160,7 @@ public final class CoolBallSpatialSession: @unchecked Sendable {
     }
 
     public var detectedPlanes: [CoolBallWorldPlane] {
-        lock.withLock { Array(planesByID.values) }
+        surfaceStore.currentSurfaces.map(Self.makePlane(from:))
     }
 
     // MARK: - Anchors
@@ -196,14 +205,19 @@ public final class CoolBallSpatialSession: @unchecked Sendable {
 
     private func handle(planeUpdate update: AnchorUpdate<PlaneAnchor>) {
         let anchor = update.anchor
+        let now = ProcessInfo.processInfo.systemUptime
         switch update.event {
         case .removed:
-            lock.withLock { _ = planesByID.removeValue(forKey: anchor.id) }
+            // NOT a deletion: ARKit sends this the instant it stops
+            // confirming a plane, which happens just from looking away, not
+            // only when the surface is genuinely gone. The store keeps the
+            // geometry alive until it's been unconfirmed for a long time.
+            surfaceStore.markUnconfirmed(sourceID: anchor.id)
         case .added, .updated:
-            let plane = Self.makePlane(from: anchor)
-            lock.withLock { planesByID[anchor.id] = plane }
+            surfaceStore.upsert(sourceID: anchor.id, surface: Self.makeSurface(from: anchor), at: now)
         }
-        let planes = lock.withLock { Array(planesByID.values) }
+        surfaceStore.purgeStale(now: now)
+        let planes = surfaceStore.currentSurfaces.map(Self.makePlane(from:))
         onPlanesChanged?(planes)
     }
 
@@ -214,7 +228,7 @@ public final class CoolBallSpatialSession: @unchecked Sendable {
     /// every plane sideways and the ball fell through the world; the first
     /// session's floating ball was the unmeasured floor offset plus a chair
     /// seat, not these axes.)
-    private static func makePlane(from anchor: PlaneAnchor) -> CoolBallWorldPlane {
+    private static func makeSurface(from anchor: PlaneAnchor) -> RoomSurface {
         let extent = anchor.geometry.extent
         let transform = anchor.originFromAnchorTransform * extent.anchorFromExtentTransform
         let center = SIMD3<Float>(
@@ -229,15 +243,27 @@ public final class CoolBallSpatialSession: @unchecked Sendable {
         let normal = SIMD3<Float>(
             transform.columns.2.x, transform.columns.2.y, transform.columns.2.z
         )
-        return CoolBallWorldPlane(
-            id: anchor.id,
+        return RoomSurface(
             center: center,
             normal: simd_normalize(normal),
             tangentU: simd_normalize(tangentU),
             tangentV: simd_normalize(tangentV),
             extentU: extent.width * 0.5,
             extentV: extent.height * 0.5,
-            isFloor: anchor.classification == .floor
+            kind: anchor.classification == .floor ? .floor : .unknown
+        )
+    }
+
+    private static func makePlane(from surface: RoomSurface) -> CoolBallWorldPlane {
+        CoolBallWorldPlane(
+            id: UUID(),
+            center: surface.center,
+            normal: surface.normal,
+            tangentU: surface.tangentU,
+            tangentV: surface.tangentV,
+            extentU: surface.extentU,
+            extentV: surface.extentV,
+            isFloor: surface.kind == .floor
         )
     }
 

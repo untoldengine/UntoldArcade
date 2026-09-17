@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "CoolBall", targets: ["CoolBall"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/untoldengine/UntoldEngine.git", branch: "develop"),
+        .package(url: "https://github.com/untoldengine/UntoldEngine.git", branch: "feature/room-surface-store"),
     ],
     targets: [
         .target(
