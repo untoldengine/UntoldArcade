@@ -33,9 +33,111 @@ In the running app: pinch and drag to move the scene, use two hands to rotate it
 - visionOS 2.0 or later
 - Apple Vision Pro device or the Vision Pro Simulator
 
+## Code Walkthrough
+
+Read `ArchvizViewerApp.swift` first, then `GameScene.swift`, and use `GameSceneUtils.swift` only when you want to see how bundled asset paths are registered.
+
+### 1. Entering the immersive space
+
+`ArchvizViewerApp` creates the control window and an `ImmersiveSpace`. Pressing **Start Experience** opens that space. Its `CompositorLayer` supplies a `LayerRenderer`, which the app uses to create and retain `UntoldEngineXR` in `XRHolder`.
+
+The app sets mixed immersion, creates `GameScene`, and connects `GameScene.update(deltaTime:)` and `GameScene.handleInput()` to the engine with `setupCallbacks`. It then starts the blocking XR run loop on a dedicated, user-interactive thread.
+
+### 2. Configuring and loading the scene
+
+`GameScene.init` performs setup in a deliberate order:
+
+1. `setupAssetPaths()` points the engine at the bundled `GameData` folders.
+2. `configureEngineSystems()` enables game mode, XR input, GPU-preferred picking, two-hand rotation, post-processing, MSAA, and detailed texture streaming.
+3. A root entity named `Bedroom` is created.
+4. `setEntityMeshAsync` begins loading `Bedroom.untold` without blocking the render loop.
+5. On success, `loadSceneAuthored` imports the Blender-authored lights, camera, and color management.
+6. The forest environment is configured and `setSceneReady(true)` allows interaction. A load failure leaves the scene not ready.
+
+### 3. Per-frame input
+
+The demo has no custom simulation in `update`; Untold Engine performs rendering and its registered system updates. `handleInput` waits until both game mode and the scene are ready, reads `getXRSpatialInputState()`, and passes that snapshot to `SpatialManipulationSystem`. That system interprets one-hand drag and two-hand rotation and applies them to the anchored scene.
+
+```text
+Start Experience
+  → CompositorLayer
+  → UntoldEngineXR + GameScene
+  → asynchronous Bedroom.untold load
+  → authored scene/environment setup
+  → setSceneReady(true)
+  → XR input each frame
+  → anchored scene manipulation
+```
+
+The **Engine Stats** window is separate SwiftUI UI. `EngineStatsWindowStore` samples the engine every 0.25 seconds and publishes formatted snapshots without participating in the render loop.
+
+### Follow the actual functions
+
+Start at the `CompositorLayer` closure in `ArchvizViewerApp.swift`. This is the point where SwiftUI hands rendering to Untold Engine:
+
+```swift
+if let xr = UntoldEngineXR(layerRenderer: layerRenderer) {
+    XRHolder.shared.xr = xr
+    xr.setImmersionMode(xrImmersionMode: .mixed)
+
+    let gameScene = GameScene()
+    xr.setupCallbacks(
+        gameUpdate: { deltaTime in
+            gameScene.update(deltaTime: deltaTime)
+        },
+        handleInput: {
+            gameScene.handleInput()
+        }
+    )
+}
+```
+
+There are two ownership details to notice. `XRHolder.shared.xr` keeps the renderer wrapper alive after the closure returns, while both callback closures capture `gameScene`, keeping the scene controller alive. The render thread then repeatedly invokes those two callbacks.
+
+Next, open `GameScene.init`. Asset loading is asynchronous:
+
+```swift
+let entity = createEntity()
+setEntityName(entityId: entity, name: "Bedroom")
+
+setEntityMeshAsync(
+    entityId: entity,
+    filename: "Bedroom",
+    withExtension: "untold"
+) { success in
+    guard success else {
+        setSceneReady(false)
+        return
+    }
+
+    loadSceneAuthored(filename: "Bedroom", withExtension: "untold")
+    setSceneReady(true)
+}
+```
+
+`createEntity` only creates an identity in the entity-component world. `setEntityMeshAsync` later attaches the imported mesh data to that identity. The completion closure is the synchronization point: authored lights/camera settings are not imported and input is not enabled until the mesh succeeds.
+
+Finally, follow `handleInput`:
+
+```swift
+if gameMode == false { return }
+if isSceneReady() == false { return }
+
+let state = getXRSpatialInputState()
+
+SpatialManipulationSystem.shared
+    .processAnchoredSceneManipulationLifecycle(
+        from: state,
+        dragSensitivity: 10.0,
+        rotateSensitivity: 1.0
+    )
+```
+
+The guard prevents gestures from changing an incomplete scene. `getXRSpatialInputState` returns the engine's once-per-frame XR snapshot; the manipulation system owns the gesture state machine, so this demo does not manually remember pinch start/end. To change the interaction, this call—not `update`—is the place to begin.
+
 ## Project Structure
 
-```
+```text
 ArchvizViewer/
 ├── project.yml                    # Xcode project generator config
 ├── README.md

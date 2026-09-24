@@ -15,7 +15,7 @@ Clone it, open a folder, hit `⌘R`, and you're looking at the feature instead o
 
 ## 📺 Demos
 
-Each demo is a **standalone Xcode project** with its own README, tutorial, and bundled assets — no setup beyond opening the `.xcodeproj`. The four Rendering Extensions (CoolSaber, CoolWater, CoolCloth, CoolWeb) are reusable plugins — each ships its own shader library, pipelines, and render-graph passes, and can be dropped into any project.
+Each demo has its own README with run instructions and a guided path through the checked-in code. App demos are standalone Xcode projects; the Rendering Extensions (CoolSaber, CoolWater, CoolCloth, CoolWeb) are reusable Swift packages with example Xcode apps. Each extension ships its own shader library, pipelines, and render-graph passes and can be dropped into another project.
 
 ### ⚔️ CoolSaber — *visionOS · Rendering Extension*
 
@@ -148,9 +148,9 @@ open SplatTwin/SplatTwin.xcodeproj
 ## ⚙️ Requirements
 
 - **Xcode 26.1** or later
-- **macOS 26.01+** (for macOS demos)
-- **iOS 26.01+** (for iOS demos)
-- **visionOS 26.01+** (for Vision Pro demos)
+- **macOS 26.0+** for the current macOS demo targets
+- **iOS 26.0+** for the current SceneBuilder iOS target
+- **visionOS 2.0+** for most Vision Pro demos; CoolSaber targets visionOS 26.0 because it uses accessory tracking
 - Metal-capable GPU
 - A physical Apple Vision Pro for CoolSaber (simulator can't run the deferred renderer's G-buffer) and CoolWeb (simulator has no hand tracking or scene reconstruction)
 
@@ -165,7 +165,7 @@ cd UntoldArcade
 ```
 
 ### 2. Open a demo project
-Each demo is a standalone Xcode project. Navigate to the demo folder and open the `.xcodeproj` file — see the `open` command under each demo above.
+Navigate to the demo folder and open the `.xcodeproj` shown under that demo above. Rendering-extension demos keep their consumer app under `Examples/`; their top-level directory is also a Swift package that can be built and tested independently.
 
 > Most demos generate their Xcode project from `project.yml` via [XcodeGen](https://github.com/yonaskolb/XcodeGen). If you add/remove source files or change dependencies, re-run `xcodegen generate` inside that demo's folder before opening/building.
 
@@ -195,7 +195,7 @@ UntoldArcade/
 └── docs/media/          # Screenshots/GIFs/video referenced by this README
 ```
 
-Each demo folder generally follows:
+App demo folders generally follow:
 ```bash
 <Demo>/
 ├── project.yml               # XcodeGen config (where used)
@@ -204,6 +204,17 @@ Each demo folder generally follows:
     ├── <Demo>App.swift        # App entry point
     ├── GameScene.swift        # Scene setup, input, per-frame logic
     └── GameData/               # Bundled models, textures, HDRs, streamed tiles
+```
+
+Rendering-extension demos instead separate reusable package code from the consumer app:
+
+```text
+<Demo>/
+├── Package.swift
+├── README.md
+├── Sources/<Demo>/             # Plugin, extension, simulation/state, shaders
+├── Tests/<Demo>Tests/
+└── Examples/<Demo>VisionOS/    # Runnable consumer Xcode project
 ```
 
 ## 🤝 Contributing

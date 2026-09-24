@@ -35,6 +35,123 @@ is swapped and its far side shows through.
 - To try a real capture, put `capture.untold` (the mesh) and `capture.untoldgs` (its cooked
   splat) into `Sources/SplatTwin/GameData/Twins/`; the demo adds it as a fourth object.
 
+## Code walkthrough
+
+Read the implementation in this order:
+
+1. `SplatTwinApp.swift` — SwiftUI entry point, renderer ownership, callbacks, and HUD.
+2. `GameScene.swift` — engine setup, camera/input, extension installation, and per-frame HUD updates.
+3. `TwinShowcase.swift` — creates the floor and twins and exposes live options/readouts.
+4. `GaussianTwins/GaussianTwinComponent.swift` — per-entity state and configuration.
+5. `GaussianTwinStateMachine.swift` — the pure, testable transition rules.
+6. `GaussianTwinSystem.swift` — camera-distance checks, asynchronous loading, and render presentation.
+7. `SplatSynthesizer.swift` — generates the three built-in `.untoldgs` payloads.
+
+### Startup and ownership
+
+`SplatTwinApp` creates one `DemoHost`. The host creates `UntoldRenderer`, constructs `GameScene`, connects `update` and `handleInput` callbacks, and gives the renderer to `SceneView`.
+
+`GameScene.init` configures rendering and keyboard input, creates the camera and sun, installs `GaussianTwinSystem` as an engine extension, and asks `TwinShowcase` to build the demo. The showcase creates normal mesh entities and links each one to a generated or bundled Gaussian payload with `setEntityGaussianTwin`.
+
+### The swap state machine
+
+Once installed, `GaussianTwinSystem` is updated by the engine. For each linked entity it measures camera distance and advances these states:
+
+```text
+armed
+  → loading          camera enters swap distance; payload is not resident
+  → crossFading      payload is resident and camera is still close
+  → swapped          fade reaches 100%
+  → reverting        camera leaves the distance plus hysteresis
+  → armed            reverse fade finishes
+```
+
+If the camera reverses direction during a fade, the state machine preserves complementary progress so the image does not pop. If a resident payload disappears, the state returns immediately to `armed`, ensuring the ordinary mesh is visible.
+
+### Turning state into presentation
+
+`GaussianTwinSystem` maps the state-machine result onto engine mechanisms:
+
+- `MeshFadeComponent` controls mesh color during the cross-fade.
+- The splat's `opacityScale` supplies the complementary Gaussian opacity.
+- `MeshOccluderComponent` keeps a shrunk, depth-writing shell after the mesh color disappears.
+- The original mesh remains available to cast its shadow.
+
+`GameScene.update` samples `TwinShowcase.readouts()` about ten times a second and sends them back to `DemoHost` on the main actor. SwiftUI publishes those state names, distances, progress values, and splat counts in the HUD. HUD sliders update showcase options, which are then applied to every twin.
+
+```text
+camera movement
+  → GaussianTwinSystem distance check
+  → pure state-machine step
+  → optional async payload load
+  → mesh fade + splat opacity + occluder shell
+  → TwinReadout
+  → SwiftUI HUD
+```
+
+### Follow the actual functions
+
+The ownership chain starts in `DemoHost.init`:
+
+```swift
+guard let renderer = UntoldRenderer.create() else {
+    self.renderer = nil
+    return
+}
+self.renderer = renderer
+
+let gameScene = GameScene()
+renderer.setupCallbacks(
+    gameUpdate: { deltaTime in
+        gameScene.update(deltaTime: deltaTime)
+    },
+    handleInput: {
+        gameScene.handleInput()
+    }
+)
+```
+
+`SceneView(renderer:)` displays that same renderer. The callbacks capture `gameScene`, while `DemoHost` retains the renderer and exposes only UI-facing settings/readouts.
+
+In `GameScene.init`, installation happens before the showcase creates links:
+
+```swift
+GaussianTwinSystem.shared.install()
+showcase.build(
+    lightDirection: getDirectionalLightShaderDirection(entityId: sun)
+)
+setSceneReady(true)
+```
+
+`install` registers `GaussianTwinComponent` with the component registry and registers the system as an `EngineExtension`. That lets the engine call `GaussianTwinSystem.update` as part of its normal frame, even though `GameScene.update` does not call the twin system itself.
+
+The pure decision logic lives in `gaussianTwinStep`. For example:
+
+```swift
+case .armed:
+    guard wantsSwap, !loadFailed else {
+        return GaussianTwinStep(state: .armed, progress: 0)
+    }
+    return GaussianTwinStep(
+        state: payloadResident ? .crossFading : .loading,
+        progress: 0
+    )
+
+case .crossFading:
+    guard wantsSwap else {
+        return GaussianTwinStep(
+            state: .reverting,
+            progress: 1 - progress
+        )
+    }
+```
+
+The state machine receives facts—distance decision, payload residency, load failure, time—and returns only the next state/progress. It does not touch an entity or renderer, which is why `GaussianTwinStateMachineTests` can exercise all transitions without Metal.
+
+`GaussianTwinSystem.update` supplies those facts, begins asynchronous loading when entering `.loading`, and passes the result to `applyPresentation`. Follow that function to see the three visual outputs updated together: mesh fade, splat opacity, and occluder-shell presence. Keeping that mapping in one function prevents transient states such as an invisible mesh before its splat is resident.
+
+The HUD is deliberately lower frequency. `GameScene.update` accumulates `deltaTime` and publishes `showcase.readouts()` every 0.1 seconds; rendering and swap decisions still run every engine frame. This avoids causing SwiftUI updates at the display refresh rate.
+
 ## 📁 Project Structure
 
 ```

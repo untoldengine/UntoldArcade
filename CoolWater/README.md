@@ -4,6 +4,133 @@ This guide explains how to create and integrate a reusable Untold Engine Renderi
 
 The examples use `CoolWater` and the namespace `com.untoldengine.coolwater`. Replace these with names and a reverse-DNS namespace owned by your organization.
 
+> This package README has two purposes. The section below walks through the running CoolWater demo. The remainder of the document is a reusable guide to authoring an Untold Engine Rendering Extension.
+
+## Run the CoolWater demo
+
+Open `Examples/CoolWaterVisionOS/CoolWaterVisionOS.xcodeproj`, select its visionOS scheme, and run it. Press **Enter Mixed Reality**. Pinch while looking at the floor to place or slide the pool, use a two-hand pinch to resize or rotate it, and pinch the ball to carry it through the water.
+
+The example app consumes the local `CoolWater` package; it does not require an engine fork. Run `swift test` from the package directory for the package tests. After editing `Shaders/CoolWater.metal`, rebuild the committed platform metallibs with `Scripts/build-metallib.sh`.
+
+## CoolWater code walkthrough
+
+Read the implementation in this order:
+
+1. `Examples/CoolWaterVisionOS/.../CoolWaterVisionOSXRApp.swift` — app entry, plugin installation, and XR lifecycle.
+2. `WaterXRGame.swift` — placement, manipulation, ball motion, textures, and lighting.
+3. `Sources/CoolWater/CoolWaterPlugin.swift` — the package's installation contract.
+4. `CoolWaterSimulation.swift`, `CoolWaterAppearance.swift`, and `CoolWaterSceneGeometry.swift` — CPU-facing state.
+5. `CoolWaterRenderExtension.swift` — resource/pipeline registration and render-graph passes.
+6. `Shaders/CoolWater.metal` — simulation, normals, caustics, and scene shading.
+
+### 1. Install before renderer creation
+
+The immersive-space compositor calls `registerCoolWaterPlugin()` before constructing `UntoldEngineXR`. Installation registers the extension and lets the engine validate its metallib, resources, compute pipelines, scene pipelines, and graph declarations as one unit.
+
+The app then creates and retains `UntoldEngineXR`, creates `WaterXRGame`, calls `start()`, registers the game's callbacks, and starts the blocking XR loop on a dedicated thread.
+
+### 2. Initialize the demo
+
+`WaterXRGame.start()` configures XR spatial input, initializes the water's sphere, model transform, light, and seeded ripples, loads the tile texture and sky cubemap, and starts `CoolWaterARKitOcclusionProvider`. The provider converts scene-reconstruction updates into depth-only meshes that the extension can draw before the water.
+
+The pool begins at a visible fallback position. Until the first user interaction, a downward real-surface query can snap its rim to the detected floor.
+
+### 3. Update interaction each frame
+
+`WaterXRGame.update(deltaTime:)` reads the engine's current XR input snapshot. On pinch begin it ray-tests the ball; a hit selects ball dragging, while any other pinch selects pool dragging. Hand deltas are converted from world space into pool-local coordinates before moving the ball. Pool dragging changes its horizontal center and updates its floor height from real-surface picking.
+
+When the ball is not held, the demo applies simple gravity and a floor bounce. Two-hand input adjusts pool scale and yaw. At the end of the frame, the game publishes the ball center, model matrix, and current environment-light estimate through CoolWater's public API.
+
+### 4. Simulate and render
+
+`CoolWaterRenderExtension.buildGraph` contributes three ordered passes:
+
+1. a compute pass updates the height-field simulation and applies queued drops and sphere interaction;
+2. a caustics pass derives the light pattern cast by the displaced surface;
+3. a scene pass draws occlusion, the pool geometry, water surface, sphere, and caustic contribution using the latest public state.
+
+The application never calls these encoders directly. Installing the plugin adds them to the engine's graph; the engine executes them later for each frame and eye.
+
+```text
+SwiftUI opens ImmersiveSpace
+  → registerCoolWaterPlugin
+  → UntoldEngineXR + WaterXRGame
+  → XR input / ARKit surfaces / environment light
+  → CoolWater public state
+  → simulation pass
+  → caustics pass
+  → occlusion + water scene pass
+```
+
+The key boundary to notice is that `WaterXRGame` decides *what the demo should do*, while `CoolWaterRenderExtension` decides *how that state is simulated and drawn*.
+
+### Follow the actual functions
+
+The compositor closure in `CoolWaterVisionOSXRApp.swift` shows why installation must happen first:
+
+```swift
+guard installCoolWater() else { return }
+guard let xr = UntoldEngineXR(layerRenderer: layerRenderer) else { return }
+
+let game = WaterXRGame()
+game.start()
+xr.setupCallbacks(
+    gameUpdate: { dt in game.update(deltaTime: dt) },
+    handleInput: { game.handleInput() }
+)
+```
+
+`installCoolWater` switches over `.installed`, `.replaced`, or `.rejected`; a rejection stops renderer construction instead of allowing an app that silently lacks its water pass.
+
+In `WaterXRGame.update`, a pinch edge chooses what subsequent drag deltas mean:
+
+```swift
+if pinchBegan {
+    drag = rayHitsBall(
+        origin: input.rayOriginWorld,
+        direction: input.rayDirectionWorld
+    ) ? .ball : .box
+    if drag == .ball { velocity = .zero }
+    placed = true
+}
+```
+
+For `.ball`, `worldDeltaToLocal` undoes the pool's yaw and nonuniform scale before changing `ballLocal`. This is why moving a rotated or shallow pool still feels correct: interaction arrives in world coordinates, while water collision state is stored in the pool's local `[-1, 1]` box.
+
+For `.box`, only X/Z are moved. A downward `pickRealSurfacePosition(..., filter: .floorOnly)` refreshes `floorY`; `boxCenter()` then computes a center below that floor so the pool's top rim stays flush with the real surface.
+
+The end of the function is the application-to-plugin handoff:
+
+```swift
+setCoolWaterSphereCenter(ballLocal)
+updateModel() // calls setCoolWaterModelMatrix(model())
+
+let envTint = RuntimeEnvironmentLightingStore.shared
+    .latestXRLighting()?.tintColor ?? SIMD3<Float>(1, 1, 1)
+setCoolWaterEnvironmentLight(
+    color: envTint,
+    intensity: ambientIntensity
+)
+```
+
+These setters do not immediately encode Metal commands. They update synchronized state stores that the extension reads later.
+
+Continue in `CoolWaterRenderExtension.buildGraph`. It declares dependencies before any pass executes:
+
+```swift
+builder.addPass(id: simulationPassID, ...) { context in
+    encodeSimulation(context)
+}
+builder.addPass(id: causticsPassID, ...) { context in
+    encodeCaustics(context)
+}
+builder.addPass(id: scenePassID, ...) { context in
+    encodeScene(context)
+}
+```
+
+The declared reads and writes force simulation before caustics and both before scene drawing. `encodeSimulation` only runs for `currentEye == 0`, avoiding a double simulation step in stereo, while `encodeScene` runs with the camera data for each eye. Follow the resource IDs from `buildGraph` into each encoder, then into `CoolWater.metal`, to see how the two ping-pong height textures flow from wave update to normal/caustic generation and finally water shading.
+
 ## Prerequisites
 
 - A recent Xcode installation with the SDKs for the platforms you support.
@@ -11,18 +138,13 @@ The examples use `CoolWater` and the namespace `com.untoldengine.coolwater`. Rep
 - Swift Package Manager.
 - A globally unique plugin identifier.
 
-For local development, this guide uses:
-
-```text
-/Users/haroldserrano/Desktop/UntoldEngineStudio/UntoldEngine
-```
+For local development, the package can depend on either a sibling Untold Engine checkout or the repository URL. Adjust any example paths to match your workspace.
 
 ## 1. Initialize the Swift package
 
 To create the package and its directory from the parent folder:
 
 ```sh
-cd /Users/haroldserrano/Downloads
 mkdir CoolWater
 cd CoolWater
 swift package init --type library --name CoolWater
@@ -89,7 +211,8 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            path: "/Users/haroldserrano/Desktop/UntoldEngineStudio/UntoldEngine"
+            url: "https://github.com/untoldengine/UntoldEngine.git",
+            branch: "develop"
         ),
     ],
     targets: [
