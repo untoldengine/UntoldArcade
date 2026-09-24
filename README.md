@@ -72,6 +72,17 @@ Mixed-reality basketball, and the first consumer of the engine's physics backend
 open CoolBasket/Examples/CoolBasketVisionOS/CoolBasketVisionOS.xcodeproj
 ```
 
+### 🎳 CoolBowling — *visionOS · Jolt Physics*
+
+<!-- MEDIA: docs/media/CoolBowling/demo.gif -->
+<!-- ![CoolBowling demo](docs/media/CoolBowling/demo.gif) -->
+
+Mixed-reality bowling on the shared Jolt Physics plugin — the demo that needs a real rigid-body solver. Look at your floor to lay a lane, pinch to pick up the ball and roll it; ten pins (lathe meshes with convex-hull colliders) stack, wobble, topple and knock each other over, and the pins down are counted from their poses.
+
+```bash
+open CoolBowling/Examples/CoolBowlingVisionOS/CoolBowlingVisionOS.xcodeproj
+```
+
 ### 🧲 UntoldJoltPhysics — *plugin · Physics Backend*
 
 [Jolt Physics](https://github.com/jrouwe/JoltPhysics) behind the engine's physics backend seam, as a Swift package every demo can depend on: [untoldengine/UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics). Jolt comes as source from the [untoldengine/JoltPhysics](https://github.com/untoldengine/JoltPhysics) fork (the upstream tree plus a `Package.swift`) and SwiftPM compiles it — no binaries — for macOS, iOS and visionOS. CoolBasket can run on it instead of its built-in backend: pick "Jolt Physics" in its control window.
@@ -187,6 +198,7 @@ UntoldArcade/
 ├── CoolCloth/           # Rendering Extension — GPU cloth simulation (XPBD)
 ├── CoolWeb/             # Rendering Extension — Spider-Man web-shooter demo
 ├── CoolBasket/          # Physics Backend — mixed-reality basketball on the plugin seam, on either backend
+├── CoolBowling/         # visionOS — bowling on the Jolt Physics plugin
 ├── ArchvizViewer/       # visionOS — Blender archviz scene in mixed reality
 ├── BedroomTwin/         # visionOS — digital-twin bedroom with channel-based selection
 ├── CityStreaming/       # visionOS — tiled city streaming with LOD/HLOD
