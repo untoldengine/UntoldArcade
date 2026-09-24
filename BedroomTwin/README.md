@@ -35,9 +35,127 @@ In the running app: tap a lamp, the door, the curtains, or the laptop to log its
 - visionOS 2.0 or later
 - Apple Vision Pro device or the Vision Pro Simulator
 
+## Code Walkthrough
+
+Start with `BedroomTwinApp.swift`, continue through `GameScene.init`, and finish with `GameScene.handleInput()`.
+
+### 1. App and renderer startup
+
+The control window's **Start Experience** button opens the mixed `ImmersiveSpace`. The compositor-layer closure creates and retains `UntoldEngineXR`, constructs `GameScene`, registers its update and input callbacks, and runs the XR loop on a dedicated thread. The **Twin Info** and **Engine Stats** windows are SwiftUI views fed by observable stores; they are not part of the Metal render loop.
+
+### 2. Classifying the model before it loads
+
+`GameScene.init` registers the `WIN_` prefix as `.windowGeometry` before starting the asynchronous model load. Geometry without a custom prefix remains in `.contextGeometry`; `NM_` objects preserve their exported identity so they can be selected.
+
+The scene then configures the channels:
+
+1. Context geometry is excluded from picking so the room shell does not hide selectable twin objects.
+2. The window channel receives a real-world-tinted light portal.
+3. `applyViewMode(.normal)` establishes the initial rendering modes.
+4. `DigitalTwin.untold` loads asynchronously.
+5. `loadSceneAuthored` imports authored scene data and `setSceneReady(true)` enables input.
+
+Registering prefixes before loading is important: the importer uses those rules while it creates the scene entities.
+
+### 3. Resolving a tap
+
+Each input callback reads one `XRSpatialInputState` snapshot. When a spatial tap hits an entity, `twinLookupName` removes an exported `_matN` suffix so every material submesh maps back to the same logical object. The resulting name indexes `twinInfoByName`, and the selection is published to `TwinInfoWindowStore` on the main actor.
+
+Tapping empty space intentionally cycles four diagnostic views: normal, wireframe shell, hidden shell, and a passthrough window. After tap handling, the same input snapshot is passed to `SpatialManipulationSystem` for pinch-drag and two-hand rotation.
+
+```text
+Model naming (WIN_ / NM_)
+  → scene-channel assignment during import
+  → XR spatial pick
+  → normalize _matN entity name
+  → mock TwinObjectInfo lookup
+  → TwinInfoWindowStore
+  → SwiftUI Twin Info window
+```
+
+Try tapping an empty area while the room is visible to inspect how the scene-channel rendering modes differ.
+
+### Follow the actual functions
+
+Begin at the top of `GameScene.swift`. The custom channel is simply a stable bit assigned to a readable name:
+
+```swift
+extension SceneChannel {
+    static let windowGeometry = SceneChannel.userCustom(index: 0)
+}
+```
+
+`GameScene.init` registers the exported-name rule before it asks the importer to read the model:
+
+```swift
+registerSceneChannelPrefix("WIN_", channels: .windowGeometry)
+setSceneChannel(.contextGeometry, .pickParticipation(false))
+setSceneChannel(
+    .windowGeometry,
+    .lightPortal(.enabled(
+        intensity: 0.5,
+        range: 4.0,
+        useRealWorldTint: true,
+        maxActivePortals: 4,
+        activationDistance: 10.0
+    ))
+)
+```
+
+The first call controls classification during import. The next two calls control behavior after classification: ordinary room geometry cannot win a spatial pick, while window geometry contributes portal lighting. This separation is the central idea of the demo—asset names choose a channel, and channel configuration supplies runtime policy.
+
+Now follow the asynchronous load:
+
+```swift
+setEntityMeshAsync(
+    entityId: room,
+    filename: "DigitalTwin",
+    withExtension: "untold"
+) { success in
+    guard success else {
+        setSceneReady(false)
+        return
+    }
+    loadSceneAuthored(filename: "DigitalTwin", withExtension: "untold")
+    setSceneReady(true)
+}
+```
+
+The input path begins with one snapshot and branches on whether the tap hit an entity:
+
+```swift
+var state = getXRSpatialInputState()
+
+if state.spatialTapActive, let picked = state.pickedEntityId {
+    selectedTwinObject = twinInfoByName[twinLookupName(for: picked)]
+} else if state.spatialTapActive {
+    viewModeIndex = (viewModeIndex + 1) % viewModes.count
+    applyViewMode(viewModes[viewModeIndex])
+}
+```
+
+`twinLookupName` is worth reading next. Blender multi-material objects arrive as separate entities named with `_mat0`, `_mat1`, and so on. The function removes that suffix before looking in `twinInfoByName`, allowing every visible piece of the lamp or laptop to resolve to one logical twin.
+
+`applyViewMode` does not traverse entities. It changes rendering policy for entire channels:
+
+```swift
+case .hiddenShell:
+    setSceneChannel(.contextGeometry, .renderMode(.hidden))
+    setSceneChannel(.windowGeometry, .renderMode(.normal))
+
+case .passthroughWindow:
+    setSceneChannel(.contextGeometry, .renderMode(.normal))
+    setSceneChannel(
+        .windowGeometry,
+        .renderMode(.passthroughGhost(opacity: 0.0))
+    )
+```
+
+That is why one mode change can affect every wall or window without retaining their individual entity IDs.
+
 ## Project Structure
 
-```
+```text
 BedroomTwin/
 ├── project.yml                    # Xcode project generator config
 ├── README.md

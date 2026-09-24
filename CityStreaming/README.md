@@ -13,8 +13,8 @@ Tile stubs register immediately; nearby tiles load asynchronously at full detail
 - `setEntityStreamScene` for loading a tiled streaming manifest instead of one monolithic model
 - Distance-based tile loading/unloading, with LOD and HLOD representations for distant geometry
 - Incremental static batching as streamed geometry becomes resident
-- Spatial debug overlays (`setSpatialDebug(...)`) for tile bounds, octree residency, LOD levels, and texture streaming tiers
-- Profiler output (`GeometryStreamingSystem.shared.getStats()` / `printStats()`) for residency, load backlog, and memory pressure
+- Scene manipulation and surface teleporting that change which city tiles are nearest to the viewer
+- An engine-stats window for observing the renderer while the streamed scene changes
 - `SpatialManipulationSystem.shared.processAnchoredSceneManipulationLifecycle` for pinch-drag and two-hand scene rotation to move through the city
 
 ## Getting Started
@@ -27,7 +27,7 @@ open CityStreaming.xcodeproj
 
 Select the Vision Pro Simulator or a connected Apple Vision Pro, then build and run (`Cmd+R`).
 
-In the running app: pinch and drag to move through the city, use two hands to rotate it. Watch tiles stream in as you approach and drop to LOD/HLOD as you move away.
+In the running app: tap a walkable surface to teleport there, pinch and drag to move through the city, or use two hands to rotate it. Watch tiles stream in as you approach and drop to LOD/HLOD as you move away. Teleports are limited to 40 meters and surfaces steeper than roughly 30 degrees are rejected.
 
 ## Requirements
 
@@ -35,9 +35,105 @@ In the running app: pinch and drag to move through the city, use two hands to ro
 - visionOS 2.0 or later
 - Apple Vision Pro device or the Vision Pro Simulator
 
+## Code Walkthrough
+
+Read `CityStreamingApp.swift` first and then follow `GameScene.init`, `configureCityStreaming()`, and `handleInput()` in `GameScene.swift`.
+
+### 1. Starting the engine
+
+The control window opens a mixed `ImmersiveSpace`. Its `CompositorLayer` creates `UntoldEngineXR`, constructs `GameScene`, registers update/input callbacks, and starts the XR run loop on a dedicated thread. `XRHolder` keeps the XR object and thread alive.
+
+### 2. Loading a streamed scene
+
+`GameScene.init` registers bundled asset paths and XR input, then enables geometry streaming with `setGeometryStreaming(.enabled(true))`. It creates a root entity and calls:
+
+```swift
+setEntityStreamScene(
+    entityId: cityRoot,
+    manifest: "LowPolyCity",
+    withExtension: "json"
+)
+```
+
+The manifest registers the city tile hierarchy rather than uploading the whole city at once. When registration completes, the root is moved six meters down and the callback passes its success value to `setSceneReady`.
+
+From that point the engine's geometry-streaming system evaluates tiles against the current view, makes nearby representations resident, selects LOD/HLOD for farther content, and updates batches as residency changes. The demo's `update` method is empty because that policy belongs to the engine rather than the application.
+
+### 3. Moving the streaming reference point
+
+`handleInput` reads the XR spatial input state only after the manifest is ready. A tap becomes a teleport when the picked normal is within about 30 degrees of vertical and the horizontal hit position is within 40 meters. The demo moves the world by the negative hit offset, which brings the chosen location to the user without moving the XR camera.
+
+The same input state then goes to `SpatialManipulationSystem` for pinch-drag and two-hand rotation. Both paths change the city relative to the viewer, so the next streaming evaluation may request a different set of tiles.
+
+```text
+LowPolyCity.json
+  → tile hierarchy registration
+  → scene becomes ready
+  → tap or spatial manipulation moves the city
+  → view-to-tile distances change
+  → engine selects residency and LOD/HLOD
+  → incremental batches render the new working set
+```
+
+The **Engine Stats** window polls general engine statistics every 0.25 seconds. This demo does not currently enable the engine's optional spatial-debug overlays or print geometry-streaming statistics directly.
+
+### Follow the actual functions
+
+The application bootstrap in `CityStreamingApp.swift` is the same pattern used by the other XR demos: create `UntoldEngineXR`, construct one `GameScene`, register its callbacks, and run `xr.runLoop()` on the retained thread. The city-specific logic starts in `GameScene.init`:
+
+```swift
+configureEngineSystems()
+configureCityStreaming()
+
+let cityRoot = createEntity()
+setEntityName(entityId: cityRoot, name: "LowPolyCity")
+
+setEntityStreamScene(
+    entityId: cityRoot,
+    manifest: "LowPolyCity",
+    withExtension: "json"
+) { success in
+    translateBy(
+        entityId: cityRoot,
+        position: simd_float3(0.0, -6.0, 0.0)
+    )
+    setSceneReady(success)
+}
+```
+
+`configureCityStreaming` contains only `setGeometryStreaming(.enabled(true))`. That is important: tile selection is an engine system, not application code that must be called manually from `update`. `setEntityStreamScene` registers the manifest and attaches the streamed hierarchy to `cityRoot`; translating that root moves every tile through its parent transform.
+
+The demo's custom logic is in `handleInput`. Read the teleport condition from left to right:
+
+```swift
+if state.spatialTapActive,
+   let hitPos = state.pickedEntityWorldPosition,
+   let normal = state.pickedEntityWorldNormal,
+   isWalkable(normal),
+   isWithinTeleportRange(hitPos)
+{
+    translateSceneBy(delta: simd_float3(-hitPos.x, 0, -hitPos.z))
+}
+```
+
+A tap must have both a world-space hit point and surface normal. `isWalkable` rejects walls by measuring their angle from world up:
+
+```swift
+let slope = acos(simd_clamp(
+    simd_dot(simd_normalize(normal), simd_float3(0, 1, 0)),
+    -1,
+    1
+))
+return slope <= (.pi / 6)
+```
+
+The dot product is `1` for an upward horizontal surface and approaches `0` for a vertical wall. `acos` converts that similarity into an angle, and π/6 imposes the 30-degree limit.
+
+Notice that teleporting does not move the tracked Vision Pro camera. It translates the scene by `(-hitPos.x, 0, -hitPos.z)`, placing the selected horizontal point beneath the user. On subsequent engine updates, the streaming system observes new view-to-tile distances and changes residency automatically.
+
 ## Project Structure
 
-```
+```text
 CityStreaming/
 ├── project.yml                    # Xcode project generator config
 ├── README.md

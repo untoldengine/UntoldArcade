@@ -13,3 +13,17 @@ open CoolWaterVisionOS.xcodeproj
 The application installs `CoolWater` before renderer creation, retains the
 original pool placement and ball interaction, loads the original tile/cubemap
 art, and uses `CoolWaterARKitOcclusionProvider` for reconstruction occlusion.
+
+For the complete startup, interaction, simulation, and rendering walkthrough,
+see the package's [`../../README.md`](../../README.md#coolwater-code-walkthrough).
+
+The short reading path is:
+
+1. `CoolWaterVisionOSXRApp.swift` installs the plugin, creates `UntoldEngineXR`,
+   and connects the engine callbacks.
+2. `WaterXRGame.start()` initializes water state, art, XR input, and ARKit
+   occlusion.
+3. `WaterXRGame.update(deltaTime:)` turns pinches into ball or pool motion and
+   publishes the model, sphere, and environment-light state.
+4. `CoolWaterRenderExtension` consumes that state in its simulation, caustics,
+   and scene passes.

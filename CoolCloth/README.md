@@ -64,3 +64,100 @@ grabCoolClothParticle(column:row:targetWorld:) / setCoolClothGrabTarget / releas
 - Pinch elsewhere: slide the whole sheet along the floor.
 - Two-hand pinch: resize / rotate.
 - Control window: material preset, hang mode, wind strength and gusts, reset.
+
+## Run it
+
+Open `Examples/CoolClothVisionOS/CoolClothVisionOS.xcodeproj`, select the visionOS scheme, and run it on Apple Vision Pro. The example depends on the local `CoolCloth` package. Run `swift test` from this directory for the package tests; rebuild the committed metallibs with `Scripts/build-metallib.sh` after changing Metal code.
+
+## Code walkthrough
+
+Read these files in order:
+
+1. `CoolClothVisionOSXRApp.swift` — installs the plugin, creates the immersive renderer, and owns the control window.
+2. `ClothXRGame.swift` — initializes the demo and translates XR input into cloth, ball, and placement operations.
+3. `CoolClothSimulation.swift` — owns simulation configuration and GPU state.
+4. `CoolClothRenderExtension.swift` — declares pipelines and builds the frame graph.
+5. `Shaders/CoolCloth.metal` — implements the simulation kernels and fabric shaders.
+
+### Startup
+
+The compositor-layer closure calls `registerCoolClothPlugin()` before it creates `UntoldEngineXR`. Installation lets the engine validate the plugin manifest, load its metallib, register its pipelines, and include its render-graph passes when the renderer starts.
+
+The app then creates `ClothXRGame`, calls `start()`, connects its frame callbacks, and starts the XR loop. `start()` selects the initial silk material, gravity, wind, ball visibility, and top-edge pinning. It also supplies the initial model, floor, and sphere state to the package API.
+
+### Per-frame flow
+
+`ClothXRGame.update(deltaTime:)` clamps large frame deltas and calls `advanceCoolCloth`. It then interprets the current XR input:
+
+1. On pinch begin, it tests the ball first, then calls `pickCoolClothParticle` to find a cloth particle near the gaze ray; otherwise the gesture manipulates the whole sheet.
+2. A cloth hit calls `grabCoolClothParticle`; subsequent frames move its target with `setCoolClothGrabTarget`.
+3. Releasing ends the cloth grab or throws the ball using tracked motion.
+4. One-hand movement positions the sheet, while two-hand input changes its scale and rotation.
+5. The current model matrix, floor, and sphere collider are published for simulation/rendering.
+
+The render extension consumes that state when it builds and executes the frame graph. For each simulation substep it encodes `predict → solve → finalize`, recomputes normals once per frame, draws real-world reconstruction depth for occlusion, and finally draws the cloth and demo ball.
+
+```text
+SwiftUI controls + XR input
+  → ClothXRGame
+  → CoolCloth public API/state
+  → render-graph compute passes
+  → simulation textures
+  → normal generation
+  → occlusion + fabric draw
+```
+
+The control window calls the same public API as the game. That is why changing material, wind, pin mode, or occlusion updates the running extension without rebuilding the renderer.
+
+### Follow the actual functions
+
+In `ClothXRGame.update`, simulation advancement happens before interpreting the current input:
+
+```swift
+let dt = min(deltaTime, 1.0 / 30.0)
+advanceCoolCloth(deltaTime: dt)
+
+let input = InputSystem.shared.xrSpatialInputState
+let pinching = input.spatialPinchActive
+let pinchBegan = pinching && !wasPinching
+```
+
+Clamping avoids a very large simulation step after a pause or dropped frame. `pinchBegan` is an edge, while `pinching` is a held state. On that edge the function chooses exactly one drag mode:
+
+```swift
+if rayHitsBall(...) {
+    drag = .ball
+} else if let pick = pickCoolClothParticle(...) {
+    drag = .cloth
+    grabCoolClothParticle(
+        column: pick.column,
+        row: pick.row,
+        targetWorld: pick.worldPosition
+    )
+} else {
+    drag = .sheet
+}
+```
+
+This ordering gives the visible ball priority over cloth particles behind it. A cloth pick stores grid coordinates, because the simulation textures are a 128×128 particle grid. Later held frames only change the world-space target; the GPU solver pulls the selected neighborhood toward it. Releasing calls `releaseCoolClothGrab`, which clears the grab from the next consumed frame state.
+
+Now move to `CoolClothRenderExtension.encodeSimulation`. This is where the public CPU API becomes GPU work:
+
+```swift
+let state = CoolClothSimulation.shared.consumeFrameState()
+let frameDelta = min(max(state.deltaTime, 1.0 / 240.0), 1.0 / 30.0)
+let substepDelta = frameDelta / Float(state.substeps)
+
+for _ in 0 ..< state.substeps {
+    encodePredict(context, textures: textures, params: params)
+    for _ in 0 ..< state.iterations {
+        encodeSolve(context, textures: textures, params: params)
+    }
+    encodeFinalize(context, textures: textures, params: params)
+}
+encodeNormals(context, textures: textures, params: params)
+```
+
+`consumeFrameState` gives the render thread one coherent snapshot of gravity, wind, material, grab, collider, reset generation, and accumulated delta time. Only eye zero runs simulation; otherwise stereo rendering would advance the cloth twice per displayed frame.
+
+`makeParams` converts world-space interaction into the cloth's local simulation space. In particular, it multiplies the grab target by the inverse model matrix and converts the world grab radius into particle units. Follow `encodePredict`, `encodeSolve`, and `encodeFinalize` from here into the identically named Metal kernels to see where each field in `CoolClothSimParams` is used.
