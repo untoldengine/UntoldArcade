@@ -7,7 +7,7 @@
       "location" : "https://github.com/untoldengine/ProceduralGeometryExtension.git",
       "state" : {
         "branch" : "main",
-        "revision" : "60ea15a45467a2ae59989c2004286fc3cc4e06f2"
+        "revision" : "d1b908826115d6f7fcd864bc2dcfcfddc759d579"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/untoldengine/UntoldEngine.git",
       "state" : {
         "branch" : "develop",
-        "revision" : "ccd8eceb32984198e23c9d3f22ea921c9560f983"
+        "revision" : "dc1d8e9fb80de35f979542e41a4ba8da051e5548"
       }
     }
   ],

@@ -12,12 +12,14 @@
 		3F89505E9A285EC350AD03CA /* ProceduralGeometryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78B5EC773ADB972382EF878 /* ProceduralGeometryApp.swift */; };
 		6C3305884BDC0E654E87B368 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B23C35540ACF8A5456BD118 /* GameScene.swift */; };
 		B3AF9B1265F9F85350D0C78E /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7299FC0EF1D70FC370C57A65 /* GameSceneUtils.swift */; };
+		B9AD751D55835226D538C971 /* GameScene+PipePlacement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469E786670DC0BE36F5999B5 /* GameScene+PipePlacement.swift */; };
 		C443C24BCB028A2979196DD5 /* GameScene+TubeEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C24F2F0858397CCE39286D0 /* GameScene+TubeEditing.swift */; };
 		C4C9B8189B5A2E1683C3BBDE /* ProceduralGeometryExtension in Frameworks */ = {isa = PBXBuildFile; productRef = F2F12E1450F1675EB5C42FA1 /* ProceduralGeometryExtension */; };
 		F309357B91855A8862A0475B /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = F5AE5CB1BAED0ADFE0F97A0F /* GameData */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		469E786670DC0BE36F5999B5 /* GameScene+PipePlacement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameScene+PipePlacement.swift"; sourceTree = "<group>"; };
 		5B23C35540ACF8A5456BD118 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		6C24F2F0858397CCE39286D0 /* GameScene+TubeEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameScene+TubeEditing.swift"; sourceTree = "<group>"; };
 		7299FC0EF1D70FC370C57A65 /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
@@ -61,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				5B23C35540ACF8A5456BD118 /* GameScene.swift */,
+				469E786670DC0BE36F5999B5 /* GameScene+PipePlacement.swift */,
 				6C24F2F0858397CCE39286D0 /* GameScene+TubeEditing.swift */,
 				7299FC0EF1D70FC370C57A65 /* GameSceneUtils.swift */,
 				AB9346C47285CA66B0F8A4FB /* Info.plist */,
@@ -156,6 +159,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9AD751D55835226D538C971 /* GameScene+PipePlacement.swift in Sources */,
 				C443C24BCB028A2979196DD5 /* GameScene+TubeEditing.swift in Sources */,
 				6C3305884BDC0E654E87B368 /* GameScene.swift in Sources */,
 				B3AF9B1265F9F85350D0C78E /* GameSceneUtils.swift in Sources */,
