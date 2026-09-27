@@ -32,9 +32,9 @@
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
 	<key>NSAccessoryTrackingUsageDescription</key>
-	<string>{{PROJECT_NAME}} tracks spatial game controllers for immersive gameplay.</string>
+	<string>CoolFutbol tracks spatial game controllers for immersive gameplay.</string>
 	<key>NSWorldSensingUsageDescription</key>
-	<string>{{PROJECT_NAME}} uses world sensing to provide immersive AR experiences.</string>
+	<string>CoolFutbol uses world sensing to detect your table and place the stadium on it.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationPreferredDefaultSceneSessionRole</key>

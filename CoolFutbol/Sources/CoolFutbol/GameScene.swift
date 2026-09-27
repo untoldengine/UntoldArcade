@@ -16,19 +16,27 @@ class GameScene {
     // MARK: - Placement (M1)
 
     private enum DemoPhase {
-        case placing   // stadium can be dragged / rotated / scaled by the user
-        case locked    // placement confirmed — scene root transform is frozen
+        case locating   // waiting for a pinch aimed at a real table
+        case placing    // position locked to the table; rotate + tap to confirm
+        case locked     // placement confirmed — scene root transform is frozen
     }
 
-    private var phase: DemoPhase = .placing
+    private var phase: DemoPhase = .locating
     private var stadiumEntityId: EntityID?
+    private var wasPinching = false
+    // True right after entering .placing, until the pinch that triggered the
+    // table snap has fully released — suppresses that pinch's trailing tap.
+    private var awaitingPinchReleaseBeforeConfirm = false
 
-    // Tunables — expect to adjust these once you've seen scale/position on-device.
-    private let sceneScaleSensitivity: Float = 1.0
-    private let minSceneScale: Float = 0.01
-    private let maxSceneScale: Float = 2.0
     // Confirmed on-device: tabletop-sized stadium.
     private let defaultSceneScale: Float = 0.01
+    // Ghost opacity while the stadium is still being positioned.
+    private let placementPreviewOpacity: Float = 0.2
+
+    // Debug: periodically dump detected real-world planes to the console
+    // during placement, to verify plane detection is finding the table.
+    private var planeLogElapsed: Float = 0
+    private let planeLogInterval: Float = 2.0
 
     init() {
         Logger.log(message: "🎮 GameScene initializing...")
@@ -55,9 +63,12 @@ class GameScene {
             self.stadiumEntityId = findEntity(name: "Stadium")
             if let stadium = self.stadiumEntityId {
                 Logger.log(message: "✅ Stadium entity found at \(getPosition(entityId: stadium))")
+                updateMaterialOpacity(entityId: stadium, opacity: self.placementPreviewOpacity, recursive: true)
             } else {
                 Logger.log(message: "⚠️ GameScene: Could not find 'Stadium' entity in scene")
             }
+
+            self.setGuidance("Look at your table and pinch to place the stadium there.")
         }
     }
 
@@ -75,11 +86,18 @@ class GameScene {
     // MARK: - Game Loop
 
     /// Called every frame - add custom game logic here
-    func update(deltaTime _: Float) {
+    func update(deltaTime deltaTime: Float) {
         // Skip logic if not in game mode
         if gameMode == false { return }
 
-        // Add your custom update logic here
+        // Debug: confirm plane detection is finding/classifying real surfaces.
+        if phase == .locating {
+            planeLogElapsed += deltaTime
+            if planeLogElapsed >= planeLogInterval {
+                planeLogElapsed = 0
+                RealSurfacePlaneStore.shared.logAllPlanes()
+            }
+        }
     }
 
     /// Called for input handling - add custom input logic here
@@ -91,56 +109,136 @@ class GameScene {
         let state = InputSystem.shared.xrSpatialInputState
 
         switch phase {
+        case .locating:
+            handleLocatingInput(state)
         case .placing:
-            handlePlacementInput(state)
+            handlePlacingInput(state)
         case .locked:
             break
         }
+
+        wasPinching = state.spatialPinchActive
     }
 
     // MARK: - Placement input (M1)
 
-    private func handlePlacementInput(_ state: XRSpatialInputState) {
-        // Tap anywhere to confirm placement and lock the scene-root transform.
-        // (Not gated to the exact "Stadium" entity — the model's child sub-meshes
-        // are what actually get hit by the raycast, not the parent entity.)
-        if state.spatialTapActive {
+    /// Waiting for the user to pinch while looking at a real table. There is no
+    /// continuous gaze ray available (the engine only gives us a ray during an
+    /// active pinch), so detection happens on the pinch itself rather than live.
+    private func handleLocatingInput(_ state: XRSpatialInputState) {
+        let pinchBegan = state.spatialPinchActive && !wasPinching
+        guard pinchBegan else { return }
+
+        // Diagnostics: confirm whether ARKit has any planes at all, and whether
+        // the ray we're about to cast is actually usable.
+        let planeCount = RealSurfacePlaneStore.shared.snapshot().count
+        Logger.log(message: "🔍 Pinch sample: planes=\(planeCount) origin=\(state.rayOriginWorld) direction=\(state.rayDirectionWorld)")
+        Logger.log(message: "🔍 SceneRootTransform: isIdentity=\(SceneRootTransform.shared.isIdentity) position=\(SceneRootTransform.shared.position) scale=\(SceneRootTransform.shared.scale)")
+        RealSurfacePlaneStore.shared.logAllPlanes()
+
+        guard isFiniteVector(state.rayOriginWorld),
+              isFiniteVector(state.rayDirectionWorld),
+              simd_length_squared(state.rayDirectionWorld) > 0.0001
+        else {
+            setGuidance("No aim direction available — try pinching again.")
+            Logger.log(message: "⚠️ Invalid/empty ray on pinch — origin or direction non-finite or zero")
+            return
+        }
+
+        // NOTE: maxDistance is intentionally omitted (defaults to unlimited).
+        // pickRealSurfacePosition compares its internal local-space distance
+        // (scaled by the inverse of SceneRootTransform.scale) directly against
+        // maxDistance, which the API documents as real-world meters. With our
+        // scene root scaled to 0.01, that local-space distance is ~100x real
+        // meters, so any finite maxDistance we pass rejects every real hit.
+        // Passing no maxDistance sidesteps the mismatched comparison; the
+        // closest-hit selection (distance < bestDistance) is unaffected since
+        // both sides of that comparison are consistently in local space.
+        let tableHit = pickRealSurfacePosition(
+            rayOrigin: state.rayOriginWorld,
+            rayDirection: state.rayDirectionWorld,
+            filter: .tableOnly
+        )
+        Logger.log(message: tableHit != nil
+            ? "✅ .tableOnly hit at \(tableHit!.worldPosition)"
+            : "❌ .tableOnly found nothing")
+
+        let horizontalHit = pickRealSurfacePosition(
+            rayOrigin: state.rayOriginWorld,
+            rayDirection: state.rayDirectionWorld,
+            filter: .horizontalAny
+        )
+        Logger.log(message: horizontalHit != nil
+            ? "✅ .horizontalAny hit kind=\(horizontalHit!.surfaceKind) at \(horizontalHit!.worldPosition)"
+            : "❌ .horizontalAny found nothing either")
+
+        let anyFilterHit = pickRealSurfacePosition(
+            rayOrigin: state.rayOriginWorld,
+            rayDirection: state.rayDirectionWorld,
+            filter: .any
+        )
+        Logger.log(message: anyFilterHit != nil
+            ? "✅ .any hit kind=\(anyFilterHit!.surfaceKind) alignment-unfiltered at \(anyFilterHit!.worldPosition)"
+            : "❌ .any (no alignment/kind filter at all) found nothing")
+
+        guard let hit = tableHit ?? horizontalHit ?? anyFilterHit else {
+            setGuidance("No surface detected there — look directly at your table and pinch again.")
+            return
+        }
+
+        SceneRootTransform.shared.position = hit.worldPosition
+        phase = .placing
+        // The pinch that just confirmed the table hit also reads as a tap on
+        // release (a short pinch == a tap). Ignore taps until that same pinch
+        // has fully released, so it can't immediately confirm placement too.
+        awaitingPinchReleaseBeforeConfirm = true
+        setGuidance("Two-hand pinch to rotate. Tap to confirm placement.")
+        Logger.log(message: "📍 Snapped to \(hit.surfaceKind) plane at \(hit.worldPosition)")
+    }
+
+    /// Position is locked to the table; only rotation is available before the final confirm tap.
+    private func handlePlacingInput(_ state: XRSpatialInputState) {
+        if awaitingPinchReleaseBeforeConfirm {
+            if !state.spatialPinchActive {
+                awaitingPinchReleaseBeforeConfirm = false
+            }
+        } else if state.spatialTapActive {
             confirmPlacement()
             return
         }
 
-        // Pinch + drag to move the scene root; two-hand pinch to rotate it.
-        SpatialManipulationSystem.shared.processAnchoredSceneManipulationLifecycle(
-            from: state,
-            dragSensitivity: 10.0,
-            rotateSensitivity: 1.0
-        )
-
-        // Two-hand pinch pull apart/together to scale the whole scene root
-        // (shrinks the full-size pitch down to tabletop size).
-        updateSceneScaleGesture(state)
-    }
-
-    private func updateSceneScaleGesture(_ state: XRSpatialInputState) {
-        guard state.leftHandPinching, state.rightHandPinching, state.spatialZoomActive else { return }
-
-        let zoomDelta = state.spatialZoomDelta * sceneScaleSensitivity
-        guard zoomDelta.isFinite, abs(zoomDelta) > .ulpOfOne else { return }
-
-        let scaleFactor = max(0, 1 + zoomDelta)
-        var newScale = SceneRootTransform.shared.scale * scaleFactor
-        newScale = simd_clamp(newScale, .init(repeating: minSceneScale), .init(repeating: maxSceneScale))
-        guard newScale.x.isFinite, newScale.y.isFinite, newScale.z.isFinite else { return }
-
-        SceneRootTransform.shared.scale = newScale
+        SpatialManipulationSystem.shared.processAnchoredSceneRotateLifecycle(from: state, sensitivity: 1.0)
     }
 
     private func confirmPlacement() {
         phase = .locked
-        SpatialManipulationSystem.shared.endAnchoredSceneManipulation()
+        SpatialManipulationSystem.shared.endAnchoredSceneRotate()
+        if let stadium = stadiumEntityId {
+            updateMaterialOpacity(entityId: stadium, opacity: 1.0, recursive: true)
+        }
+        setGuidance("Placement confirmed!")
         Logger.log(message: "📍 Placement confirmed — scene root locked at scale \(SceneRootTransform.shared.scale)")
     }
 
+    private func setGuidance(_ message: String) {
+        Task { @MainActor in
+            PlacementGuideStore.shared.message = message
+        }
+    }
+
+    private func isFiniteVector(_ vector: simd_float3) -> Bool {
+        vector.x.isFinite && vector.y.isFinite && vector.z.isFinite
+    }
+
+}
+
+@MainActor
+final class PlacementGuideStore: ObservableObject {
+    static let shared = PlacementGuideStore()
+
+    @Published var message: String = "Look around for a flat surface like a table."
+
+    private init() {}
 }
 
 @MainActor

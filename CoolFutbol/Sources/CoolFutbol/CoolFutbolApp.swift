@@ -47,6 +47,11 @@ struct CoolFutbolApp: App {
         }
         .defaultSize(width: 720, height: 340)
 
+        WindowGroup("Placement Guide", id: "PlacementGuidePanel") {
+            PlacementGuideWindowView(store: PlacementGuideStore.shared)
+        }
+        .defaultSize(width: 420, height: 200)
+
     ImmersiveSpace(id: "ImmersiveSpace") {
 
         CompositorLayer(configuration: UntoldEngineConfiguration(), renderer: { layerRenderer in
@@ -111,6 +116,7 @@ struct ContentView: View {
         Button(action: {
             Task {
                 await openImmersiveSpace(id: "ImmersiveSpace")
+                openWindow(id: "PlacementGuidePanel")
             }
         }) {
                 Label("Start Experience", systemImage: "visionpro.fill")
@@ -129,6 +135,23 @@ struct ContentView: View {
             .controlSize(.large)
         }
         .padding(60)
+    }
+}
+
+struct PlacementGuideWindowView: View {
+    @ObservedObject var store: PlacementGuideStore
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "hand.point.up.left.fill")
+                .font(.largeTitle)
+                .foregroundColor(.secondary)
+            Text(store.message)
+                .font(.title3)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(20)
     }
 }
 
