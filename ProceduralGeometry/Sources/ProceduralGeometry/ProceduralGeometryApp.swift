@@ -108,6 +108,15 @@ struct ContentView: View {
                 .font(.title)
                 .foregroundColor(.secondary)
 
+            VStack(spacing: 4) {
+                Text("Look at a wall, floor, or ceiling and pinch to place a pipe.")
+                Text("Pinch a pipe to select it, then pinch it again to edit it.")
+                Text("Two-hand pinch to deselect.")
+            }
+            .font(.body)
+            .foregroundColor(.secondary)
+            .multilineTextAlignment(.center)
+
         Button(action: {
             Task {
                 await openImmersiveSpace(id: "ImmersiveSpace")

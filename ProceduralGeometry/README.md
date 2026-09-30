@@ -16,11 +16,13 @@ All of that editing behavior — the axis-locking, the 90-degree bend detection,
 
 ## Using the demo in XR
 
-1. **Tap the pipe** to select it. Its two endpoints get a faint highlight — that's your cue it's armed for editing.
-2. **Drag an endpoint** to extend the pipe. Change the direction of your hand mid-drag and a 90-degree bend is created automatically wherever you turned.
-3. **Change your mind?** Reverse back through a bend you just created in the same drag and it's undone — the pipe resumes on whatever axis it was on before that bend, and you can redirect it somewhere else.
-4. **Drag an existing bend** to slide it along either of the two pipe segments it connects. Drag it far enough that one of those segments would collapse, and the bend is removed — its neighbors reconnect directly.
-5. **Tap elsewhere** to deselect. Scene drag/two-hand-rotate only work while nothing is selected — this avoids accidentally moving the whole scene mid-edit.
+1. **Look at a wall, floor, or ceiling and pinch the preview** to place and select a pipe.
+2. **Drag the selected pipe's body** to move the whole pipe.
+3. **Pinch the selected pipe again** to enter editing. Its endpoint handles appear. There is no timing window.
+4. **Drag an endpoint** to extend the pipe. Change the direction of your hand mid-drag and a 90-degree bend is created automatically wherever you turned.
+5. **Change your mind?** Reverse back through a bend you just created in the same drag and it's undone — the pipe resumes on whatever axis it was on before that bend, and you can redirect it somewhere else.
+6. **Drag an existing bend** to slide it along either of the two pipe segments it connects. Drag it far enough that one of those segments would collapse, and the bend is removed — its neighbors reconnect directly.
+7. **Two-hand pinch** to deselect. This explicit action is what makes placement available again.
 
 Only 90-degree bends are supported by design (this demo's own choice, not a hard limit of the extension — see below).
 

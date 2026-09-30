@@ -4,18 +4,29 @@
 //
 //  Three-state tube interaction: Idle -> Selected -> Editing.
 //
-//  - Idle: nothing picked out. Tapping a tube's own mesh (or one of its proxies) Selects it.
+//  - Idle: nothing picked out. A pinch (tap) on a tube's own mesh (or one of its proxies) Selects
+//    it.
 //  - Selected: the tube is picked out (shown by a brightened tint) but its endpoint/bend proxies
-//    stay hidden. Dragging the tube's own body moves it as a rigid whole (TubeTranslationDrag).
-//    A two-hand pinch enters Editing. Tapping anything else — including empty space, or a
-//    different tube (which itself becomes Selected) — drops straight back to Idle.
+//    stay hidden. Pinch + drag on the tube's own body moves it as a rigid whole
+//    (TubeTranslationDrag). A later pinch on the selected tube enters Editing. Pinching a different tube switches Selection to
+//    it instead; pinching empty space does nothing.
 //  - Editing: the same tube, now brightened further and with its endpoint/bend proxies visible
-//    and grabbable. Dragging an endpoint extends the tube along a locked cardinal axis, adding a
-//    90-degree bend wherever the hand's heading changes. Dragging an existing bend slides it along
-//    one of its two existing axes; dragging it far enough to collapse a segment removes it,
-//    reconnecting its neighbors — the same "drag through it" language as reversing an endpoint
-//    drag past a bend it just created. A second two-hand pinch drops back to Selected; tapping
-//    elsewhere drops all the way to Idle, same as from Selected.
+//    and grabbable. Pinch + drag on an endpoint extends the tube along a locked cardinal axis,
+//    adding a 90-degree bend wherever the hand's heading changes. Dragging an existing bend slides
+//    it along one of its two existing axes; dragging it far enough to collapse a segment removes
+//    it, reconnecting its neighbors — the same "drag through it" language as reversing an endpoint
+//    drag past a bend it just created. Whole-tube movement is disabled here — every pinch on the
+//    tube's own body is either an endpoint/bend proxy (reshapes) or is ignored — so reshaping a
+//    control point can never accidentally move the whole pipe.
+//
+//  Deselecting (from either Selected or Editing, straight back to Idle) is not a single-hand
+//  pinch at all — it's a two-hand pinch, checked independently of tap handling (see
+//  `checkTwoHandDeselect`). This is deliberate: an empty-space single-hand pinch used to mean
+//  "deselect", which shared its trigger with the placement-preview system's own single-hand pinch
+//  for "confirm/create a pipe" — the same gesture briefly meant two different things depending on
+//  exactly which frame of a multi-frame gesture various state updated on, which was a real,
+//  hard-to-pin-down bug. Two hands pinching can never be mistaken for the single-hand tap used
+//  everywhere else, so that ambiguity is gone structurally, not just timing-patched.
 //
 //  All the actual editing math — turn-detection, axis-locking, collapse-to-remove, rigid
 //  translation — lives in ProceduralGeometryExtension (TubeEndpointDrag, TubeInteriorBendDrag,
@@ -31,9 +42,46 @@
 //  actually changes.
 //
 
+import Foundation
 import simd
 import UntoldEngine
 import ProceduralGeometryExtension
+
+enum PipeDragReturnMode: Equatable {
+    case selected
+    case editing
+}
+
+enum PipeInteractionState {
+    case idle
+    case placing(PipePlacementPreview)
+    case selected(EntityID)
+    case editing(EntityID)
+    case dragging(ActiveTubeDrag, returnMode: PipeDragReturnMode, finished: Bool)
+
+    var focusedTube: EntityID? {
+        switch self {
+        case .idle, .placing: nil
+        case let .selected(tubeId), let .editing(tubeId): tubeId
+        case let .dragging(drag, _, _): drag.tubeId
+        }
+    }
+
+    var presentsEditing: Bool {
+        switch self {
+        case .editing: true
+        case let .dragging(_, returnMode, _): returnMode == .editing
+        default: false
+        }
+    }
+
+    var isDragging: Bool {
+        if case .dragging = self { return true }
+        return false
+    }
+
+    var hasFocusedTube: Bool { focusedTube != nil }
+}
 
 /// Which kind of tube drag is in progress, paired with the proxy entity driving it (if any) —
 /// none of `TubeEndpointDrag`/`TubeInteriorBendDrag`/`TubeTranslationDrag` knows proxy entities
@@ -76,71 +124,97 @@ extension GameScene {
         SIMD3(0.9, 0.35, 0.65),
     ]
 
-    /// Call once per frame with the current tap state. A tap on a tube's own mesh, or on one of
-    /// its (otherwise invisible) endpoint/bend proxies, Selects that tube; a tap on anything else
-    /// — including empty space — drops all the way back to Idle, regardless of whether the
-    /// previously-active tube was merely Selected or fully Editing.
+    /// Call once per frame with the current tap state. A tap (single pinch) on a tube's own mesh,
+    /// or on one of its endpoint/bend proxies, Selects that tube; tapping the selected tube again
+    /// enters Editing. A tap on
+    /// empty space does nothing — deselection is `checkTwoHandDeselect`'s job now, a distinct
+    /// gesture on purpose (see its doc comment for why).
     func handleTubeTap(pickedEntityId: EntityID?) {
-        guard let pickedEntityId else {
-            setActiveTube(nil)
+        guard let tappedTubeId = resolveTubeId(forTap: pickedEntityId) else {
             return
         }
-        if getEntityComponent(entityId: pickedEntityId, componentType: TubePathComponent.self) != nil {
-            setActiveTube(pickedEntityId)
-        } else if let handleInfo = tubeEndpointHandles[pickedEntityId] {
-            setActiveTube(handleInfo.tubeId)
-        } else if let handleInfo = tubeInteriorBendHandles[pickedEntityId] {
-            setActiveTube(handleInfo.tubeId)
-        } else {
-            setActiveTube(nil)
+
+        if case let .placing(preview) = pipeInteractionState {
+            destroyEntity(entityId: preview.tubeId)
+            pipeInteractionState = .idle
         }
+
+        if case let .selected(selectedTubeId) = pipeInteractionState,
+           selectedTubeId == tappedTubeId {
+            transitionPipeInteraction(to: .editing(tappedTubeId))
+            return
+        }
+
+        transitionPipeInteraction(to: .selected(tappedTubeId))
     }
 
-    /// Call once per frame, independent of tap/drag handling. Both hands pinching at once toggles
-    /// Selected <-> Editing for whichever tube is currently active — edge-triggered (fires once
-    /// when both hands first become pinched together, not continuously while held), and only does
-    /// anything if some tube is already active and no drag is currently under way, so an
-    /// incidental two-hand pinch can't fire mid-drag and change what a one-hand drag is doing.
-    func checkEditModeToggle(state: XRSpatialInputState) {
+    /// Call once per frame, independent of tap/drag handling. Both hands pinching at once
+    /// deselects whichever tube is currently active — edge-triggered (fires once when both hands
+    /// first become pinched together, not continuously while held), and only does anything if
+    /// some tube is already active and no drag is currently under way, so an incidental two-hand
+    /// pinch can't fire mid-drag.
+    ///
+    /// A deliberately distinct gesture from the single-hand tap used to select tubes and confirm
+    /// pipe placement: those two used to share one signal (an empty-space single-hand tap meant
+    /// "deselect", which raced with placement-preview creation becoming newly eligible the moment
+    /// deselection happened — the actual cause of an earlier bug). Two hands pinching can never be
+    /// confused with the single-hand tap that confirms a placement, so there's no shared signal
+    /// left for the two meanings to collide on.
+    @discardableResult
+    func checkTwoHandDeselect(state: XRSpatialInputState) -> Bool {
         let isTwoHandPinching = state.leftHandPinching && state.rightHandPinching
         defer { wasTwoHandPinching = isTwoHandPinching }
-        guard isTwoHandPinching, !wasTwoHandPinching, activeTubeId != nil, activeDrag == nil else {
-            return
+        guard isTwoHandPinching, !wasTwoHandPinching,
+              pipeInteractionState.hasFocusedTube, !pipeInteractionState.isDragging else {
+            return false
         }
-        setEditing(!isEditingActiveTube)
+        transitionPipeInteraction(to: .idle)
+        return true
+    }
+
+    /// Resolves a tap's picked entity to the tube it's about — the tube's own mesh, or one of its
+    /// endpoint/bend proxies — or `nil` if the tap didn't land on anything belonging to a tube.
+    private func resolveTubeId(forTap pickedEntityId: EntityID?) -> EntityID? {
+        guard let pickedEntityId else { return nil }
+        if getEntityComponent(entityId: pickedEntityId, componentType: TubePathComponent.self) != nil {
+            return pickedEntityId
+        }
+        if let handleInfo = tubeEndpointHandles[pickedEntityId] {
+            return handleInfo.tubeId
+        }
+        if let handleInfo = tubeInteriorBendHandles[pickedEntityId] {
+            return handleInfo.tubeId
+        }
+        return nil
     }
 
     /// Selects `tubeId` (Idle -> Selected) or fully deselects (`nil`) — always drops out of
     /// Editing first if the previously-active tube was there, regardless of direction; there's no
-    /// direct Idle -> Editing or OtherTube -> Editing jump, only ever via `checkEditModeToggle`.
-    private func setActiveTube(_ tubeId: EntityID?) {
-        guard tubeId != activeTubeId else { return }
-        if let previous = activeTubeId, isEditingActiveTube {
-            hideEditingProxies(tubeId: previous)
-            isEditingActiveTube = false
-        }
-        let previous = activeTubeId
-        activeTubeId = tubeId
-        if let previous { refreshTubeHighlight(previous) }
-        if let tubeId { refreshTubeHighlight(tubeId) }
-    }
+    /// direct Idle -> Editing or OtherTube -> Editing jump; the selected tube must be pinched
+    /// again before editing begins.
+    func transitionPipeInteraction(to newState: PipeInteractionState) {
+        let previousTube = pipeInteractionState.focusedTube
+        let previousWasEditing = pipeInteractionState.presentsEditing
+        let nextTube = newState.focusedTube
+        let nextIsEditing = newState.presentsEditing
 
-    /// Toggles Selected <-> Editing for the currently-active tube. A no-op if nothing is active.
-    func setEditing(_ editing: Bool) {
-        guard let tubeId = activeTubeId, editing != isEditingActiveTube else { return }
-        isEditingActiveTube = editing
-        if editing {
-            showEditingProxies(tubeId: tubeId)
-        } else {
-            hideEditingProxies(tubeId: tubeId)
+        if previousWasEditing, (!nextIsEditing || previousTube != nextTube), let previousTube {
+            hideEditingProxies(tubeId: previousTube)
         }
-        refreshTubeHighlight(tubeId)
+        pipeInteractionState = newState
+        if nextIsEditing, (!previousWasEditing || previousTube != nextTube), let nextTube {
+            showEditingProxies(tubeId: nextTube)
+        }
+        if let previousTube { refreshTubeHighlight(previousTube) }
+        if let nextTube, nextTube != previousTube { refreshTubeHighlight(nextTube) }
     }
 
     private func showEditingProxies(tubeId: EntityID) {
         if let endpoints = tubeEndpoints[tubeId] {
             updateMaterialOpacity(entityId: endpoints.startHandleId, opacity: Self.activeProxyOpacity)
             updateMaterialOpacity(entityId: endpoints.endHandleId, opacity: Self.activeProxyOpacity)
+            setEntityPickParticipation(entityId: endpoints.startHandleId, enabled: true)
+            setEntityPickParticipation(entityId: endpoints.endHandleId, enabled: true)
         }
         regenerateInteriorBendProxies(tubeId: tubeId)
     }
@@ -149,6 +223,8 @@ extension GameScene {
         if let endpoints = tubeEndpoints[tubeId] {
             updateMaterialOpacity(entityId: endpoints.startHandleId, opacity: 0)
             updateMaterialOpacity(entityId: endpoints.endHandleId, opacity: 0)
+            setEntityPickParticipation(entityId: endpoints.startHandleId, enabled: false)
+            setEntityPickParticipation(entityId: endpoints.endHandleId, enabled: false)
         }
         destroyInteriorBendProxies(tubeId: tubeId)
     }
@@ -171,8 +247,8 @@ extension GameScene {
     private func refreshTubeHighlight(_ tubeId: EntityID) {
         guard let baseColor = tubeBaseColors[tubeId] else { return }
         let fraction: Float
-        if tubeId == activeTubeId {
-            fraction = isEditingActiveTube ? Self.editingHighlightFraction : Self.selectedHighlightFraction
+        if tubeId == pipeInteractionState.focusedTube {
+            fraction = pipeInteractionState.presentsEditing ? Self.editingHighlightFraction : Self.selectedHighlightFraction
         } else {
             fraction = 0
         }
@@ -187,23 +263,30 @@ extension GameScene {
     /// in `TubeEndpointDrag`/`TubeInteriorBendDrag`/`TubeTranslationDrag`'s own initializers from
     /// here on. `dragOrigin` is only used for a whole-tube move (see `TubeTranslationDrag`); it's
     /// ignored for endpoint/bend drags, which anchor from the tube's own existing geometry instead.
-    func beginTubeDrag(pickedEntityId: EntityID, dragOrigin: SIMD3<Float>?) -> ActiveTubeDrag? {
-        guard let activeTubeId else { return nil }
-
-        if isEditingActiveTube {
+    func beginTubeDrag(pickedEntityId: EntityID, dragOrigin: SIMD3<Float>?) {
+        let drag: ActiveTubeDrag?
+        let returnMode: PipeDragReturnMode
+        switch pipeInteractionState {
+        case let .editing(activeTubeId):
+            returnMode = .editing
             if let handleInfo = tubeEndpointHandles[pickedEntityId], handleInfo.tubeId == activeTubeId {
-                return TubeEndpointDrag(tubeId: handleInfo.tubeId, isStart: handleInfo.isStart)
+                drag = TubeEndpointDrag(tubeId: handleInfo.tubeId, isStart: handleInfo.isStart)
                     .map { .endpoint($0, proxyId: pickedEntityId) }
-            }
-            if let handleInfo = tubeInteriorBendHandles[pickedEntityId], handleInfo.tubeId == activeTubeId {
-                return TubeInteriorBendDrag(tubeId: handleInfo.tubeId, index: handleInfo.index)
+            } else if let handleInfo = tubeInteriorBendHandles[pickedEntityId], handleInfo.tubeId == activeTubeId {
+                drag = TubeInteriorBendDrag(tubeId: handleInfo.tubeId, index: handleInfo.index)
                     .map { .interiorBend($0, proxyId: pickedEntityId) }
+            } else {
+                drag = nil
             }
-            return nil
+        case let .selected(activeTubeId):
+            returnMode = .selected
+            guard pickedEntityId == activeTubeId, let dragOrigin else { return }
+            drag = TubeTranslationDrag(tubeId: activeTubeId, dragOrigin: dragOrigin).map { .wholeTube($0) }
+        default:
+            return
         }
-
-        guard pickedEntityId == activeTubeId, let dragOrigin else { return nil }
-        return TubeTranslationDrag(tubeId: activeTubeId, dragOrigin: dragOrigin).map { .wholeTube($0) }
+        guard let drag else { return }
+        transitionPipeInteraction(to: .dragging(drag, returnMode: returnMode, finished: false))
     }
 
     /// Call every frame a drag is active, after `SpatialManipulationSystem` has already moved the
@@ -317,6 +400,7 @@ extension GameScene {
             // endpoints get a visible affordance; existing bends stay grabbable (opacity doesn't
             // affect picking) but aren't shown as dots.
             tubeInteriorBendHandles[proxyId] = (tubeId: tubeId, index: index)
+            setEntityPickParticipation(entityId: proxyId, enabled: true)
             proxies.append(proxyId)
         }
         tubeInteriorProxies[tubeId] = proxies
@@ -346,6 +430,7 @@ extension GameScene {
         )
         translateTo(entityId: handleId, position: position)
         updateMaterialOpacity(entityId: handleId, opacity: 0)
+        setEntityPickParticipation(entityId: handleId, enabled: false)
         return handleId
     }
 }
