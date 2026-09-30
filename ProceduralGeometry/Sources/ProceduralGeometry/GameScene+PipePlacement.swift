@@ -110,6 +110,23 @@ extension GameScene {
         return false
     }
 
+    /// A tube's editing directions (via `TubePathComponent.referenceRotation`) relative to the
+    /// wall it's placed against, instead of the scene's raw world X/Z — which, for a real-world
+    /// wall detected by ARKit, generally has no particular relationship to those axes at all (the
+    /// world origin is wherever the session happened to start, not aligned to the room). Vertical
+    /// stays exactly world up either way, since gravity, not the wall, defines that: `up = (0, 1,
+    /// 0)`, `tangent = cross(up, planeNormal)` gives the wall's own horizontal direction, and
+    /// `planeNormal` itself completes the frame — a rotation whose local +X/+Y/+Z map to
+    /// (tangent, up, planeNormal) respectively.
+    private func wallReferenceRotation(planeNormal: SIMD3<Float>) -> simd_quatf {
+        let up = SIMD3<Float>(0, 1, 0)
+        // Re-flattened in case ARKit's detected normal has picked up a little vertical noise —
+        // this basis is only meaningful if all three axes are mutually perpendicular.
+        let horizontalNormal = normalize(SIMD3(planeNormal.x, 0, planeNormal.z))
+        let tangent = normalize(cross(up, horizontalNormal))
+        return simd_quatf(simd_float3x3(columns: (tangent, up, horizontalNormal)))
+    }
+
     private func createPipePlacementPreview(
         surfaceKind: RealSurfaceKind,
         anchorPosition: SIMD3<Float>,
@@ -123,6 +140,7 @@ extension GameScene {
             floorPrimaryDirection: floorPrimaryDirection
         )
         let endPosition = anchorPosition + direction * Self.previewLength
+        let referenceRotation = surfaceKind == .wall ? wallReferenceRotation(planeNormal: planeNormal) : nil
 
         guard let tubeId = ProceduralGeometryExtension.shared.createTubeEntity(
             controlPoints: [anchorPosition, endPosition],
@@ -130,6 +148,7 @@ extension GameScene {
             radialSegments: 16,
             capStart: true,
             capEnd: true,
+            referenceRotation: referenceRotation,
             name: "PipePlacementPreview"
         ) else {
             return
@@ -166,6 +185,12 @@ extension GameScene {
         )
         let endPosition = preview.anchorPosition + direction * Self.previewLength
         ProceduralGeometryExtension.shared.setControlPoints(entityId: preview.tubeId, [preview.anchorPosition, endPosition])
+        // Kept in sync every frame, not just at creation — the preview can still be tracking a
+        // different (or differently-angled) wall, or a floor, before the user confirms.
+        ProceduralGeometryExtension.shared.setReferenceRotation(
+            entityId: preview.tubeId,
+            preview.surfaceKind == .wall ? wallReferenceRotation(planeNormal: preview.planeNormal) : nil
+        )
         translateTo(
             entityId: preview.rotateHandleId,
             position: rotateHandlePosition(anchorPosition: preview.anchorPosition, direction: direction, planeNormal: preview.planeNormal)
@@ -194,7 +219,9 @@ extension GameScene {
         switch surfaceKind {
         case .wall:
             guard orientationIndex != 0 else { return SIMD3(0, 1, 0) }
-            return nearestCardinalAxis(to: cross(SIMD3(0, 1, 0), planeNormal))
+            // The wall's own tangent direction, exactly — not snapped to a raw world axis, since
+            // the whole point is this may not be close to one. See wallReferenceRotation.
+            return wallReferenceRotation(planeNormal: planeNormal).act(SIMD3(1, 0, 0))
         default: // .floor — the only other kind this feature's filter ever passes through.
             guard orientationIndex != 0 else { return floorPrimaryDirection }
             return nearestCardinalAxis(to: cross(SIMD3(0, 1, 0), floorPrimaryDirection))
