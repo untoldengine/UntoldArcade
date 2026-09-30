@@ -9,7 +9,7 @@ targets:
   CoolFutbol:
     type: application
     platform: visionOS
-    deploymentTarget: 2.0
+    deploymentTarget: 26.0
     sources:
       - path: Sources
         excludes:

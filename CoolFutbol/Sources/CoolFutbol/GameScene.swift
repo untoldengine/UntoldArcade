@@ -33,11 +33,6 @@ class GameScene {
     // Ghost opacity while the stadium is still being positioned.
     private let placementPreviewOpacity: Float = 0.2
 
-    // Debug: periodically dump detected real-world planes to the console
-    // during placement, to verify plane detection is finding the table.
-    private var planeLogElapsed: Float = 0
-    private let planeLogInterval: Float = 2.0
-
     init() {
         Logger.log(message: "🎮 GameScene initializing...")
 
@@ -86,18 +81,9 @@ class GameScene {
     // MARK: - Game Loop
 
     /// Called every frame - add custom game logic here
-    func update(deltaTime deltaTime: Float) {
+    func update(deltaTime _: Float) {
         // Skip logic if not in game mode
         if gameMode == false { return }
-
-        // Debug: confirm plane detection is finding/classifying real surfaces.
-        if phase == .locating {
-            planeLogElapsed += deltaTime
-            if planeLogElapsed >= planeLogInterval {
-                planeLogElapsed = 0
-                RealSurfacePlaneStore.shared.logAllPlanes()
-            }
-        }
     }
 
     /// Called for input handling - add custom input logic here
@@ -129,19 +115,11 @@ class GameScene {
         let pinchBegan = state.spatialPinchActive && !wasPinching
         guard pinchBegan else { return }
 
-        // Diagnostics: confirm whether ARKit has any planes at all, and whether
-        // the ray we're about to cast is actually usable.
-        let planeCount = RealSurfacePlaneStore.shared.snapshot().count
-        Logger.log(message: "🔍 Pinch sample: planes=\(planeCount) origin=\(state.rayOriginWorld) direction=\(state.rayDirectionWorld)")
-        Logger.log(message: "🔍 SceneRootTransform: isIdentity=\(SceneRootTransform.shared.isIdentity) position=\(SceneRootTransform.shared.position) scale=\(SceneRootTransform.shared.scale)")
-        RealSurfacePlaneStore.shared.logAllPlanes()
-
         guard isFiniteVector(state.rayOriginWorld),
               isFiniteVector(state.rayDirectionWorld),
               simd_length_squared(state.rayDirectionWorld) > 0.0001
         else {
             setGuidance("No aim direction available — try pinching again.")
-            Logger.log(message: "⚠️ Invalid/empty ray on pinch — origin or direction non-finite or zero")
             return
         }
 
@@ -154,34 +132,21 @@ class GameScene {
         // Passing no maxDistance sidesteps the mismatched comparison; the
         // closest-hit selection (distance < bestDistance) is unaffected since
         // both sides of that comparison are consistently in local space.
-        let tableHit = pickRealSurfacePosition(
+        let hit = pickRealSurfacePosition(
             rayOrigin: state.rayOriginWorld,
             rayDirection: state.rayDirectionWorld,
             filter: .tableOnly
-        )
-        Logger.log(message: tableHit != nil
-            ? "✅ .tableOnly hit at \(tableHit!.worldPosition)"
-            : "❌ .tableOnly found nothing")
-
-        let horizontalHit = pickRealSurfacePosition(
+        ) ?? pickRealSurfacePosition(
             rayOrigin: state.rayOriginWorld,
             rayDirection: state.rayDirectionWorld,
             filter: .horizontalAny
-        )
-        Logger.log(message: horizontalHit != nil
-            ? "✅ .horizontalAny hit kind=\(horizontalHit!.surfaceKind) at \(horizontalHit!.worldPosition)"
-            : "❌ .horizontalAny found nothing either")
-
-        let anyFilterHit = pickRealSurfacePosition(
+        ) ?? pickRealSurfacePosition(
             rayOrigin: state.rayOriginWorld,
             rayDirection: state.rayDirectionWorld,
             filter: .any
         )
-        Logger.log(message: anyFilterHit != nil
-            ? "✅ .any hit kind=\(anyFilterHit!.surfaceKind) alignment-unfiltered at \(anyFilterHit!.worldPosition)"
-            : "❌ .any (no alignment/kind filter at all) found nothing")
 
-        guard let hit = tableHit ?? horizontalHit ?? anyFilterHit else {
+        guard let hit else {
             setGuidance("No surface detected there — look directly at your table and pinch again.")
             return
         }
@@ -218,6 +183,58 @@ class GameScene {
         }
         setGuidance("Placement confirmed!")
         Logger.log(message: "📍 Placement confirmed — scene root locked at scale \(SceneRootTransform.shared.scale)")
+
+        startGameplay()
+    }
+
+    // MARK: - Gameplay bootstrap (M2 — first iteration: one controllable player + ball)
+
+    /// Ball and player are authored directly in futbol.untoldscene (same
+    /// pattern as Stadium) — position, mesh, and physics/kinetics are set up
+    /// there, not in code. This just finds them and layers the gameplay
+    /// components on top.
+    private func startGameplay() {
+        loadSceneManifest()
+        loadGameplayTuning()
+
+        guard let ball = findEntity(name: "Ball") else {
+            Logger.log(message: "⚠️ GameScene: Could not find 'Ball' entity in scene — add it in the scene editor first")
+            return
+        }
+        setEntityKinetics(entityId: ball)
+        registerComponent(entityId: ball, componentType: BallComponent.self)
+        registerComponent(entityId: ball, componentType: BallPossessionComponent.self)
+
+        guard let player = findEntity(name: "arg_player_1") else {
+            Logger.log(message: "⚠️ GameScene: Could not find 'arg_player_1' entity in scene — add it in the scene editor first")
+            return
+        }
+        setEntityKinetics(entityId: player)
+        setEntityAnimations(entityId: player, filename: "arg_idle_anim", withExtension: "untold", name: "idle")
+        setEntityAnimations(entityId: player, filename: "arg_running_anim", withExtension: "untold", name: "running")
+        changeAnimation(entityId: player, name: "idle")
+
+        registerComponent(entityId: player, componentType: PlayerStateComponent.self)
+        registerComponent(entityId: player, componentType: DribblingComponent.self)
+        registerComponent(entityId: player, componentType: PlayerControlComponent.self)
+        registerComponent(entityId: player, componentType: TeamComponent.self)
+        registerComponent(entityId: player, componentType: ShootingComponent.self)
+        if let team = scene.get(component: TeamComponent.self, for: player) {
+            team.team = Team(id: "argentina")
+            team.side = .home
+        }
+
+        EntityRegistry.shared.initialize()
+        EntityRegistry.shared.setPlayerControlled(player)
+
+        registerCustomSystem(ballPossessionSystemUpdate)
+        registerCustomSystem(playerStateSystemUpdate)
+        registerCustomSystem(dribblingSystemUpdate)
+        registerCustomSystem(shootingSystemUpdate)
+        registerCustomSystem(ballSystemUpdate)
+
+        setGuidance("Use the controller to run around the pitch.")
+        Logger.log(message: "⚽️ M2 gameplay started")
     }
 
     private func setGuidance(_ message: String) {

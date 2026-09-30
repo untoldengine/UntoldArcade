@@ -1,0 +1,208 @@
+{
+  "formations": {
+    "active": "2-2-1",
+    "presets": {
+      "2-2-1": [
+        { "role": "rightDefense", "x": -12.0, "z":  10.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "leftDefense",  "x": -12.0, "z": -10.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "rightMid",     "x":   6.0, "z":  12.0, "cellWidth": 10.0, "cellDepth":  8.0 },
+        { "role": "leftMid",      "x":   6.0, "z": -12.0, "cellWidth": 10.0, "cellDepth":  8.0 },
+        { "role": "forward",      "x":  20.0, "z":   0.0, "cellWidth":  8.0, "cellDepth":  6.0 }
+      ],
+      "3-1-1": [
+        { "role": "rightDefense",  "x": -16.0, "z":  12.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "leftDefense",   "x": -16.0, "z": -12.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "centerDefense", "x": -16.0, "z":   0.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "rightMid",      "x":   6.0, "z":   6.0, "cellWidth": 10.0, "cellDepth":  8.0 },
+        { "role": "forward",       "x":  18.0, "z":   0.0, "cellWidth":  8.0, "cellDepth":  6.0 }
+      ],
+      "1-2-2": [
+        { "role": "centerDefense", "x": -20.0, "z":   0.0, "cellWidth": 12.0, "cellDepth": 10.0 },
+        { "role": "rightMid",      "x":   4.0, "z":  10.0, "cellWidth": 10.0, "cellDepth":  8.0 },
+        { "role": "leftMid",       "x":   4.0, "z": -10.0, "cellWidth": 10.0, "cellDepth":  8.0 },
+        { "role": "rightDefense",  "x":  18.0, "z":   8.0, "cellWidth":  8.0, "cellDepth":  6.0 },
+        { "role": "forward",       "x":  18.0, "z":  -8.0, "cellWidth":  8.0, "cellDepth":  6.0 }
+      ]
+    }
+  },
+  "ball": {
+    "possessionDistance": 1.3,
+    "kickDistance": 0.7,
+    "controlTakeoverDistance": 1.2,
+    "snapRadius": 1.5,
+    "snapOffset": 0.5,
+    "speed": 1.0,
+    "linearDragCoefficientX": 0.7,
+    "linearDragCoefficientY": 0.0,
+    "angularDragCoefficientX": 0.2,
+    "angularDragCoefficientY": 0.0,
+    "velocityThreshold": 0.1
+  },
+  "movement": {
+    "baseSpeed": 7.0,
+    "sprintMultiplier": 2.2,
+    "acceleration": 25.0,
+    "deceleration": 20.0,
+    "inputSmoothing": 10.0,
+    "possessionTurnRate": 12.0,
+    "freeTurnRate": 18.0,
+    "controlSideBias": 0.4,
+    "directionChangeBrake": 60.0,
+    "lateralDamping": 5.0,
+    "targetDirectionResponse": 14.0
+  },
+  "dribbling": {
+    "baseKickSpeed": 8.0,
+    "possessionRadius": 1.5,
+    "catchUpBoostMultiplier": 1.3,
+    "dribbleOffset": 0.8,
+    "attachLerpSpeed": 15.0
+  },
+  "shooting": {
+    "shootPower": 30.0,
+    "shootAccuracy": 0.8,
+    "shootCooldown": 2.0,
+    "shootingRange": 1.2,
+    "aimAssistStrength": 0.7,
+    "minPower": 15.0,
+    "maxPower": 40.0,
+    "optimalShootDistance": 15.0,
+    "accuracySpreadDegrees": 5.0
+  },
+  "passing": {
+    "passForce": 20.0,
+    "passAccuracy": 0.85,
+    "passCooldown": 0.5,
+    "passRange": 1.2,
+    "minForce": 8.0,
+    "leadTimeMultiplier": 0.3,
+    "minLeadSpeed": 2.0,
+    "distanceForceDivisor": 5.0,
+    "maxDistanceForceFactor": 2.5
+  },
+  "receiving": {
+    "maxSpeed": 15.0,
+    "receiveCooldown": 2.0,
+    "receiveReactionDelay": 0.2,
+    "maxReceivingTime": 3.0,
+    "interceptionSpeedBoost": 1.2
+  },
+  "stateTiming": {
+    "shootRecoveryDuration": 1.0,
+    "passRecoveryDuration": 0.5,
+    "settlingDuration": 0.4
+  },
+  "formation": {
+    "updateInterval": 1.0,
+    "arrivalThreshold": 0.8,
+    "formationSpeed": 5.0,
+    "slowingRadius": 1.0,
+    "formationTurnSpeed": 40.0,
+    "fieldMargin": 1.0,
+    "attackingForwardShift": 3.0,
+    "defendingBackShift": 3.0,
+    "attackingCompactness": 1.1,
+    "attackingWidth": 1.15,
+    "defendingCompactness": 0.85,
+    "defendingWidth": 0.85,
+    "roleFreedom": {
+      "defender": 6.0,
+      "midfielder": 10.0,
+      "forward": 14.0
+    },
+    "kickoffHalflineBuffer": 0.5
+  },
+  "combat": {
+    "tackleRange": 1.2,
+    "stealCooldown": 1.8,
+    "stealOffset": 0.4,
+    "detectionRange": 10.0,
+    "controlSwitchInterval": 0.5,
+    "controlSwitchHysteresis": 0.8,
+    "manualSwitchCooldown": 0.3,
+    "autoSwitchEnabled": false
+  },
+  "npc": {
+    "decisionCooldown": 2.0,
+    "chaseSpeed": 4.0,
+    "chaseSpeedFast": 4.5,
+    "chaseTurnSpeed": 45.0,
+    "chaseTurnSpeedFast": 50.0,
+    "targetRefreshInterval": 1.5,
+    "approachSpeedMultiplier": 1.5,
+    "pursuitTurnSpeed": 8.0,
+    "pursuitTurnSpeedFast": 10.0,
+    "alertRange": 20.0,
+    "avoidanceRadius": 3.0,
+    "kickAlignmentThreshold": 0.3,
+    "minPassScore": 0.25
+  },
+  "teamTactics": {
+    "pressDuration": 4.0
+  },
+  "supportPositioning": {
+    "maxOpenSpacePlayers": 2,
+    "supportRadius": 5.0,
+    "minMovementThreshold": 2.0,
+    "evaluationInterval": 0.5,
+    "weightDefenderDist": 1.0,
+    "weightPassingLane": 1.5,
+    "weightGoalProximity": 0.8,
+    "weightRoleZone": 0.5,
+    "weightSpacing": 0.7,
+    "maxDefenderDist": 8.0,
+    "laneWidth": 2.0,
+    "minTeammateSpacing": 5.0,
+    "maxGoalDist": 30.0,
+    "weightCarrierAngle": 0.9
+  },
+  "tacticalIntents": {
+    "attacking": {
+      "rightDefense":  { "leftDefense": "narrowCentralSpace", "centerDefense": "holdShape",      "rightMid": "supportBallCarrier", "leftMid": "supportBallCarrier", "forward": "createDepth" },
+      "leftDefense":   { "rightDefense": "narrowCentralSpace", "centerDefense": "holdShape",     "rightMid": "supportBallCarrier", "leftMid": "supportBallCarrier", "forward": "createDepth" },
+      "centerDefense": { "rightDefense": "holdShape",          "leftDefense": "holdShape",       "rightMid": "supportBallCarrier", "leftMid": "supportBallCarrier", "forward": "createDepth" },
+      "rightMid":      { "rightDefense": "coverBehindBall",    "leftDefense": "holdShape",       "centerDefense": "holdShape",     "leftMid": "supportBallCarrier", "forward": "createDepth" },
+      "leftMid":       { "leftDefense": "coverBehindBall",     "rightDefense": "holdShape",      "centerDefense": "holdShape",     "rightMid": "supportBallCarrier", "forward": "createDepth" },
+      "forward":       { "rightDefense": "holdShape",          "leftDefense": "holdShape",       "centerDefense": "holdShape",     "rightMid": "supportBallCarrier", "leftMid": "supportBallCarrier" }
+    },
+    "pressing": {
+      "rightMid": "narrowCentralSpace",
+      "leftMid":  "narrowCentralSpace",
+      "forward":  "narrowCentralSpace"
+    },
+    "defending": {
+      "rightMid": "narrowCentralSpace",
+      "leftMid":  "narrowCentralSpace"
+    }
+  },
+  "aiAssist": {
+    "defaultAssistLevel": 0.5,
+    "autoPassEnabled": true,
+    "autoShootEnabled": true,
+    "shootRange": 18.0,
+    "easyAssistLevel": 0.7,
+    "mediumAssistLevel": 0.5,
+    "hardAssistLevel": 0.3,
+    "manualMode": 0.0,
+    "goalDirectionWeight": 0.7,
+    "defenderAvoidWeight": 0.3,
+    "maxPassDistance": 12.0,
+    "minDribbleDurationBeforePass": 0.8,
+    "autoPassCooldown": 1.0,
+    "maxTeammatePassDistance": 15.0,
+    "maxShootProbability": 0.95,
+    "maxPassProbability": 0.85,
+    "passChanceMultiplier": 1.5
+  },
+  "camera": {
+    "offsetX": 0.0,
+    "offsetY": 26.0,
+    "offsetZ": -22.0,
+    "deadZoneX": 10.0,
+    "deadZoneY": 6.0,
+    "deadZoneZ": 8.0,
+    "smoothFactor": 3.0,
+    "trackingGroundY": 0.5,
+    "panMargin": 4.0
+  }
+}

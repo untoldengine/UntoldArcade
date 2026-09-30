@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "ball": "Ball",
+    "field": "Stadium"
+  },
+  "teams": [
+    {
+      "teamID": "argentina",
+      "side": "home",
+      "model": "blueplayer",
+      "animations": [
+        { "name": "idle",    "file": "arg_idle_anim" },
+        { "name": "running", "file": "arg_running_anim" }
+      ],
+      "playerControlledIndex": 0,
+      "players": [
+        { "entityName": "arg_player_1", "role": "forward" }
+      ]
+    }
+  ],
+  "debugScenarios": {}
+}
