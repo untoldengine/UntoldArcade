@@ -210,11 +210,33 @@ class GameScene {
         registerComponent(entityId: ball, componentType: BallComponent.self)
         registerComponent(entityId: ball, componentType: BallPossessionComponent.self)
 
-        guard let player1 = configurePlayer(named: "arg_player_1") else { return }
-        guard configurePlayer(named: "arg_player_2") != nil else { return }
+        // Configure every player listed in every team's roster — no formation/AI
+        // positioning yet, so non-controlled players just stand at their
+        // scene-authored spot until passed to or manually switched onto.
+        var controlledPlayer: EntityID?
+        for team in SceneManifest.shared.teams {
+            for (index, playerEntry) in team.players.enumerated() {
+                guard let configured = configurePlayer(
+                    named: playerEntry.entityName,
+                    team: team.team,
+                    side: team.side,
+                    animations: team.animations,
+                    role: playerEntry.role
+                ) else { return }
+
+                if index == team.playerControlledIndex {
+                    controlledPlayer = configured
+                }
+            }
+        }
+
+        guard let controlledPlayer else {
+            Logger.log(message: "⚠️ GameScene: No team has a valid playerControlledIndex — nobody is controlled")
+            return
+        }
 
         EntityRegistry.shared.initialize()
-        EntityRegistry.shared.setPlayerControlled(player1)
+        EntityRegistry.shared.setPlayerControlled(controlledPlayer)
 
         registerCustomSystem(ballPossessionSystemUpdate)
         registerCustomSystem(playerStateSystemUpdate)
@@ -223,24 +245,37 @@ class GameScene {
         registerCustomSystem(passingSystemUpdate)
         registerCustomSystem(receivingSystemUpdate)
         registerCustomSystem(ballSystemUpdate)
+        // Formation shape-holding: matchState (possession → attack/defend) must
+        // run before tacticalSubPhase (press/transition timer on top of that),
+        // which must run before fieldFormation (reads both to pick cell layout).
+        registerCustomSystem(matchStateSystemUpdate)
+        registerCustomSystem(tacticalSubPhaseSystemUpdate)
+        registerCustomSystem(fieldFormationSystemUpdate)
 
         setGuidance("Use the controller to run around the pitch.")
         Logger.log(message: "⚽️ M2 gameplay started")
     }
 
-    /// Finds a teammate entity authored in the scene and layers the gameplay
+    /// Finds a player entity authored in the scene and layers the gameplay
     /// components on top (same pattern as Ball). Every player gets the full
     /// component set — DribblingComponent/ShootingComponent/PassingComponent —
     /// since control (and therefore dribbling/shooting) can hand off to any
     /// teammate once they receive a pass.
-    private func configurePlayer(named entityName: String) -> EntityID? {
+    private func configurePlayer(
+        named entityName: String,
+        team: Team,
+        side: MatchSide,
+        animations: [SceneManifest.AnimationEntry],
+        role: FormationRole
+    ) -> EntityID? {
         guard let player = findEntity(name: entityName) else {
             Logger.log(message: "⚠️ GameScene: Could not find '\(entityName)' entity in scene — add it in the scene editor first")
             return nil
         }
         setEntityKinetics(entityId: player)
-        setEntityAnimations(entityId: player, filename: "arg_idle_anim", withExtension: "untold", name: "idle")
-        setEntityAnimations(entityId: player, filename: "arg_running_anim", withExtension: "untold", name: "running")
+        for animation in animations {
+            setEntityAnimations(entityId: player, filename: animation.file, withExtension: "untold", name: animation.name)
+        }
         changeAnimation(entityId: player, name: "idle")
 
         registerComponent(entityId: player, componentType: PlayerStateComponent.self)
@@ -249,9 +284,13 @@ class GameScene {
         registerComponent(entityId: player, componentType: TeamComponent.self)
         registerComponent(entityId: player, componentType: ShootingComponent.self)
         registerComponent(entityId: player, componentType: PassingComponent.self)
-        if let team = scene.get(component: TeamComponent.self, for: player) {
-            team.team = Team(id: "argentina")
-            team.side = .home
+        registerComponent(entityId: player, componentType: PlayerRoleComponent.self)
+        if let teamComponent = scene.get(component: TeamComponent.self, for: player) {
+            teamComponent.team = team
+            teamComponent.side = side
+        }
+        if let roleComponent = scene.get(component: PlayerRoleComponent.self, for: player) {
+            roleComponent.role = role
         }
 
         return player

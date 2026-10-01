@@ -2,21 +2,24 @@
 //  M2Stubs.swift
 //  CoolFutbol
 //
-//  Minimal stand-ins for singletons the ported Ball systems check every
-//  frame (GameFlowManager.isPlaying, DebugScenarioManager.isFormationBehaviorOnly).
-//  The real versions (kickoff/goal-pause sequencing, debug scenario switching)
-//  belong to systems not ported yet for M2 (single controlled player, no
-//  formations, no kickoff flow). Replace these with the real ports once
-//  that functionality comes back.
+//  Minimal stand-ins for singletons the ported Ball/Formation systems check
+//  every frame. The real versions (kickoff/goal-pause sequencing, debug
+//  scenario switching, full pitch-zone geometry) belong to systems not
+//  ported yet for M2 (no kickoff flow, no NPC decision-making/defending).
 //
 
 /// Stand-in for Dribbly's GameFlowManager. There's no goal/kickoff sequence
-/// yet, so gameplay is always considered "in play".
+/// yet, so gameplay is always considered "in play" and never in a kickoff
+/// phase — FieldFormationSystem's kickoff-specific cell layout branch is
+/// therefore dead code in this build, but still needs these two members to
+/// compile.
 final class GameFlowManager {
     static let shared = GameFlowManager()
     private init() {}
 
     var isPlaying: Bool { true }
+    var isInKickoffPhase: Bool { false }
+    var kickoffSide: MatchSide { .home }
 }
 
 /// Stand-in for Dribbly's DebugScenarioManager. No debug scenarios are
@@ -28,29 +31,15 @@ final class DebugScenarioManager {
     var isFormationBehaviorOnly: Bool { false }
 }
 
-/// Ported as-is from Dribbly's Formation/FieldFormationAnalyzer.swift — SceneManifest's
-/// PlayerEntry.role needs this type even though the Formation system itself isn't
-/// ported yet. Delete this and let the real FieldFormationAnalyzer.swift's copy take
-/// over once formations come back.
-enum FormationRole {
-    case rightDefense
-    case leftDefense
-    case centerDefense
-    case rightMid
-    case leftMid
-    case forward
-}
+/// Stand-in for Dribbly's Field/FieldGeometry.swift. Only
+/// FieldFormationAnalyzer.kickoffCells() reads centerCircle.radius, and that
+/// function is only ever called from the dead kickoff-phase branch above —
+/// never exercised at runtime in this build, so a fixed real-world regulation
+/// value (9.15m) is enough to satisfy the compiler.
+final class FieldGeometry {
+    static let shared = FieldGeometry()
+    private init() {}
 
-extension FormationRole {
-    init?(rawString: String) {
-        switch rawString {
-        case "forward":       self = .forward
-        case "rightMid":      self = .rightMid
-        case "leftMid":       self = .leftMid
-        case "rightDefense":  self = .rightDefense
-        case "leftDefense":   self = .leftDefense
-        case "centerDefense": self = .centerDefense
-        default: return nil
-        }
-    }
+    struct CenterCircle { let radius: Float }
+    let centerCircle = CenterCircle(radius: 9.15)
 }

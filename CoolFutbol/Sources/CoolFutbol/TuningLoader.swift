@@ -107,6 +107,18 @@ final class GameplayTuning {
         var kickoffHalflineBuffer: Float = GameplayConstants.Formation.kickoffHalflineBuffer
     }
 
+    struct FormationsValues {
+        struct Slot {
+            let role: FormationRole
+            let x: Float
+            let z: Float
+            let cellWidth: Float
+            let cellDepth: Float
+        }
+        var active: String = "2-2-1"
+        var presets: [String: [Slot]] = [:]
+    }
+
     struct CombatValues {
         var tackleRange: Float = GameplayConstants.Combat.tackleRange
         var stealCooldown: Float = GameplayConstants.Combat.stealCooldown
@@ -177,6 +189,7 @@ final class GameplayTuning {
     var receiving = ReceivingValues()
     var stateTiming = StateTimingValues()
     var formation = FormationValues()
+    var formations = FormationsValues()
     var combat = CombatValues()
     var npc = NPCValues()
     var aiAssist = AIAssistValues()
@@ -194,6 +207,7 @@ final class GameplayTuning {
         if let receiving = file.receiving { apply(receiving, source: source) }
         if let stateTiming = file.stateTiming { apply(stateTiming, source: source) }
         if let formation = file.formation { apply(formation, source: source) }
+        if let formations = file.formations { apply(formations, source: source) }
         if let combat = file.combat { apply(combat, source: source) }
         if let npc = file.npc { apply(npc, source: source) }
         if let aiAssist = file.aiAssist { apply(aiAssist, source: source) }
@@ -299,6 +313,26 @@ final class GameplayTuning {
             if let v = positive(rf.forward,    "formation.roleFreedom.forward",    source) { formation.roleFreedom.forward    = v }
         }
         if let v = nonNegative(tuning.kickoffHalflineBuffer, "formation.kickoffHalflineBuffer", source) { formation.kickoffHalflineBuffer = v }
+    }
+
+    private func apply(_ tuning: FormationsTuning, source: String) {
+        if let active = tuning.active {
+            formations.active = active
+        }
+        guard let presets = tuning.presets else { return }
+        for (name, slots) in presets {
+            let parsed: [FormationsValues.Slot] = slots.compactMap { slot in
+                guard let role = FormationRole(rawString: slot.role) else {
+                    Logger.log(message: "⚠️ Unknown role '\(slot.role)' in formation '\(name)' in \(source) — skipping slot")
+                    return nil
+                }
+                return FormationsValues.Slot(
+                    role: role, x: slot.x, z: slot.z,
+                    cellWidth: slot.cellWidth, cellDepth: slot.cellDepth
+                )
+            }
+            formations.presets[name] = parsed
+        }
     }
 
     private func apply(_ tuning: CombatTuning, source: String) {
@@ -420,6 +454,7 @@ private struct GameplayTuningFile: Decodable {
     let receiving: ReceivingTuning?
     let stateTiming: StateTimingTuning?
     let formation: FormationTuning?
+    let formations: FormationsTuning?
     let combat: CombatTuning?
     let npc: NPCTuning?
     let aiAssist: AIAssistTuning?
@@ -524,6 +559,19 @@ private struct FormationTuning: Decodable {
     let kickoffHalflineBuffer: Float?
 }
 
+private struct FormationsTuning: Decodable {
+    let active: String?
+    let presets: [String: [SlotTuning]]?
+
+    struct SlotTuning: Decodable {
+        let role: String
+        let x: Float
+        let z: Float
+        let cellWidth: Float
+        let cellDepth: Float
+    }
+}
+
 private struct CombatTuning: Decodable {
     let tackleRange: Float?
     let stealCooldown: Float?
@@ -588,10 +636,7 @@ func loadGameplayTuning() {
     #endif
 
     applyGameplayTuningToRegisteredComponents()
-    // NOTE: the original Dribbly project also called
-    // FieldFormationAnalyzer.shared.loadFormation() here. The Formation
-    // system isn't ported yet for CoolFutbol's M2 (single controlled
-    // player, no formations) — re-add this once formations come back.
+    FieldFormationAnalyzer.shared.loadFormation()
 
     if loadedAnyTuning {
         Logger.log(message: "✅ Gameplay tuning ready")

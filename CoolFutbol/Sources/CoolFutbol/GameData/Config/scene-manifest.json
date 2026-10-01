@@ -15,7 +15,27 @@
       "playerControlledIndex": 0,
       "players": [
         { "entityName": "arg_player_1", "role": "forward" },
-        { "entityName": "arg_player_2", "role": "rightMid" }
+        { "entityName": "arg_player_2", "role": "rightMid" },
+        { "entityName": "arg_player_3", "role": "leftMid" },
+        { "entityName": "arg_player_4", "role": "centerDefense" },
+        { "entityName": "arg_player_5", "role": "rightDefense" }
+      ]
+    },
+    {
+      "teamID": "holland",
+      "side": "away",
+      "model": "redplayer",
+      "animations": [
+        { "name": "idle",    "file": "hol_idle_anim" },
+        { "name": "running", "file": "hol_running_anim" }
+      ],
+      "playerControlledIndex": -1,
+      "players": [
+        { "entityName": "hol_player_1", "role": "forward" },
+        { "entityName": "hol_player_2", "role": "rightMid" },
+        { "entityName": "hol_player_3", "role": "leftMid" },
+        { "entityName": "hol_player_4", "role": "centerDefense" },
+        { "entityName": "hol_player_5", "role": "rightDefense" }
       ]
     }
   ],
