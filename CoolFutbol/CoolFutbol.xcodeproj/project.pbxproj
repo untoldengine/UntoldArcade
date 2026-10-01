@@ -10,12 +10,15 @@
 		01374D5E60C684ED4B1014DB /* GameplayEventLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35283070511D2FD423DC66CF /* GameplayEventLogger.swift */; };
 		021445AE3EEE92463D1112DF /* PlayerStateSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97E876E6E23F487216AE065 /* PlayerStateSystem.swift */; };
 		068419A7C7618E3638015C87 /* TuningLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D295241FB33157460F2B42 /* TuningLoader.swift */; };
+		0EC6C4534F82F7E5368148DE /* PlayerRoleComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B33F71DCF22F612FB03B7D7 /* PlayerRoleComponent.swift */; };
 		24A810339383855EFF513CD2 /* AIAssistComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1576B326C768FAD1A385E9CA /* AIAssistComponent.swift */; };
 		34925597160C7BC49F28545B /* EntityRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A5074B0EC02C2679AA5120 /* EntityRegistry.swift */; };
 		375982FD404DEB5EE9F48B2B /* M2Stubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C8BFBCB51BCD5DFE363095 /* M2Stubs.swift */; };
 		3CACDC81043945B69D861969 /* BallPossessionSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C6D4C661C93884D68D6C95 /* BallPossessionSystem.swift */; };
+		58FA91F6C65B0C5825886C85 /* FieldFormationAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52E1464732D09396B974408 /* FieldFormationAnalyzer.swift */; };
 		5DD9476D99FF5116D3DE4B4B /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A53088278BF7F672083D6 /* GameSceneUtils.swift */; };
 		63F295C4C27523F44EC81991 /* DribblingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5A87C2A19AA7EBBB6BF200 /* DribblingSystem.swift */; };
+		6647E5F1CF94A375B079BEFE /* MatchStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFCF75A899C5C7D567C129C /* MatchStateManager.swift */; };
 		668633CF58F23AE0E5659A47 /* BallComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146B4D40ACB1588C166C6C02 /* BallComponents.swift */; };
 		69CDEB5900E9ABEE841DE235 /* GameplayUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8A6849B5DDA4EF84D26BB0 /* GameplayUtilities.swift */; };
 		71BA064730357972555B8F31 /* BallSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104CDAA9B7195C841E79F243 /* BallSystem.swift */; };
@@ -24,17 +27,21 @@
 		8542B4B300F8EF9E0960C8C5 /* ShootingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD2D8F50AABB4830EC7DF7D /* ShootingSystem.swift */; };
 		87680253E595DF82937647BF /* ShootingUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32906AADF4DDB581AEEA6C0 /* ShootingUtilities.swift */; };
 		89FB464F10A14CF83BA46931 /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = A0B48EF616D2954FC16116A1 /* GameData */; };
+		8E6DEB32E86BAD7386FA445F /* TeamTacticsSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B95CCE3DD069CB9DF85A1A /* TeamTacticsSystem.swift */; };
+		9DB804B02DB3ABC6F7946A61 /* FieldBounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = D380F80BC853714DF55820E3 /* FieldBounds.swift */; };
 		A0C67E55989F34C74573E251 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C582A4C2D448F374BB3B02F /* GameScene.swift */; };
 		A569DF7C792E235EA2B1462F /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = B74930CBEF86D890C253D5BE /* UntoldEngineAR */; };
 		AE1D8DA322B62892C35A459E /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = E392CECC2EAC75470BF43FC3 /* UntoldEngineXR */; };
 		AE670024E9AB8BF72B7AD6B6 /* BallPhysics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76D86661ACB121F88ED40D9F /* BallPhysics.swift */; };
 		B320CA19A62B2A57B8B3A90B /* ReceivingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2F5B95394CD116608F8EC5 /* ReceivingSystem.swift */; };
+		B35428B6296412A296D5FC18 /* FieldFormationSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F62092ACF2014B72FBDA520 /* FieldFormationSystem.swift */; };
 		C46F945AC912F81EA37A3F76 /* GameplayConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D8B40B20040D6EB09E0756 /* GameplayConstants.swift */; };
 		CB6F8636A9DD77EBDD19FF2C /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EF3C6E84822477E08047C8 /* PlayerComponents.swift */; };
 		CB7E3CA2CAD68FE1BCE883A5 /* CoolFutbolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0066BB29624B24DFE3298951 /* CoolFutbolApp.swift */; };
 		D4A5580613C86E782883FE8F /* GoalZoneComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A257F385B176A45D8FFF515 /* GoalZoneComponent.swift */; };
 		D95E8584A60AEFB22D53C0B7 /* TeamComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 775565F5CFC053D538EBE9E0 /* TeamComponent.swift */; };
 		E0426FD4EF2010A2872159DF /* SceneManifestLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC598679C7926C234C0AB63 /* SceneManifestLoader.swift */; };
+		EB67ABFE8EB67DA5F13787C7 /* TacticalIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16E0AEA7DCA0504D9241A73 /* TacticalIntent.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,28 +50,35 @@
 		104CDAA9B7195C841E79F243 /* BallSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallSystem.swift; sourceTree = "<group>"; };
 		13C8BFBCB51BCD5DFE363095 /* M2Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M2Stubs.swift; sourceTree = "<group>"; };
 		146B4D40ACB1588C166C6C02 /* BallComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallComponents.swift; sourceTree = "<group>"; };
-		14C9DDA7911853ECD7E31403 /* CoolFutbol.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CoolFutbol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14C9DDA7911853ECD7E31403 /* CoolFutbol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoolFutbol.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1576B326C768FAD1A385E9CA /* AIAssistComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAssistComponent.swift; sourceTree = "<group>"; };
 		19892FFAC66DD86722D12ED2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1C582A4C2D448F374BB3B02F /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		2A257F385B176A45D8FFF515 /* GoalZoneComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalZoneComponent.swift; sourceTree = "<group>"; };
 		2C5A87C2A19AA7EBBB6BF200 /* DribblingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DribblingSystem.swift; sourceTree = "<group>"; };
+		2F62092ACF2014B72FBDA520 /* FieldFormationSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldFormationSystem.swift; sourceTree = "<group>"; };
 		35283070511D2FD423DC66CF /* GameplayEventLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayEventLogger.swift; sourceTree = "<group>"; };
 		364A53088278BF7F672083D6 /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
 		36A5074B0EC02C2679AA5120 /* EntityRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityRegistry.swift; sourceTree = "<group>"; };
 		4FD2D8F50AABB4830EC7DF7D /* ShootingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootingSystem.swift; sourceTree = "<group>"; };
 		55EF3C6E84822477E08047C8 /* PlayerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerComponents.swift; sourceTree = "<group>"; };
+		5B33F71DCF22F612FB03B7D7 /* PlayerRoleComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerRoleComponent.swift; sourceTree = "<group>"; };
 		70EB1C15D89C1243A9409BC8 /* PassingUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassingUtilities.swift; sourceTree = "<group>"; };
 		73D8B40B20040D6EB09E0756 /* GameplayConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayConstants.swift; sourceTree = "<group>"; };
 		76D86661ACB121F88ED40D9F /* BallPhysics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPhysics.swift; sourceTree = "<group>"; };
 		775565F5CFC053D538EBE9E0 /* TeamComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamComponent.swift; sourceTree = "<group>"; };
+		79B95CCE3DD069CB9DF85A1A /* TeamTacticsSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamTacticsSystem.swift; sourceTree = "<group>"; };
 		80D295241FB33157460F2B42 /* TuningLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuningLoader.swift; sourceTree = "<group>"; };
+		8BFCF75A899C5C7D567C129C /* MatchStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchStateManager.swift; sourceTree = "<group>"; };
 		9A2F5B95394CD116608F8EC5 /* ReceivingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivingSystem.swift; sourceTree = "<group>"; };
 		A0B48EF616D2954FC16116A1 /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/CoolFutbol/GameData; sourceTree = SOURCE_ROOT; };
+		A52E1464732D09396B974408 /* FieldFormationAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldFormationAnalyzer.swift; sourceTree = "<group>"; };
 		A7C6D4C661C93884D68D6C95 /* BallPossessionSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPossessionSystem.swift; sourceTree = "<group>"; };
 		CD8A6849B5DDA4EF84D26BB0 /* GameplayUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayUtilities.swift; sourceTree = "<group>"; };
+		D380F80BC853714DF55820E3 /* FieldBounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldBounds.swift; sourceTree = "<group>"; };
 		E32906AADF4DDB581AEEA6C0 /* ShootingUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootingUtilities.swift; sourceTree = "<group>"; };
 		EDC598679C7926C234C0AB63 /* SceneManifestLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneManifestLoader.swift; sourceTree = "<group>"; };
+		F16E0AEA7DCA0504D9241A73 /* TacticalIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalIntent.swift; sourceTree = "<group>"; };
 		F97E876E6E23F487216AE065 /* PlayerStateSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerStateSystem.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -98,10 +112,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		384F040E8D47C852DAB2454B /* Formation */ = {
+			isa = PBXGroup;
+			children = (
+				D380F80BC853714DF55820E3 /* FieldBounds.swift */,
+				A52E1464732D09396B974408 /* FieldFormationAnalyzer.swift */,
+				2F62092ACF2014B72FBDA520 /* FieldFormationSystem.swift */,
+			);
+			path = Formation;
+			sourceTree = "<group>";
+		};
 		68D04C22186F52C274E4454F /* Team */ = {
 			isa = PBXGroup;
 			children = (
+				8BFCF75A899C5C7D567C129C /* MatchStateManager.swift */,
+				F16E0AEA7DCA0504D9241A73 /* TacticalIntent.swift */,
 				775565F5CFC053D538EBE9E0 /* TeamComponent.swift */,
+				79B95CCE3DD069CB9DF85A1A /* TeamTacticsSystem.swift */,
 			);
 			path = Team;
 			sourceTree = "<group>";
@@ -149,6 +176,7 @@
 				80D295241FB33157460F2B42 /* TuningLoader.swift */,
 				88DEB170F5C81EE5EDB4470E /* Ball */,
 				CED862A4648B8E28BFB44E3A /* Behaviors */,
+				384F040E8D47C852DAB2454B /* Formation */,
 				ED1DABECCE2FE73A64B96188 /* Player */,
 				68D04C22186F52C274E4454F /* Team */,
 				767FF66FF7375D4C88D8F988 /* Utils */,
@@ -174,6 +202,7 @@
 			children = (
 				1576B326C768FAD1A385E9CA /* AIAssistComponent.swift */,
 				55EF3C6E84822477E08047C8 /* PlayerComponents.swift */,
+				5B33F71DCF22F612FB03B7D7 /* PlayerRoleComponent.swift */,
 				F97E876E6E23F487216AE065 /* PlayerStateSystem.swift */,
 			);
 			path = Player;
@@ -263,6 +292,9 @@
 				CB7E3CA2CAD68FE1BCE883A5 /* CoolFutbolApp.swift in Sources */,
 				63F295C4C27523F44EC81991 /* DribblingSystem.swift in Sources */,
 				34925597160C7BC49F28545B /* EntityRegistry.swift in Sources */,
+				9DB804B02DB3ABC6F7946A61 /* FieldBounds.swift in Sources */,
+				58FA91F6C65B0C5825886C85 /* FieldFormationAnalyzer.swift in Sources */,
+				B35428B6296412A296D5FC18 /* FieldFormationSystem.swift in Sources */,
 				A0C67E55989F34C74573E251 /* GameScene.swift in Sources */,
 				5DD9476D99FF5116D3DE4B4B /* GameSceneUtils.swift in Sources */,
 				C46F945AC912F81EA37A3F76 /* GameplayConstants.swift in Sources */,
@@ -270,15 +302,19 @@
 				69CDEB5900E9ABEE841DE235 /* GameplayUtilities.swift in Sources */,
 				D4A5580613C86E782883FE8F /* GoalZoneComponent.swift in Sources */,
 				375982FD404DEB5EE9F48B2B /* M2Stubs.swift in Sources */,
+				6647E5F1CF94A375B079BEFE /* MatchStateManager.swift in Sources */,
 				7CBF3B009F68E6867F8B2D76 /* PassingSystem.swift in Sources */,
 				77F59D1EEE7F5F1ECFFBD778 /* PassingUtilities.swift in Sources */,
 				CB6F8636A9DD77EBDD19FF2C /* PlayerComponents.swift in Sources */,
+				0EC6C4534F82F7E5368148DE /* PlayerRoleComponent.swift in Sources */,
 				021445AE3EEE92463D1112DF /* PlayerStateSystem.swift in Sources */,
 				B320CA19A62B2A57B8B3A90B /* ReceivingSystem.swift in Sources */,
 				E0426FD4EF2010A2872159DF /* SceneManifestLoader.swift in Sources */,
 				8542B4B300F8EF9E0960C8C5 /* ShootingSystem.swift in Sources */,
 				87680253E595DF82937647BF /* ShootingUtilities.swift in Sources */,
+				EB67ABFE8EB67DA5F13787C7 /* TacticalIntent.swift in Sources */,
 				D95E8584A60AEFB22D53C0B7 /* TeamComponent.swift in Sources */,
+				8E6DEB32E86BAD7386FA445F /* TeamTacticsSystem.swift in Sources */,
 				068419A7C7618E3638015C87 /* TuningLoader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
