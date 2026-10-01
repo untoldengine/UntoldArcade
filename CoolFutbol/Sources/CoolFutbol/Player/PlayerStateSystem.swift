@@ -133,12 +133,9 @@ public func playerStateSystemUpdate(deltaTime: Float) {
 // MARK: - Input Handling
 
 private func handlePlayerInput(entity: EntityID, playerState: PlayerStateComponent) {
-    let kPressed = InputSystem.shared.keyState.kPressed || InputSystem.shared.gameControllerState.xPressed
-    // Disabled until PassingSystem is ported (see GameScene.startGameplay) — passing
-    // needs a teammate to receive it anyway. Without this, pressing A/Cross transitions
-    // to .passing with no system to resolve it back out, soft-locking movement the same
-    // way the shooting trap did before shootingSystemUpdate was registered.
-    let jPressed = false
+    // R2 (right trigger) = shoot, R1 (right shoulder/grip) = pass.
+    let kPressed = InputSystem.shared.keyState.kPressed || InputSystem.shared.gameControllerState.rightTriggerPressed
+    let jPressed = InputSystem.shared.keyState.jPressed || InputSystem.shared.gameControllerState.rightShoulderPressed
     let wasdPressed = GameplayUtilities.hasMovementInput()
 
     var desiredState = playerState.currentState

@@ -14,7 +14,8 @@
       ],
       "playerControlledIndex": 0,
       "players": [
-        { "entityName": "arg_player_1", "role": "forward" }
+        { "entityName": "arg_player_1", "role": "forward" },
+        { "entityName": "arg_player_2", "role": "rightMid" }
       ]
     }
   ],

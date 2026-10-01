@@ -71,11 +71,16 @@ class GameScene {
 
     /// Configure game Systems for play mode
     private func configureEngineSystems() {
+//        let  sun = createEntity()
+//        createDirLight(entityId: sun)
+        
         gameMode = true
         AnimationSystem.shared.isEnabled = true
         InputSystem.shared.registerXREvents()
         InputSystem.shared.setXRSpatialPickingBackendPreference(.octreeGPUPreferred)
         InputSystem.shared.setXRTwoHandRotateAxisMode(.dynamicSnapped)
+        setRendering(.environment(.intensity(0.015)))
+        setRendering(.maxShadowCastingDistance(2.0))
     }
 
     // MARK: - Game Loop
@@ -205,9 +210,33 @@ class GameScene {
         registerComponent(entityId: ball, componentType: BallComponent.self)
         registerComponent(entityId: ball, componentType: BallPossessionComponent.self)
 
-        guard let player = findEntity(name: "arg_player_1") else {
-            Logger.log(message: "⚠️ GameScene: Could not find 'arg_player_1' entity in scene — add it in the scene editor first")
-            return
+        guard let player1 = configurePlayer(named: "arg_player_1") else { return }
+        guard configurePlayer(named: "arg_player_2") != nil else { return }
+
+        EntityRegistry.shared.initialize()
+        EntityRegistry.shared.setPlayerControlled(player1)
+
+        registerCustomSystem(ballPossessionSystemUpdate)
+        registerCustomSystem(playerStateSystemUpdate)
+        registerCustomSystem(dribblingSystemUpdate)
+        registerCustomSystem(shootingSystemUpdate)
+        registerCustomSystem(passingSystemUpdate)
+        registerCustomSystem(receivingSystemUpdate)
+        registerCustomSystem(ballSystemUpdate)
+
+        setGuidance("Use the controller to run around the pitch.")
+        Logger.log(message: "⚽️ M2 gameplay started")
+    }
+
+    /// Finds a teammate entity authored in the scene and layers the gameplay
+    /// components on top (same pattern as Ball). Every player gets the full
+    /// component set — DribblingComponent/ShootingComponent/PassingComponent —
+    /// since control (and therefore dribbling/shooting) can hand off to any
+    /// teammate once they receive a pass.
+    private func configurePlayer(named entityName: String) -> EntityID? {
+        guard let player = findEntity(name: entityName) else {
+            Logger.log(message: "⚠️ GameScene: Could not find '\(entityName)' entity in scene — add it in the scene editor first")
+            return nil
         }
         setEntityKinetics(entityId: player)
         setEntityAnimations(entityId: player, filename: "arg_idle_anim", withExtension: "untold", name: "idle")
@@ -219,22 +248,13 @@ class GameScene {
         registerComponent(entityId: player, componentType: PlayerControlComponent.self)
         registerComponent(entityId: player, componentType: TeamComponent.self)
         registerComponent(entityId: player, componentType: ShootingComponent.self)
+        registerComponent(entityId: player, componentType: PassingComponent.self)
         if let team = scene.get(component: TeamComponent.self, for: player) {
             team.team = Team(id: "argentina")
             team.side = .home
         }
 
-        EntityRegistry.shared.initialize()
-        EntityRegistry.shared.setPlayerControlled(player)
-
-        registerCustomSystem(ballPossessionSystemUpdate)
-        registerCustomSystem(playerStateSystemUpdate)
-        registerCustomSystem(dribblingSystemUpdate)
-        registerCustomSystem(shootingSystemUpdate)
-        registerCustomSystem(ballSystemUpdate)
-
-        setGuidance("Use the controller to run around the pitch.")
-        Logger.log(message: "⚽️ M2 gameplay started")
+        return player
     }
 
     private func setGuidance(_ message: String) {

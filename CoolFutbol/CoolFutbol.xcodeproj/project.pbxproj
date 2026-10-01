@@ -9,11 +9,6 @@
 /* Begin PBXBuildFile section */
 		01374D5E60C684ED4B1014DB /* GameplayEventLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35283070511D2FD423DC66CF /* GameplayEventLogger.swift */; };
 		021445AE3EEE92463D1112DF /* PlayerStateSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97E876E6E23F487216AE065 /* PlayerStateSystem.swift */; };
-		038CD12F306AE78500571D7F /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD12E306AE78500571D7F /* UntoldComponentKit */; };
-		038CD131306AE78500571D7F /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD130306AE78500571D7F /* UntoldEngine */; };
-		038CD133306AE78500571D7F /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD132306AE78500571D7F /* UntoldEngineAR */; };
-		038CD135306AE78500571D7F /* UntoldEngineShaderSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD134306AE78500571D7F /* UntoldEngineShaderSupport */; };
-		038CD137306AE78500571D7F /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD136306AE78500571D7F /* UntoldEngineXR */; };
 		068419A7C7618E3638015C87 /* TuningLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D295241FB33157460F2B42 /* TuningLoader.swift */; };
 		24A810339383855EFF513CD2 /* AIAssistComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1576B326C768FAD1A385E9CA /* AIAssistComponent.swift */; };
 		34925597160C7BC49F28545B /* EntityRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A5074B0EC02C2679AA5120 /* EntityRegistry.swift */; };
@@ -24,11 +19,16 @@
 		668633CF58F23AE0E5659A47 /* BallComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 146B4D40ACB1588C166C6C02 /* BallComponents.swift */; };
 		69CDEB5900E9ABEE841DE235 /* GameplayUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8A6849B5DDA4EF84D26BB0 /* GameplayUtilities.swift */; };
 		71BA064730357972555B8F31 /* BallSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104CDAA9B7195C841E79F243 /* BallSystem.swift */; };
+		77F59D1EEE7F5F1ECFFBD778 /* PassingUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70EB1C15D89C1243A9409BC8 /* PassingUtilities.swift */; };
+		7CBF3B009F68E6867F8B2D76 /* PassingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E6F73AF1BA374EEA0F4C88A /* PassingSystem.swift */; };
 		8542B4B300F8EF9E0960C8C5 /* ShootingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD2D8F50AABB4830EC7DF7D /* ShootingSystem.swift */; };
 		87680253E595DF82937647BF /* ShootingUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = E32906AADF4DDB581AEEA6C0 /* ShootingUtilities.swift */; };
 		89FB464F10A14CF83BA46931 /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = A0B48EF616D2954FC16116A1 /* GameData */; };
 		A0C67E55989F34C74573E251 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C582A4C2D448F374BB3B02F /* GameScene.swift */; };
+		A569DF7C792E235EA2B1462F /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = B74930CBEF86D890C253D5BE /* UntoldEngineAR */; };
+		AE1D8DA322B62892C35A459E /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = E392CECC2EAC75470BF43FC3 /* UntoldEngineXR */; };
 		AE670024E9AB8BF72B7AD6B6 /* BallPhysics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76D86661ACB121F88ED40D9F /* BallPhysics.swift */; };
+		B320CA19A62B2A57B8B3A90B /* ReceivingSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2F5B95394CD116608F8EC5 /* ReceivingSystem.swift */; };
 		C46F945AC912F81EA37A3F76 /* GameplayConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D8B40B20040D6EB09E0756 /* GameplayConstants.swift */; };
 		CB6F8636A9DD77EBDD19FF2C /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EF3C6E84822477E08047C8 /* PlayerComponents.swift */; };
 		CB7E3CA2CAD68FE1BCE883A5 /* CoolFutbolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0066BB29624B24DFE3298951 /* CoolFutbolApp.swift */; };
@@ -39,10 +39,11 @@
 
 /* Begin PBXFileReference section */
 		0066BB29624B24DFE3298951 /* CoolFutbolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoolFutbolApp.swift; sourceTree = "<group>"; };
+		0E6F73AF1BA374EEA0F4C88A /* PassingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassingSystem.swift; sourceTree = "<group>"; };
 		104CDAA9B7195C841E79F243 /* BallSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallSystem.swift; sourceTree = "<group>"; };
 		13C8BFBCB51BCD5DFE363095 /* M2Stubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M2Stubs.swift; sourceTree = "<group>"; };
 		146B4D40ACB1588C166C6C02 /* BallComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallComponents.swift; sourceTree = "<group>"; };
-		14C9DDA7911853ECD7E31403 /* CoolFutbol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoolFutbol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14C9DDA7911853ECD7E31403 /* CoolFutbol.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CoolFutbol.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1576B326C768FAD1A385E9CA /* AIAssistComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAssistComponent.swift; sourceTree = "<group>"; };
 		19892FFAC66DD86722D12ED2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1C582A4C2D448F374BB3B02F /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
@@ -53,10 +54,12 @@
 		36A5074B0EC02C2679AA5120 /* EntityRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityRegistry.swift; sourceTree = "<group>"; };
 		4FD2D8F50AABB4830EC7DF7D /* ShootingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootingSystem.swift; sourceTree = "<group>"; };
 		55EF3C6E84822477E08047C8 /* PlayerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerComponents.swift; sourceTree = "<group>"; };
+		70EB1C15D89C1243A9409BC8 /* PassingUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassingUtilities.swift; sourceTree = "<group>"; };
 		73D8B40B20040D6EB09E0756 /* GameplayConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayConstants.swift; sourceTree = "<group>"; };
 		76D86661ACB121F88ED40D9F /* BallPhysics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPhysics.swift; sourceTree = "<group>"; };
 		775565F5CFC053D538EBE9E0 /* TeamComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamComponent.swift; sourceTree = "<group>"; };
 		80D295241FB33157460F2B42 /* TuningLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuningLoader.swift; sourceTree = "<group>"; };
+		9A2F5B95394CD116608F8EC5 /* ReceivingSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivingSystem.swift; sourceTree = "<group>"; };
 		A0B48EF616D2954FC16116A1 /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/CoolFutbol/GameData; sourceTree = SOURCE_ROOT; };
 		A7C6D4C661C93884D68D6C95 /* BallPossessionSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BallPossessionSystem.swift; sourceTree = "<group>"; };
 		CD8A6849B5DDA4EF84D26BB0 /* GameplayUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayUtilities.swift; sourceTree = "<group>"; };
@@ -70,11 +73,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				038CD131306AE78500571D7F /* UntoldEngine in Frameworks */,
-				038CD135306AE78500571D7F /* UntoldEngineShaderSupport in Frameworks */,
-				038CD133306AE78500571D7F /* UntoldEngineAR in Frameworks */,
-				038CD12F306AE78500571D7F /* UntoldComponentKit in Frameworks */,
-				038CD137306AE78500571D7F /* UntoldEngineXR in Frameworks */,
+				AE1D8DA322B62892C35A459E /* UntoldEngineXR in Frameworks */,
+				A569DF7C792E235EA2B1462F /* UntoldEngineAR in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +160,9 @@
 			isa = PBXGroup;
 			children = (
 				2C5A87C2A19AA7EBBB6BF200 /* DribblingSystem.swift */,
+				0E6F73AF1BA374EEA0F4C88A /* PassingSystem.swift */,
+				70EB1C15D89C1243A9409BC8 /* PassingUtilities.swift */,
+				9A2F5B95394CD116608F8EC5 /* ReceivingSystem.swift */,
 				4FD2D8F50AABB4830EC7DF7D /* ShootingSystem.swift */,
 				E32906AADF4DDB581AEEA6C0 /* ShootingUtilities.swift */,
 			);
@@ -193,11 +196,8 @@
 			);
 			name = CoolFutbol;
 			packageProductDependencies = (
-				038CD12E306AE78500571D7F /* UntoldComponentKit */,
-				038CD130306AE78500571D7F /* UntoldEngine */,
-				038CD132306AE78500571D7F /* UntoldEngineAR */,
-				038CD134306AE78500571D7F /* UntoldEngineShaderSupport */,
-				038CD136306AE78500571D7F /* UntoldEngineXR */,
+				E392CECC2EAC75470BF43FC3 /* UntoldEngineXR */,
+				B74930CBEF86D890C253D5BE /* UntoldEngineAR */,
 			);
 			productName = CoolFutbol;
 			productReference = 14C9DDA7911853ECD7E31403 /* CoolFutbol.app */;
@@ -227,7 +227,7 @@
 			mainGroup = 2F6443ED267F5DA828AA5054;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				038CD12D306AE78500571D7F /* XCLocalSwiftPackageReference "../../../UntoldEngine" */,
+				8C15FD7914568BDE49EA1715 /* XCRemoteSwiftPackageReference "UntoldEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 34C062ADA962B564C6E36983 /* Products */;
@@ -270,8 +270,11 @@
 				69CDEB5900E9ABEE841DE235 /* GameplayUtilities.swift in Sources */,
 				D4A5580613C86E782883FE8F /* GoalZoneComponent.swift in Sources */,
 				375982FD404DEB5EE9F48B2B /* M2Stubs.swift in Sources */,
+				7CBF3B009F68E6867F8B2D76 /* PassingSystem.swift in Sources */,
+				77F59D1EEE7F5F1ECFFBD778 /* PassingUtilities.swift in Sources */,
 				CB6F8636A9DD77EBDD19FF2C /* PlayerComponents.swift in Sources */,
 				021445AE3EEE92463D1112DF /* PlayerStateSystem.swift in Sources */,
+				B320CA19A62B2A57B8B3A90B /* ReceivingSystem.swift in Sources */,
 				E0426FD4EF2010A2872159DF /* SceneManifestLoader.swift in Sources */,
 				8542B4B300F8EF9E0960C8C5 /* ShootingSystem.swift in Sources */,
 				87680253E595DF82937647BF /* ShootingUtilities.swift in Sources */,
@@ -290,7 +293,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = PXXZLXYJ26;
 				INFOPLIST_FILE = Sources/CoolFutbol/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -371,7 +373,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = PXXZLXYJ26;
 				INFOPLIST_FILE = Sources/CoolFutbol/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -474,32 +475,26 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		038CD12D306AE78500571D7F /* XCLocalSwiftPackageReference "../../../UntoldEngine" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../UntoldEngine;
+/* Begin XCRemoteSwiftPackageReference section */
+		8C15FD7914568BDE49EA1715 /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/untoldengine/UntoldEngine.git";
+			requirement = {
+				branch = develop;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		038CD12E306AE78500571D7F /* UntoldComponentKit */ = {
+		B74930CBEF86D890C253D5BE /* UntoldEngineAR */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UntoldComponentKit;
-		};
-		038CD130306AE78500571D7F /* UntoldEngine */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UntoldEngine;
-		};
-		038CD132306AE78500571D7F /* UntoldEngineAR */ = {
-			isa = XCSwiftPackageProductDependency;
+			package = 8C15FD7914568BDE49EA1715 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldEngineAR;
 		};
-		038CD134306AE78500571D7F /* UntoldEngineShaderSupport */ = {
+		E392CECC2EAC75470BF43FC3 /* UntoldEngineXR */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UntoldEngineShaderSupport;
-		};
-		038CD136306AE78500571D7F /* UntoldEngineXR */ = {
-			isa = XCSwiftPackageProductDependency;
+			package = 8C15FD7914568BDE49EA1715 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldEngineXR;
 		};
 /* End XCSwiftPackageProductDependency section */
