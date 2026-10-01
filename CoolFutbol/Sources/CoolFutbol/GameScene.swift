@@ -29,7 +29,7 @@ class GameScene {
     private var awaitingPinchReleaseBeforeConfirm = false
 
     // Confirmed on-device: tabletop-sized stadium.
-    private let defaultSceneScale: Float = 0.01
+    private let defaultSceneScale: Float = 0.02
     // Ghost opacity while the stadium is still being positioned.
     private let placementPreviewOpacity: Float = 0.2
 
@@ -71,16 +71,20 @@ class GameScene {
 
     /// Configure game Systems for play mode
     private func configureEngineSystems() {
-//        let  sun = createEntity()
-//        createDirLight(entityId: sun)
+        let  sun = createEntity()
+        createDirLight(entityId: sun)
+       
+        setLight(entityId: sun, .intensity(0.4))
+        setLight(entityId: sun, .directional(.active))
         
         gameMode = true
         AnimationSystem.shared.isEnabled = true
         InputSystem.shared.registerXREvents()
         InputSystem.shared.setXRSpatialPickingBackendPreference(.octreeGPUPreferred)
         InputSystem.shared.setXRTwoHandRotateAxisMode(.dynamicSnapped)
-        setRendering(.environment(.intensity(0.015)))
         setRendering(.maxShadowCastingDistance(2.0))
+        
+        setRendering(.antiAliasing(.msaa))
     }
 
     // MARK: - Game Loop
