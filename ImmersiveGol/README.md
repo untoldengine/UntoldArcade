@@ -26,13 +26,13 @@ physics demo works at runtime.
 Open `ImmersiveGol.xcodeproj` in Xcode and run the ImmersiveGol scheme on Apple
 Vision Pro or a visionOS simulator. The deployment target is visionOS 26.
 Select **Start Experience** in the control window. Look at your real floor and
-pinch to place the grass. The grass and ball stay hidden until a detected floor
+pinch and release to set the floor height. The ball stays hidden until a detected floor
 is selected; shot and drop controls become available after placement. If no
 floor is detected at the pinch location, scan the floor and pinch again.
 
 The soccer ball model appears 3 metres ahead at a centre height of 1.5 m above
 the selected floor.
-It falls, bounces on the green floor, and rests with its centre approximately
+It falls, bounces on the invisible floor collider, and rests with its centre approximately
 0.11 m above the selected floor. The Xcode console prints `ImmersiveGol M1 PASS` after
 observing a fall, a floor contact, and 0.5 seconds of rest. A check that does
 not settle within 10 seconds prints diagnostic values. Use **Repeat Physics
@@ -150,33 +150,44 @@ retain their existing settings. The visionOS simulator build passed, and the
 model and both textures were verified in the app bundle. Headset validation of
 the model appearance remains pending.
 
-### M3.e — Real floor placement
+### M3.f — Ball and ghost plane
 
-On startup, look at the floor and pinch. The engine's spatial selection ray is
-intersected with classified horizontal floor planes from its thread-safe
-`RealSurfacePlaneStore`. A hit must be inside the detected extent and within
-8 m. Misses keep placement pending and show a retry instruction. There is no
-assumed y = 0 fallback, including in the simulator.
+On startup, look at the floor, then pinch and release. Scene setup calls
+`registerXREvents()` to enable event ingestion and restores `setSceneReady(true)`
+when reopening the immersive scene. `handleInput()` consumes the
+completed `spatialTapActive` signal and calls `pickRealSurfacePosition` with
+`.floorOnly`, using the engine's `UsingSpatialInput.md` tap flow. This requires
+ARKit to classify the selected surface as floor; scan the floor and retry while
+classification is pending. The engine-provided `hit.worldPosition.y` positions
+a horizontal mesh from `BasicPrimitives.createPlane(width:depth:)` directly at
+the detected height, attached using `setEntityMeshDirect`. The physics collider
+is a 0.1 m slab with local offset Y = -0.05, so its top meets that same height.
+The scene root is reset to identity for consistent world/physics coordinates. Misses print
+plane diagnostics and show a retry instruction. There is no assumed y = 0
+fallback, including in the simulator.
 
-The grass stays horizontal with its top and static Jolt collider at the selected
-height. The initial drop, resting-height check, and penalty origins use this
-floor height; targets remain at chest height relative to the player. Palms
-continue tracking during placement. **Place Floor Again** cancels the current
-shot, hides the grass/ball, and waits for a new pinch. Placement is retained for
-the current immersive session and repeated after reopening.
+The BasicPrimitives test plane is 1 m × 1 m and uses
+`updateMaterialOpacity(entityId: floorEntity, opacity: 0)`. Shadow casting is
+disabled. Its existing 32 m × 32 m static Jolt slab remains active for ball
+collisions; mesh opacity does not affect physics. The initial drop, rest-height
+check, and penalty origins use the measured floor height. The future stadium
+will supply the visible grass.
 
-The pinned engine real-surface picker assumes XZ/+Y plane geometry. This demo
-uses a small adapter over the engine's plane store with ARKit's XY/+Z extent
-convention, following CoolBasket's device-tested conversion (DOC-012).
+**Place Floor Again** cancels the current shot and waits for a new floor tap.
+Placement is retained for the current immersive session and repeated after
+reopening. Palms keep tracking while placement is pending.
 
-Validation: the visionOS simulator build passed. Temporary host checks passed
-15 floor-picking cases (bounds, extent offsets, nearest hits, invalid rays, and
-non-floor rejection) and 3 trajectory checks at different floor heights.
+Headset validation confirmed the plane was at the correct floor height: the
+large opaque surface covered real tables/chairs in passthrough, creating the
+impression that it was elevated. The device log confirms floor hit/top
+Y = -0.0000608 m and resting ball Y = 0.10993921 m. This was a visual occlusion
+issue, not a floor-height or XR rendering error. The visionOS simulator build
+passed, and the user confirmed the ball and transparent ghost-plane setup works
+on the headset.
 
-Headset check: place on your real floor, verify the grass meets it and the ball
-rests on it, then try both palm blocks. Pinch away from a detected floor to check
-the retry prompt; use **Place Floor Again** to verify repositioning. A real
-floor scan is required to exercise this flow.
+Headset check: select the floor, confirm the real furniture remains visible,
+and verify the ball bounces/rests on the real floor and can be blocked by either
+palm. Use **Place Floor Again** to repeat calibration.
 
 ## Integration
 

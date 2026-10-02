@@ -21,12 +21,11 @@ final class GameScene: @unchecked Sendable {
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
     private var trackedHands: Set<GoalieHandSide> = []
     private var requestedShot: PenaltySettings?
-    private var statusText = "Look at the real floor and pinch to place the grass"
+    private var statusText = "Look at the real floor, then pinch and release to set the floor height"
     private var placementReady = false // Protected by requestLock for the control window.
     private var floorPlacementRequested = false
     private var floorY: Float? // Frame-thread placement state.
     private var floorPhysicsInstalled = false
-    private var wasPinching = false
     private var spawnPosition = SIMD3<Float>(0, 1.5, -3)
     private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
     private struct ActiveShot {
@@ -86,6 +85,11 @@ final class GameScene: @unchecked Sendable {
     @MainActor
     private func configureEngineSystems() {
         gameMode = true
+        registerXREvents()
+        // XR shutdown clears readiness; restore it when reopening this scene.
+        // The engine loading gate still suppresses input while the ball loads.
+        setSceneReady(true)
+        SceneRootTransform.shared.reset()
         ScenePluginSystem.discoverInApp()
         ScenePluginSystem.install()
         ScenePluginSystem.shared.startPlayMode()
@@ -96,11 +100,14 @@ final class GameScene: @unchecked Sendable {
 
     @MainActor
     private func setupPhysicsCheck() {
-        let floor = CubeNode(size: 1, name: "ImmersiveGol.floor")
-            .baseColor(0.12, 0.35, 0.16)
-            .roughness(0.9)
-            .scaleTo(x: 32, y: 0.1, z: 32)
-        floorEntity = floor.entityID
+        floorEntity = createEntity()
+        setEntityName(entityId: floorEntity, name: "ImmersiveGol.floor")
+        let floorMeshes = BasicPrimitives.createPlane(width: 1, depth: 1)
+        setEntityMeshDirect(entityId: floorEntity, meshes: floorMeshes, assetName: "Plane")
+        updateMaterialColor(entityId: floorEntity, color: colorFromSimd(SIMD4<Float>(0.5, 0.5, 0.5, 1)))
+        updateMaterialRoughness(entityId: floorEntity, roughness: 0.9)
+        updateMaterialOpacity(entityId: floorEntity, opacity: 0)
+        scene.get(component: RenderComponent.self, for: floorEntity)?.castsShadow = false
         scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
 
         ballEntity = createEntity()
@@ -306,7 +313,7 @@ final class GameScene: @unchecked Sendable {
             cancelPenalty()
             scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
             physics.resetBody(entity: ballEntity, position: Self.parkedPosition, velocity: .zero)
-            setShotStatus("Look at the real floor and pinch to place the grass")
+            setShotStatus("Look at the real floor, then pinch and release to set the floor height")
         }
         setupBallPhysicsWhenLoaded()
         // Keep hands updating after the M1 drop check has completed.
@@ -381,33 +388,41 @@ final class GameScene: @unchecked Sendable {
 
     func handleInput() {
         guard gameMode else { return }
-        let input = getXRSpatialInputState()
-        let pinchBegan = input.spatialPinchActive && !wasPinching
-        wasPinching = input.spatialPinchActive
-        guard floorY == nil, pinchBegan || input.spatialTapActive else { return }
-        guard let hit = Self.pickFloor(
-            rayOrigin: input.rayOriginWorld, rayDirection: input.rayDirectionWorld,
-            planes: RealSurfacePlaneStore.shared.snapshot()
+        let state = getXRSpatialInputState()
+        guard floorY == nil, state.spatialTapActive else { return }
+        Logger.log(message: "ImmersiveGol: placement tap received")
+        guard let hit = pickRealSurfacePosition(
+            rayOrigin: state.rayOriginWorld,
+            rayDirection: state.rayDirectionWorld,
+            filter: .floorOnly
         ) else {
-            setShotStatus("Floor not detected here yet. Look around the floor, then pinch again.")
+            RealSurfacePlaneStore.shared.logAllPlanes()
+            setShotStatus("No classified floor detected here yet. Scan the floor, then pinch and release again.")
             return
         }
-        let y = hit.y
+        Logger.log(message: "ImmersiveGol: tapped surface (\(hit.surfaceKind))", vector: hit.worldPosition)
+        let y = hit.worldPosition.y
         let head = handTracking.headTransform(now: ProcessInfo.processInfo.systemUptime)
+        // Keep engine-provided world coordinates and entity coordinates identical.
+        SceneRootTransform.shared.reset()
+        RealSurfacePlaneStore.shared.logAllPlanes()
+        Logger.log(message: "ImmersiveGol: floor hit y=\(y), head y=\(head?.columns.3.y.description ?? "unavailable")")
         let center = head.map { SIMD3<Float>($0.columns.3.x, y, $0.columns.3.z) }
-            ?? hit
+            ?? hit.worldPosition
         let horizontal = head.map { SIMD3<Float>(-$0.columns.2.x, 0, -$0.columns.2.z) }
             ?? SIMD3<Float>(0, 0, -1)
         let forward = simd_length_squared(horizontal) > 0.001
             ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
         spawnPosition = center + forward * 3 + SIMD3<Float>(0, 1.5, 0)
-        let floorPosition = SIMD3<Float>(center.x, y - 0.05, center.z)
+        let floorPosition = SIMD3<Float>(center.x, y, center.z)
         translateTo(entityId: floorEntity, position: floorPosition)
         if !floorPhysicsInstalled {
             registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
             registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
             if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
                 collider.shape = .box(halfExtents: SIMD3<Float>(16, 0.05, 16))
+                // Visual plane is at hit Y; the slab's top is at the same Y.
+                collider.localOffset = SIMD3<Float>(0, -0.05, 0)
                 collider.friction = 0.6
                 collider.restitution = 0
             }
@@ -424,42 +439,35 @@ final class GameScene: @unchecked Sendable {
         }
         setShotStatus("Floor placed — ready for penalties")
         Logger.log(message: "ImmersiveGol: grass and collider anchored at floor y=\(y)")
+        Logger.log(message: "ImmersiveGol: grass entity position", vector: getPosition(entityId: floorEntity))
+        logGrassGeometry()
+
     }
 
-    // The pinned engine picker assumes XZ extents. ARKit PlaneAnchor extents
-    // use XY/+Z, as verified in CoolBasket. Keep this adapter until fixed upstream.
-    private static func pickFloor(
-        rayOrigin: SIMD3<Float>, rayDirection: SIMD3<Float>, planes: [TrackedPlane]
-    ) -> SIMD3<Float>? {
-        guard rayOrigin.x.isFinite, rayOrigin.y.isFinite, rayOrigin.z.isFinite,
-              simd_length_squared(rayDirection).isFinite,
-              simd_length_squared(rayDirection) > 0.000001 else { return nil }
-        let direction = simd_normalize(rayDirection)
-        var nearest: SIMD3<Float>?
-        var nearestDistance: Float = 8
-        for plane in planes where plane.alignment == .horizontal && plane.classification == .floor {
-            let transform = plane.originFromAnchorTransform * plane.anchorFromExtentTransform
-            let normal = SIMD3<Float>(transform.columns.2.x, transform.columns.2.y, transform.columns.2.z)
-            guard abs(normal.y) > 0.9 else { continue }
-            let denominator = simd_dot(direction, normal)
-            guard abs(denominator) > 0.0001 else { continue }
-            let center = SIMD3<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
-            let distance = simd_dot(center - rayOrigin, normal) / denominator
-            guard distance.isFinite, distance > 0, distance <= nearestDistance else { continue }
-            let position = rayOrigin + direction * distance
-            let local = simd_inverse(transform) * SIMD4<Float>(position, 1)
-            guard position.y.isFinite, position.y < rayOrigin.y,
-                  abs(local.x) <= plane.extentWidth * 0.5,
-                  abs(local.y) <= plane.extentHeight * 0.5 else { continue }
-            nearest = position
-            nearestDistance = distance
+    private func logGrassGeometry() {
+        guard let render = scene.get(component: RenderComponent.self, for: floorEntity),
+              let world = scene.get(component: WorldTransformComponent.self, for: floorEntity) else { return }
+        for mesh in render.mesh {
+            let model = world.space * mesh.localSpace
+            var minY = Float.infinity
+            var maxY = -Float.infinity
+            for x in [mesh.boundingBox.min.x, mesh.boundingBox.max.x] {
+                for y in [mesh.boundingBox.min.y, mesh.boundingBox.max.y] {
+                    for z in [mesh.boundingBox.min.z, mesh.boundingBox.max.z] {
+                        let point = model * SIMD4<Float>(x, y, z, 1)
+                        minY = min(minY, point.y)
+                        maxY = max(maxY, point.y)
+                    }
+                }
+            }
+            Logger.log(message: "ImmersiveGol: grass rendered bounds y=\(minY)...\(maxY), expected floor y=\(floorY ?? .nan)")
         }
-        return nearest
     }
 
     /// Called on the frame thread after the renderer stops.
     func shutdown() {
         handTracking.stop()
+        unregisterXREvents()
         contactSubscription?.cancel()
         contactSubscription = nil
         for entity in [ballEntity, floorEntity, sunEntity] + Array(palmEntities.values) where entity != .invalid {

@@ -135,7 +135,7 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
 
-                Text("Look at your real floor and pinch to place the grass before playing.")
+                Text("Look at your real floor, then pinch and release to set the floor height before playing.")
                     .font(.headline)
                 Button("Place Floor Again") {
                     XRHolder.shared.gameScene?.requestFloorPlacement()
