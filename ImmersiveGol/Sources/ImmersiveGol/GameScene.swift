@@ -30,6 +30,8 @@ final class GameScene: @unchecked Sendable {
     }
     private var activeShot: ActiveShot?
     private static let gravity = SIMD3<Float>(0, -9.8, 0)
+    private var ballMeshLoaded = false // Protected by requestLock; async loader writes.
+    private var ballPhysicsInstalled = false // XR frame-thread state.
     private var ballEntity: EntityID = .invalid
     private var floorEntity: EntityID = .invalid
     private var sunEntity: EntityID = .invalid
@@ -106,22 +108,15 @@ final class GameScene: @unchecked Sendable {
         }
         scene.get(component: RigidBodyComponent.self, for: floorEntity)?.motionType = .static
 
-        let ball = SphereNode(radius: Self.ballRadius, segments: [32, 24], name: "ImmersiveGol.ball")
-            .baseColor(1, 0.9, 0.3)
-            .roughness(0.7)
-        ballEntity = ball.entityID
-        translateTo(entityId: ballEntity, position: Self.spawnPosition)
-        registerComponent(entityId: ballEntity, componentType: ColliderComponent.self)
-        registerComponent(entityId: ballEntity, componentType: RigidBodyComponent.self)
-        if let collider = scene.get(component: ColliderComponent.self, for: ballEntity) {
-            collider.shape = .sphere(radius: Self.ballRadius)
-            collider.friction = 0.5
-            collider.restitution = 0.35
-        }
-        if let body = scene.get(component: RigidBodyComponent.self, for: ballEntity) {
-            body.motionType = .dynamic
-            body.mass = 0.43
-            body.initialLinearVelocity = .zero
+        ballEntity = createEntity()
+        setEntityName(entityId: ballEntity, name: "ImmersiveGol.ball")
+        setEntityMeshAsync(entityId: ballEntity, filename: "ball", withExtension: "untold") { [weak self] loaded in
+            guard let self else { return }
+            if loaded {
+                self.requestLock.withLock { self.ballMeshLoaded = true }
+            } else {
+                Logger.log(message: "ImmersiveGol: ball model failed to load")
+            }
         }
 
         let sun = DirectionalLightNode(name: "ImmersiveGol.sun")
@@ -148,7 +143,30 @@ final class GameScene: @unchecked Sendable {
                 }
             }
         }
-        Logger.log(message: "ImmersiveGol M1: dropping ball from 1.5 m, 3 m ahead")
+    }
+
+    /// The loader applies the asset's root transform. Wait for it to finish
+    /// before sizing/placing the model and registering its physics body.
+    private func setupBallPhysicsWhenLoaded() {
+        guard !ballPhysicsInstalled, requestLock.withLock({ ballMeshLoaded }) else { return }
+        // The supplied model has a native diameter of approximately 1 m.
+        scaleTo(entityId: ballEntity, scale: SIMD3<Float>(repeating: Self.ballRadius * 2))
+        translateTo(entityId: ballEntity, position: Self.spawnPosition)
+        registerComponent(entityId: ballEntity, componentType: ColliderComponent.self)
+        registerComponent(entityId: ballEntity, componentType: RigidBodyComponent.self)
+        if let collider = scene.get(component: ColliderComponent.self, for: ballEntity) {
+            collider.shape = .sphere(radius: Self.ballRadius)
+            collider.friction = 0.5
+            collider.restitution = 0.35
+        }
+        if let body = scene.get(component: RigidBodyComponent.self, for: ballEntity) {
+            body.motionType = .dynamic
+            body.mass = 0.43
+            body.initialLinearVelocity = .zero
+        }
+
+        ballPhysicsInstalled = true
+        Logger.log(message: "ImmersiveGol M1: model loaded; dropping ball from 1.5 m, 3 m ahead")
     }
 
     func requestPhysicsReset() {
@@ -276,6 +294,7 @@ final class GameScene: @unchecked Sendable {
 
     func update(deltaTime: Float) {
         guard gameMode else { return }
+        setupBallPhysicsWhenLoaded()
         // Keep hands updating after the M1 drop check has completed.
         updatePalms()
         let shouldReset = requestLock.withLock { () -> Bool in

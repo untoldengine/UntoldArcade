@@ -27,7 +27,7 @@ Open `ImmersiveGol.xcodeproj` in Xcode and run the ImmersiveGol scheme on Apple
 Vision Pro or a visionOS simulator. The deployment target is visionOS 26.
 Select **Start Experience** in the control window.
 
-A yellow placeholder ball appears 3 metres ahead at a centre height of 1.5 m.
+The soccer ball model appears 3 metres ahead at a centre height of 1.5 m.
 It falls, bounces on the green floor, and rests with its centre approximately
 0.11 m above the floor. The Xcode console prints `ImmersiveGol M1 PASS` after
 observing a fall, a floor contact, and 0.5 seconds of rest. A check that does
@@ -35,7 +35,8 @@ not settle within 10 seconds prints diagnostic values. Use **Repeat Physics
 Check** to drop the same ball again.
 
 M1 establishes physics. Gloves, penalty launches, the shooter,
-and the stadium follow in later milestones. The ball uses a primitive mesh.
+and the stadium follow in later milestones. The ball uses the supplied
+`GameData/Models/ball/ball.untold` asset and its diffuse/normal textures.
 The space uses passthrough while we validate the mechanics.
 
 ## M2 — Tracked palms
@@ -128,6 +129,22 @@ The visionOS simulator build passed. Verification covered 90 trajectories at the
 random area's corners and center, both palm colliders, repeat resets, parked-hand
 misses, and 1,000 random samples within the intended bounds. Headset validation
 of random targeting remains pending.
+
+### M3.d — Soccer ball model
+
+The visible ball loads with `createEntity()` and
+`setEntityMeshAsync(entityId:filename:withExtension:)` from
+`GameData/Models/ball/ball.untold`. Its authored materials and adjacent textures
+replace the yellow placeholder. The native model is approximately 1 m across,
+so a uniform scale of 0.22 matches the existing 0.11 m sphere collider radius.
+
+The async completion publishes a readiness flag. On the XR frame thread, the
+finished model is sized and positioned before its dynamic physics body is
+registered. This avoids the loader's imported root transform overwriting a
+simulated pose. Mass, collider dimensions, random shots, and palm interactions
+retain their existing settings. The visionOS simulator build passed, and the
+model and both textures were verified in the app bundle. Headset validation of
+the model appearance remains pending.
 
 ## Integration
 
