@@ -1,0 +1,414 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */; };
+		35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */; };
+		6F32B801311516808AF653A4 /* Spinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E4D2790079A8B768A35336 /* Spinner.swift */; };
+		8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3207A665FF30620E333EFB06 /* UntoldComponentKit */; };
+		95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 14991CF5C75437498320D0FB /* UntoldEngineAR */; };
+		A633A61314EE6CEE4DD9EE3E /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4399CD651431DA8D866F30BB /* GameScene.swift */; };
+		B116E9EDBB05B31D18ADEFCE /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = 8051A09235BCDBFB0352CC5F /* GameData */; };
+		C1D7E3CAD534D96726B0E122 /* ImmersiveGolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */; };
+		DB45657ED1E34A56BF814B56 /* UntoldJoltPhysics in Frameworks */ = {isa = PBXBuildFile; productRef = 6FA23712979B8152F76A2A4C /* UntoldJoltPhysics */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		27E4D2790079A8B768A35336 /* Spinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spinner.swift; sourceTree = "<group>"; };
+		4399CD651431DA8D866F30BB /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
+		454ECA1E84F042688BC8BD21 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
+		8051A09235BCDBFB0352CC5F /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/ImmersiveGol/GameData; sourceTree = SOURCE_ROOT; };
+		C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveGolApp.swift; sourceTree = "<group>"; };
+		F6BF92ADAA8C83EE0B78FCDC /* ImmersiveGol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImmersiveGol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4942496FCF3DA8ED371F8D8E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB45657ED1E34A56BF814B56 /* UntoldJoltPhysics in Frameworks */,
+				35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */,
+				95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */,
+				8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		31F10543EAF6D3CA5F762BF8 /* ImmersiveGol */ = {
+			isa = PBXGroup;
+			children = (
+				4399CD651431DA8D866F30BB /* GameScene.swift */,
+				5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */,
+				C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */,
+				454ECA1E84F042688BC8BD21 /* Info.plist */,
+			);
+			path = ImmersiveGol;
+			sourceTree = "<group>";
+		};
+		797E0DF4AD0C38ADF16973A1 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				31F10543EAF6D3CA5F762BF8 /* ImmersiveGol */,
+				BD1EFBCD62B082FBCDC845D3 /* ImmersiveGolPlugins */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		B1A48538A90A86E5BD29F133 = {
+			isa = PBXGroup;
+			children = (
+				8051A09235BCDBFB0352CC5F /* GameData */,
+				797E0DF4AD0C38ADF16973A1 /* Sources */,
+				E135B49E65CD05C9F9BEA2E1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BD1EFBCD62B082FBCDC845D3 /* ImmersiveGolPlugins */ = {
+			isa = PBXGroup;
+			children = (
+				27E4D2790079A8B768A35336 /* Spinner.swift */,
+			);
+			path = ImmersiveGolPlugins;
+			sourceTree = "<group>";
+		};
+		E135B49E65CD05C9F9BEA2E1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F6BF92ADAA8C83EE0B78FCDC /* ImmersiveGol.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F1964357A609C4E8343781F6 /* ImmersiveGol */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E765E68BD18992F789873A91 /* Build configuration list for PBXNativeTarget "ImmersiveGol" */;
+			buildPhases = (
+				1EEAC13CFCD53A83C3671E3C /* Sources */,
+				4031AEA239BB1E743ADE21E0 /* Resources */,
+				4942496FCF3DA8ED371F8D8E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ImmersiveGol;
+			packageProductDependencies = (
+				6FA23712979B8152F76A2A4C /* UntoldJoltPhysics */,
+				D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */,
+				14991CF5C75437498320D0FB /* UntoldEngineAR */,
+				3207A665FF30620E333EFB06 /* UntoldComponentKit */,
+			);
+			productName = ImmersiveGol;
+			productReference = F6BF92ADAA8C83EE0B78FCDC /* ImmersiveGol.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		09E2EE75DC9E4E6795B6EA6F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					F1964357A609C4E8343781F6 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 156A1990AFC79D83AF97DCAD /* Build configuration list for PBXProject "ImmersiveGol" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B1A48538A90A86E5BD29F133;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */,
+				E183C7C19E1D8FC904AE57F1 /* XCRemoteSwiftPackageReference "UntoldJoltPhysics" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E135B49E65CD05C9F9BEA2E1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F1964357A609C4E8343781F6 /* ImmersiveGol */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4031AEA239BB1E743ADE21E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B116E9EDBB05B31D18ADEFCE /* GameData in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1EEAC13CFCD53A83C3671E3C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A633A61314EE6CEE4DD9EE3E /* GameScene.swift in Sources */,
+				0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */,
+				C1D7E3CAD534D96726B0E122 /* ImmersiveGolApp.swift in Sources */,
+				6F32B801311516808AF653A4 /* Spinner.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1CE6A35F1649E57A3E5CD18E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		58B9E75DE9FFB35F24CF2AA2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = PXXZLXYJ26;
+				INFOPLIST_FILE = Sources/ImmersiveGol/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include";
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.mygame;
+				SDKROOT = xros;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				UNTOLD_ENGINE_PACKAGE_ROOT = "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		D2490C1E318B6821882B341B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = PXXZLXYJ26;
+				INFOPLIST_FILE = Sources/ImmersiveGol/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MTL_HEADER_SEARCH_PATHS = "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include";
+				PRODUCT_BUNDLE_IDENTIFIER = com.untoldengine.mygame;
+				SDKROOT = xros;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				UNTOLD_ENGINE_PACKAGE_ROOT = "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		F27BD4407DAD5606E650A2DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		156A1990AFC79D83AF97DCAD /* Build configuration list for PBXProject "ImmersiveGol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F27BD4407DAD5606E650A2DF /* Debug */,
+				1CE6A35F1649E57A3E5CD18E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E765E68BD18992F789873A91 /* Build configuration list for PBXNativeTarget "ImmersiveGol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				58B9E75DE9FFB35F24CF2AA2 /* Debug */,
+				D2490C1E318B6821882B341B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/untoldengine/UntoldEngine.git";
+			requirement = {
+				branch = develop;
+				kind = branch;
+			};
+		};
+		E183C7C19E1D8FC904AE57F1 /* XCRemoteSwiftPackageReference "UntoldJoltPhysics" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/untoldengine/UntoldJoltPhysics.git";
+			requirement = {
+				branch = develop;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		14991CF5C75437498320D0FB /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineAR;
+		};
+		3207A665FF30620E333EFB06 /* UntoldComponentKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldComponentKit;
+		};
+		6FA23712979B8152F76A2A4C /* UntoldJoltPhysics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E183C7C19E1D8FC904AE57F1 /* XCRemoteSwiftPackageReference "UntoldJoltPhysics" */;
+			productName = UntoldJoltPhysics;
+		};
+		D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineXR;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 09E2EE75DC9E4E6795B6EA6F /* Project object */;
+}
