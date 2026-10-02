@@ -79,7 +79,7 @@ public func dribblingSystemUpdate(deltaTime: Float) {
             // Sprint modifier applied when computing movement/kick speeds
             inputDirection = GameplayUtilities.pitchRelativeDirection(input: inputVector)
 
-            // NOTE: the original Dribbly project applied AI direction assist here
+            // NOTE: the original implementation applied AI direction assist here
             // (blending input toward computeOptimalDirection() based on
             // AIAssistComponent.assistLevel). AIAssistSystem.swift isn't ported
             // yet for M2 and no entity gets an AIAssistComponent registered, so

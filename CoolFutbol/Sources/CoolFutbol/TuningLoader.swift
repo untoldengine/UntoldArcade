@@ -1,6 +1,10 @@
 //
 //  TuningLoader.swift
-//  Dribbly
+//  CoolFutbol
+//
+//  Copyright (C) Untold Engine Studios
+//  Licensed under the GNU LGPL v3.0 or later.
+//  See the LICENSE file or <https://www.gnu.org/licenses/> for details.
 //
 
 import Foundation
@@ -665,7 +669,7 @@ private func localGameplayTuningOverrideURL() -> URL {
     let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         ?? FileManager.default.homeDirectoryForCurrentUser
     return baseURL
-        .appendingPathComponent("Dribbly", isDirectory: true)
+        .appendingPathComponent("CoolFutbol", isDirectory: true)
         .appendingPathComponent("gameplay-tuning.local.json")
 }
 #endif

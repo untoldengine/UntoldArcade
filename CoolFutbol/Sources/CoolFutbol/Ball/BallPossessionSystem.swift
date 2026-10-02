@@ -1,6 +1,6 @@
 //
 //  BallPossessionSystem.swift
-//  Dribbly
+//  CoolFutbol
 //
 //  Copyright (C) Untold Engine Studios
 //  Licensed under the GNU LGPL v3.0 or later.

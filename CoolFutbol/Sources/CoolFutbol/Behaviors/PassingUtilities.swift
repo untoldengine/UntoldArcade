@@ -1,6 +1,6 @@
 //
 //  PassingUtilities.swift
-//  Dribbly
+//  CoolFutbol
 //
 //  Copyright (C) Untold Engine Studios
 //  Licensed under the GNU LGPL v3.0 or later.
@@ -113,7 +113,7 @@ func findBestReceiver(for passer: EntityID,
 
         let speedScore = min(receiverSpeed / GameplayTuning.shared.receiving.maxSpeed, 1.0)
 
-        // NOTE: the original Dribbly project added an "intent bonus" here for
+        // NOTE: the original implementation added an "intent bonus" here for
         // receivers already moving into a passing lane or making a depth run
         // (PlayerRoleComponent.tacticalIntent). The Formation/tactical-intent
         // system isn't ported yet for M2 (no PlayerRoleComponent registered on
