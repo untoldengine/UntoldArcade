@@ -17,12 +17,16 @@ import UntoldJoltPhysics
 // frame thread. Controls send lock-protected requests and read status snapshots.
 final class GameScene: @unchecked Sendable {
     private let physics: JoltPhysicsBackend
+    private let handTracking = GoalieHandTracking()
+    private var palmEntities: [GoalieHandSide: EntityID] = [:]
+    private var trackedHands: Set<GoalieHandSide> = []
     private var ballEntity: EntityID = .invalid
     private var floorEntity: EntityID = .invalid
     private var sunEntity: EntityID = .invalid
     private var contactSubscription: EventSubscription?
     private let requestLock = NSLock()
     private var resetRequested = false
+    private var palmDropRequested = false
     private var observedFall = false
     private var observedFloorContact = false
     private var settledTime: Float = 0
@@ -31,6 +35,8 @@ final class GameScene: @unchecked Sendable {
 
     private static let ballRadius: Float = 0.11
     private static let spawnPosition = SIMD3<Float>(0, 1.5, -3)
+    private static let palmRadius: Float = 0.07
+    private static let parkedPosition = SIMD3<Float>(0, -100, 0)
 
     /// Call before creating UntoldEngineXR: the backend choice locks on the
     /// first physics substep and persists across immersive-space reopenings.
@@ -53,6 +59,8 @@ final class GameScene: @unchecked Sendable {
         setupAssetPaths()
         configureEngineSystems()
         setupPhysicsCheck()
+        setupPalms()
+        handTracking.start()
     }
 
     @MainActor
@@ -116,6 +124,12 @@ final class GameScene: @unchecked Sendable {
                 || (event.entityB == self.ballEntity && event.entityA == self.floorEntity) {
                 self.observedFloorContact = true
             }
+            for (side, entity) in self.palmEntities {
+                if (event.entityA == self.ballEntity && event.entityB == entity)
+                    || (event.entityB == self.ballEntity && event.entityA == entity) {
+                    Logger.log(message: "ImmersiveGol M2: ball blocked by \(side.rawValue) palm")
+                }
+            }
         }
         Logger.log(message: "ImmersiveGol M1: dropping ball from 1.5 m, 3 m ahead")
     }
@@ -124,8 +138,56 @@ final class GameScene: @unchecked Sendable {
         requestLock.withLock { resetRequested = true }
     }
 
+    func requestPalmDrop() {
+        requestLock.withLock { palmDropRequested = true }
+    }
+
+    @MainActor
+    private func setupPalms() {
+        for side in GoalieHandSide.allCases {
+            // Visible collision proxies for M2 verification, replaced by gloves later.
+            let color = side == .left ? SIMD3<Float>(0.15, 0.65, 1) : SIMD3<Float>(1, 0.35, 0.15)
+            let node = SphereNode(radius: Self.palmRadius, segments: [16, 12],
+                                  name: "ImmersiveGol.\(side.rawValue)Palm")
+                .baseColor(color.x, color.y, color.z)
+                .roughness(0.7)
+            let entity = node.entityID
+            palmEntities[side] = entity
+            translateTo(entityId: entity, position: Self.parkedPosition)
+            registerComponent(entityId: entity, componentType: ColliderComponent.self)
+            registerComponent(entityId: entity, componentType: RigidBodyComponent.self)
+            if let collider = scene.get(component: ColliderComponent.self, for: entity) {
+                collider.shape = .sphere(radius: Self.palmRadius)
+                collider.friction = 0.5
+                collider.restitution = 0.2
+            }
+            scene.get(component: RigidBodyComponent.self, for: entity)?.motionType = .kinematic
+        }
+    }
+
+    private func updatePalms() {
+        let now = ProcessInfo.processInfo.systemUptime
+        for side in GoalieHandSide.allCases {
+            guard let entity = palmEntities[side] else { continue }
+            let position = handTracking.palmPosition(side, now: now)
+            // The coordinator forwards the transform as a Jolt kinematic target.
+            // Parking is a >1 m jump, so maxKinematicStep makes it a teleport
+            // with zero velocity rather than sweeping the hand through the ball.
+            translateTo(entityId: entity, position: position ?? Self.parkedPosition)
+            if position != nil {
+                if trackedHands.insert(side).inserted {
+                    Logger.log(message: "ImmersiveGol M2: \(side.rawValue) palm tracking acquired")
+                }
+            } else if trackedHands.remove(side) != nil {
+                Logger.log(message: "ImmersiveGol M2: \(side.rawValue) palm tracking lost; collider parked")
+            }
+        }
+    }
+
     func update(deltaTime: Float) {
         guard gameMode else { return }
+        // Keep hands updating after the M1 drop check has completed.
+        updatePalms()
         let shouldReset = requestLock.withLock { () -> Bool in
             defer { resetRequested = false }
             return resetRequested
@@ -140,6 +202,27 @@ final class GameScene: @unchecked Sendable {
                 Logger.log(message: "ImmersiveGol M1: repeating drop check")
             } else {
                 requestPhysicsReset() // Coordinator has not created the body yet.
+            }
+        }
+        let shouldDropAbovePalm = requestLock.withLock { () -> Bool in
+            defer { palmDropRequested = false }
+            return palmDropRequested
+        }
+        if shouldDropAbovePalm {
+            let now = ProcessInfo.processInfo.systemUptime
+            let palm = handTracking.palmPosition(.right, now: now)
+                ?? handTracking.palmPosition(.left, now: now)
+            if let palm {
+                let position = palm + SIMD3<Float>(0, 0.4, 0)
+                if physics.resetBody(entity: ballEntity, position: position, velocity: .zero) {
+                    // Palm interactions are a separate check from M1's floor drop.
+                    checkFinished = true
+                    Logger.log(message: "ImmersiveGol M2: ball dropped above palm; hold your hand beneath it")
+                } else {
+                    requestPalmDrop()
+                }
+            } else {
+                Logger.log(message: "ImmersiveGol M2: show a tracked palm before requesting a drop")
             }
         }
         guard !checkFinished, let state = physics.bodyState(for: ballEntity) else { return }
@@ -163,9 +246,10 @@ final class GameScene: @unchecked Sendable {
 
     /// Called on the frame thread after the renderer stops.
     func shutdown() {
+        handTracking.stop()
         contactSubscription?.cancel()
         contactSubscription = nil
-        for entity in [ballEntity, floorEntity, sunEntity] where entity != .invalid {
+        for entity in [ballEntity, floorEntity, sunEntity] + Array(palmEntities.values) where entity != .invalid {
             destroyEntity(entityId: entity)
             // Remove now so reopening does not depend on another coordinator step.
             physics.didRemoveBody(entity: entity)
@@ -173,6 +257,8 @@ final class GameScene: @unchecked Sendable {
         ballEntity = .invalid
         floorEntity = .invalid
         sunEntity = .invalid
+        palmEntities.removeAll()
+        trackedHands.removeAll()
     }
 }
 

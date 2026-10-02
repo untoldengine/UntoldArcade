@@ -38,12 +38,47 @@ M1 establishes physics. Gloves, penalty launches, the shooter,
 and the stadium follow in later milestones. The ball uses a primitive mesh.
 The space uses passthrough while we validate the mechanics.
 
+## M2 — Tracked palms
+
+**Status:** the visionOS simulator build passed, and the user confirmed on the
+headset that both markers follow their palms correctly.
+
+`GoalieHandTracking.swift` runs an ARKit hand-tracking session and transforms the
+wrist and knuckle joints into world coordinates. Their midpoint defines each
+palm position. GameScene moves two kinematic sphere colliders to those positions,
+using the same 50 ms pose prediction as CoolBasket. Debug spheres show their
+coverage: **blue for left**, **orange for right**, each with a 0.07 m radius.
+
+The app includes `NSHandsTrackingUsageDescription`. Allow hand tracking when
+requested. On a real Vision Pro, raise both hands and verify each sphere follows
+its palm. Hands continue updating after the M1 check finishes.
+
+Use **Drop Ball Above Palm** to reset the ball 0.4 m above a tracked palm (right
+preferred, left as fallback). Hold the palm beneath the ball; Jolt resolves the
+contact and the console prints `ball blocked by left/right palm`. This control
+ends the M1 floor-check diagnostics; **Repeat Physics Check** restores that check.
+
+An untracked hand, missing required joint, paused provider, or expired streamed
+pose parks its collider 100 m below the scene. Streamed fallback poses expire
+after 150 ms. The console logs tracking acquisition and loss. Large parking and
+reacquisition jumps teleport rather than impart velocity; nearby kinematic
+motion is capped at 6 m/s by the M1 Jolt settings. Session shutdown cancels
+tracking and removes both colliders.
+
+Hand tracking requires a real headset. On an unsupported simulator, the palm
+colliders remain parked and the M1 floor check still runs. Both palm markers have
+been verified on the headset. Tracking loss/reacquisition, ball contacts, and
+closing and reopening the immersive space remain checks to confirm separately.
+Goalie gloves and catching come later.
+
 ## Integration
 
 - `GameScene.swift` owns Jolt registration, scene construction, and the drop
   check. The engine advances physics automatically; do not call `step` again.
 - `ImmersiveGolApp.swift` installs Jolt before constructing `UntoldEngineXR`.
   Scene cleanup runs after the render loop stops, allowing the space to reopen.
+- `GoalieHandTracking.swift` publishes lock-protected palm snapshots from ARKit;
+  physics transforms and ball resets are applied on the XR frame thread.
 - Engine and Jolt dependencies both use `develop`, matching Jolt's manifest.
   Retain the workspace's generated `Package.resolved` for reproducible revisions.
 - `project.yml` is the XcodeGen source of truth. Regenerate from the parent

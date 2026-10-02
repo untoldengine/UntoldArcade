@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */; };
 		35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */; };
+		42B02B89EC0976165BAEB500 /* GoalieHandTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */; };
 		6F32B801311516808AF653A4 /* Spinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E4D2790079A8B768A35336 /* Spinner.swift */; };
 		8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3207A665FF30620E333EFB06 /* UntoldComponentKit */; };
 		95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 14991CF5C75437498320D0FB /* UntoldEngineAR */; };
@@ -19,6 +20,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalieHandTracking.swift; sourceTree = "<group>"; };
 		27E4D2790079A8B768A35336 /* Spinner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spinner.swift; sourceTree = "<group>"; };
 		4399CD651431DA8D866F30BB /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		454ECA1E84F042688BC8BD21 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -48,6 +50,7 @@
 			children = (
 				4399CD651431DA8D866F30BB /* GameScene.swift */,
 				5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */,
+				002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */,
 				C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */,
 				454ECA1E84F042688BC8BD21 /* Info.plist */,
 			);
@@ -169,6 +172,7 @@
 			files = (
 				A633A61314EE6CEE4DD9EE3E /* GameScene.swift in Sources */,
 				0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */,
+				42B02B89EC0976165BAEB500 /* GoalieHandTracking.swift in Sources */,
 				C1D7E3CAD534D96726B0E122 /* ImmersiveGolApp.swift in Sources */,
 				6F32B801311516808AF653A4 /* Spinner.swift in Sources */,
 			);

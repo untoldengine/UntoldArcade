@@ -33,6 +33,8 @@
 	<true/>
 	<key>NSAccessoryTrackingUsageDescription</key>
 	<string>{{PROJECT_NAME}} tracks spatial game controllers for immersive gameplay.</string>
+	<key>NSHandsTrackingUsageDescription</key>
+	<string>ImmersiveGol tracks your palms so you can block the ball with your hands.</string>
 	<key>NSWorldSensingUsageDescription</key>
 	<string>{{PROJECT_NAME}} uses world sensing to provide immersive AR experiences.</string>
 	<key>UIApplicationSceneManifest</key>

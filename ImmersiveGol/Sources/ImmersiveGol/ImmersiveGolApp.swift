@@ -133,6 +133,11 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
 
+            Button("Drop Ball Above Palm") {
+                XRHolder.shared.gameScene?.requestPalmDrop()
+            }
+            .buttonStyle(.bordered)
+
             Button(action: {
                 openWindow(id: "EngineStatsPanel")
             }) {
