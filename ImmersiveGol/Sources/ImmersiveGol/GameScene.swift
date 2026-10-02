@@ -219,7 +219,7 @@ final class GameScene: @unchecked Sendable {
                                         velocity: pending.trajectory.velocity) else { return }
                 activeShot = ActiveShot(trajectory: pending.trajectory, launchedAt: now)
                 countdown = nil
-                setShotStatus("Ball launched — block the purple target")
+                setShotStatus(String(format: "Ball launched — %.2f s to target", pending.trajectory.flightTime))
             } else {
                 let text = "Shot in \(Int(ceil(pending.launchAt - now))) — raise your hands"
                 if shotStatus != text { setShotStatus(text) }

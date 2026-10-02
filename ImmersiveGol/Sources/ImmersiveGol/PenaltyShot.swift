@@ -16,12 +16,12 @@ enum PenaltyAim: String, CaseIterable, Sendable {
 
 struct PenaltySettings: Sendable {
     var distance: Float = 3
-    var flightTime: Float = 1
+    var flightTime: Float = 0.35
     var aim: PenaltyAim = .center
 
     var clamped: Self {
         Self(distance: distance.isFinite ? min(max(distance, 2), 10) : 3,
-             flightTime: flightTime.isFinite ? min(max(flightTime, 0.6), 1.5) : 1,
+             flightTime: flightTime.isFinite ? min(max(flightTime, 0.2), 0.5) : 0.35,
              aim: aim)
     }
 }
@@ -48,13 +48,28 @@ struct PenaltyTrajectory: Sendable {
         target = keeperPosition + forward * 0.55 + right * settings.aim.lateralOffset
             + SIMD3<Float>(0, max(0.6, position.y - 0.35), 0)
         origin = keeperPosition + forward * settings.distance + SIMD3<Float>(0, 0.11, 0)
-        // Untold Engine steps at 60 Hz. Jolt 5.6 defaults rigid-body linear
-        // damping to 0.05 and applies gravity/damping before integrating position.
-        // Solve those discrete updates so the marker matches the actual flight,
-        // including at the longest flight-time setting.
+        // Keep the flight on its rising path to the target, rather than a lob
+        // above it. Long requested times are shortened at close range.
+        let rise = target.y - origin.y
+        let upwardFlightLimit = sqrt(2 * rise / max(-gravity.y, 0.001))
         let dt: Float = 1 / 60
-        let steps = Int((settings.flightTime / dt).rounded())
+        var steps = max(1, Int(floor(min(settings.flightTime, upwardFlightLimit) / dt + 0.0001)))
+        var launch = Self.launchVelocity(origin: origin, target: target, gravity: gravity, steps: steps)
+        // At short distances the previous shot was mostly vertical. Prefer
+        // horizontal motion; the target's height remains reachable with gravity.
+        while steps > 6 && launch.y > simd_length(SIMD2<Float>(launch.x, launch.z)) {
+            steps -= 1
+            launch = Self.launchVelocity(origin: origin, target: target, gravity: gravity, steps: steps)
+        }
         flightTime = Float(steps) * dt
+        velocity = launch
+    }
+
+    private static func launchVelocity(
+        origin: SIMD3<Float>, target: SIMD3<Float>, gravity: SIMD3<Float>, steps: Int
+    ) -> SIMD3<Float> {
+        // Match the engine's 60 Hz step and Jolt 5.6's default damping (0.05).
+        let dt: Float = 1 / 60
         let damping: Float = 1 - 0.05 * dt
         var velocityFactor: Float = 1
         var displacementFactor: Float = 0
@@ -66,6 +81,6 @@ struct PenaltyTrajectory: Sendable {
             displacementFactor += velocityFactor * dt
             gravityDisplacement += gravityVelocity * dt
         }
-        velocity = (target - origin - gravity * gravityDisplacement) / displacementFactor
+        return (target - origin - gravity * gravityDisplacement) / displacementFactor
     }
 }

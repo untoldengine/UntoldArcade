@@ -73,12 +73,15 @@ Goalie gloves and catching come later.
 
 ## M3 — First penalty
 
-**Status:** implementation and simulator build completed; headset shot validation
-is pending. Both palm markers were confirmed on the headset during M2.
+**Status:** the user confirmed the first penalty works on the headset. The
+flight was subsequently adjusted to reduce its upward arc; this adjustment
+needs a headset check.
 
-1. Start the experience. Choose **Distance** (2–10 m), **Flight time**
-   (0.6–1.5 seconds), and **Left**, **Center**, or **Right** aim in the control window.
-   Defaults are 3 m, 1 second, and Center. Shorter flight times make faster shots.
+1. Start the experience. Choose **Distance** (2–10 m), **Maximum flight time**
+   (0.2–0.5 seconds), and **Left**, **Center**, or **Right** aim in the control window.
+   Defaults are 3 m, 0.35 seconds, and Center. Shorter flight times make faster shots.
+   Close-range shots may shorten the requested time further to keep the flight
+   directed toward the goalie; the launch status shows the actual time.
 2. Face the direction from which the ball should arrive and press **Repeat Shot**.
    The current head position and horizontal heading establish the goalie frame.
    The ball waits at the penalty spot during a three-second countdown.
@@ -95,7 +98,9 @@ is pending. Both palm markers were confirmed on the headset during M2.
 
 `PenaltyShot.swift` computes launch velocity with gravity, the engine's 60 Hz
 fixed step, and Jolt 5.6's default linear damping of 0.05. This keeps the ball
-aligned with the marker across the available settings. These integration
+aligned with the marker across the available settings. The flight limit keeps
+the ball rising toward the target rather than lobbing above it, and short-range
+shots favor horizontal launch velocity over vertical launch velocity. These integration
 assumptions must be revisited if physics stepping or damping changes.
 
 An independent host Jolt check exercised 54 trajectories (distance/flight-time

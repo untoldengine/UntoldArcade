@@ -108,7 +108,7 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
 
     @State private var distance: Double = 3
-    @State private var flightTime: Double = 1
+    @State private var flightTime: Double = 0.35
     @State private var aim: PenaltyAim = .center
     @State private var shotStatus = "Start the experience to take a penalty"
     private let statusTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
@@ -137,8 +137,8 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Distance: \(distance, specifier: "%.1f") m")
                 Slider(value: $distance, in: 2...10, step: 0.5)
-                Text("Flight time: \(flightTime, specifier: "%.1f") s")
-                Slider(value: $flightTime, in: 0.6...1.5, step: 0.1)
+                Text("Maximum flight time: \(flightTime, specifier: "%.2f") s")
+                Slider(value: $flightTime, in: 0.2...0.5, step: 0.05)
                 Picker("Aim", selection: $aim) {
                     ForEach(PenaltyAim.allCases, id: \.self) { target in
                         Text(target.rawValue).tag(target)
