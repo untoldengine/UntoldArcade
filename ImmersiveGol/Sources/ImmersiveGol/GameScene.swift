@@ -21,7 +21,13 @@ final class GameScene: @unchecked Sendable {
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
     private var trackedHands: Set<GoalieHandSide> = []
     private var requestedShot: PenaltySettings?
-    private var statusText = "Ready for first penalty"
+    private var statusText = "Look at the real floor and pinch to place the grass"
+    private var placementReady = false // Protected by requestLock for the control window.
+    private var floorPlacementRequested = false
+    private var floorY: Float? // Frame-thread placement state.
+    private var floorPhysicsInstalled = false
+    private var wasPinching = false
+    private var spawnPosition = SIMD3<Float>(0, 1.5, -3)
     private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
     private struct ActiveShot {
         var trajectory: PenaltyTrajectory
@@ -46,7 +52,6 @@ final class GameScene: @unchecked Sendable {
     private var checkFinished = false
 
     private static let ballRadius: Float = 0.11
-    private static let spawnPosition = SIMD3<Float>(0, 1.5, -3)
     private static let palmRadius: Float = 0.07
     private static let parkedPosition = SIMD3<Float>(0, -100, 0)
 
@@ -85,7 +90,7 @@ final class GameScene: @unchecked Sendable {
         ScenePluginSystem.install()
         ScenePluginSystem.shared.startPlayMode()
         AnimationSystem.shared.isEnabled = true
-        // M1 uses a fixed world-space floor. Spatial scene manipulation would
+        // The placed floor stays fixed in world space. Spatial scene manipulation would
         // move the visuals independently of their static physics bodies.
     }
 
@@ -96,17 +101,7 @@ final class GameScene: @unchecked Sendable {
             .roughness(0.9)
             .scaleTo(x: 32, y: 0.1, z: 32)
         floorEntity = floor.entityID
-        // The top of the box is y = 0, matching the XR world floor.
-        translateTo(entityId: floorEntity, position: SIMD3<Float>(0, -0.05, -3))
-        registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
-        registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
-        if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
-            // Collider dimensions are explicit world metres, independent of visual scale.
-            collider.shape = .box(halfExtents: SIMD3<Float>(16, 0.05, 16))
-            collider.friction = 0.6
-            collider.restitution = 0
-        }
-        scene.get(component: RigidBodyComponent.self, for: floorEntity)?.motionType = .static
+        scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
 
         ballEntity = createEntity()
         setEntityName(entityId: ballEntity, name: "ImmersiveGol.ball")
@@ -148,10 +143,12 @@ final class GameScene: @unchecked Sendable {
     /// The loader applies the asset's root transform. Wait for it to finish
     /// before sizing/placing the model and registering its physics body.
     private func setupBallPhysicsWhenLoaded() {
-        guard !ballPhysicsInstalled, requestLock.withLock({ ballMeshLoaded }) else { return }
+        guard requestLock.withLock({ ballMeshLoaded }) else { return }
+        scene.get(component: RenderComponent.self, for: ballEntity)?.isVisible = floorY != nil
+        guard floorY != nil, !ballPhysicsInstalled else { return }
         // The supplied model has a native diameter of approximately 1 m.
         scaleTo(entityId: ballEntity, scale: SIMD3<Float>(repeating: Self.ballRadius * 2))
-        translateTo(entityId: ballEntity, position: Self.spawnPosition)
+        translateTo(entityId: ballEntity, position: spawnPosition)
         registerComponent(entityId: ballEntity, componentType: ColliderComponent.self)
         registerComponent(entityId: ballEntity, componentType: RigidBodyComponent.self)
         if let collider = scene.get(component: ColliderComponent.self, for: ballEntity) {
@@ -205,7 +202,7 @@ final class GameScene: @unchecked Sendable {
             #if targetEnvironment(simulator)
             if head == nil {
                 var fallback = matrix_identity_float4x4
-                fallback.columns.3 = SIMD4<Float>(0, 1.65, 0, 1)
+                fallback.columns.3 = SIMD4<Float>(spawnPosition.x, (floorY ?? 0) + 1.65, spawnPosition.z + 3, 1)
                 head = fallback
             }
             #endif
@@ -213,7 +210,7 @@ final class GameScene: @unchecked Sendable {
                 setShotStatus("Waiting for head tracking. Try Repeat Shot again.")
                 return
             }
-            let trajectory = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity)
+            let trajectory = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity, floorY: floorY ?? 0)
             guard physics.resetBody(entity: ballEntity, position: trajectory.origin, velocity: .zero) else {
                 requestPenalty(settings: settings)
                 return
@@ -294,17 +291,35 @@ final class GameScene: @unchecked Sendable {
 
     func update(deltaTime: Float) {
         guard gameMode else { return }
+        let rePlace = requestLock.withLock { () -> Bool in
+            defer { floorPlacementRequested = false }
+            return floorPlacementRequested
+        }
+        if rePlace {
+            floorY = nil
+            requestLock.withLock {
+                placementReady = false
+                resetRequested = false
+                palmDropRequested = false
+                requestedShot = nil
+            }
+            cancelPenalty()
+            scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
+            physics.resetBody(entity: ballEntity, position: Self.parkedPosition, velocity: .zero)
+            setShotStatus("Look at the real floor and pinch to place the grass")
+        }
         setupBallPhysicsWhenLoaded()
         // Keep hands updating after the M1 drop check has completed.
         updatePalms()
+        guard let floorY else { return }
         let shouldReset = requestLock.withLock { () -> Bool in
             defer { resetRequested = false }
             return resetRequested
         }
         if shouldReset {
             cancelPenalty()
-            setShotStatus("M1 floor check")
-            if physics.resetBody(entity: ballEntity, position: Self.spawnPosition, velocity: .zero) {
+            setShotStatus("Floor placed — checking ball drop; penalties are ready")
+            if physics.resetBody(entity: ballEntity, position: spawnPosition, velocity: .zero) {
                 observedFall = false
                 observedFloorContact = false
                 settledTime = 0
@@ -341,10 +356,10 @@ final class GameScene: @unchecked Sendable {
         updatePenalty(now: ProcessInfo.processInfo.systemUptime)
         guard !checkFinished, let state = physics.bodyState(for: ballEntity) else { return }
         checkTime += deltaTime
-        if state.position.y < Self.spawnPosition.y - 0.1 && state.velocity.y < -0.1 {
+        if state.position.y < spawnPosition.y - 0.1 && state.velocity.y < -0.1 {
             observedFall = true
         }
-        let resting = abs(state.position.y - Self.ballRadius) < 0.02
+        let resting = abs(state.position.y - (floorY + Self.ballRadius)) < 0.02
             && simd_length(state.velocity) < 0.05
         settledTime = resting ? settledTime + deltaTime : 0
         if observedFall && observedFloorContact && settledTime >= 0.5 {
@@ -356,7 +371,91 @@ final class GameScene: @unchecked Sendable {
         }
     }
 
-    func handleInput() {}
+    var isFloorPlaced: Bool {
+        requestLock.withLock { placementReady }
+    }
+
+    func requestFloorPlacement() {
+        requestLock.withLock { floorPlacementRequested = true }
+    }
+
+    func handleInput() {
+        guard gameMode else { return }
+        let input = getXRSpatialInputState()
+        let pinchBegan = input.spatialPinchActive && !wasPinching
+        wasPinching = input.spatialPinchActive
+        guard floorY == nil, pinchBegan || input.spatialTapActive else { return }
+        guard let hit = Self.pickFloor(
+            rayOrigin: input.rayOriginWorld, rayDirection: input.rayDirectionWorld,
+            planes: RealSurfacePlaneStore.shared.snapshot()
+        ) else {
+            setShotStatus("Floor not detected here yet. Look around the floor, then pinch again.")
+            return
+        }
+        let y = hit.y
+        let head = handTracking.headTransform(now: ProcessInfo.processInfo.systemUptime)
+        let center = head.map { SIMD3<Float>($0.columns.3.x, y, $0.columns.3.z) }
+            ?? hit
+        let horizontal = head.map { SIMD3<Float>(-$0.columns.2.x, 0, -$0.columns.2.z) }
+            ?? SIMD3<Float>(0, 0, -1)
+        let forward = simd_length_squared(horizontal) > 0.001
+            ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
+        spawnPosition = center + forward * 3 + SIMD3<Float>(0, 1.5, 0)
+        let floorPosition = SIMD3<Float>(center.x, y - 0.05, center.z)
+        translateTo(entityId: floorEntity, position: floorPosition)
+        if !floorPhysicsInstalled {
+            registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
+            registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
+            if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
+                collider.shape = .box(halfExtents: SIMD3<Float>(16, 0.05, 16))
+                collider.friction = 0.6
+                collider.restitution = 0
+            }
+            scene.get(component: RigidBodyComponent.self, for: floorEntity)?.motionType = .static
+            floorPhysicsInstalled = true
+        } else {
+            physics.resetBody(entity: floorEntity, position: floorPosition, velocity: .zero)
+        }
+        floorY = y
+        scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = true
+        requestLock.withLock {
+            placementReady = true
+            resetRequested = true
+        }
+        setShotStatus("Floor placed — ready for penalties")
+        Logger.log(message: "ImmersiveGol: grass and collider anchored at floor y=\(y)")
+    }
+
+    // The pinned engine picker assumes XZ extents. ARKit PlaneAnchor extents
+    // use XY/+Z, as verified in CoolBasket. Keep this adapter until fixed upstream.
+    private static func pickFloor(
+        rayOrigin: SIMD3<Float>, rayDirection: SIMD3<Float>, planes: [TrackedPlane]
+    ) -> SIMD3<Float>? {
+        guard rayOrigin.x.isFinite, rayOrigin.y.isFinite, rayOrigin.z.isFinite,
+              simd_length_squared(rayDirection).isFinite,
+              simd_length_squared(rayDirection) > 0.000001 else { return nil }
+        let direction = simd_normalize(rayDirection)
+        var nearest: SIMD3<Float>?
+        var nearestDistance: Float = 8
+        for plane in planes where plane.alignment == .horizontal && plane.classification == .floor {
+            let transform = plane.originFromAnchorTransform * plane.anchorFromExtentTransform
+            let normal = SIMD3<Float>(transform.columns.2.x, transform.columns.2.y, transform.columns.2.z)
+            guard abs(normal.y) > 0.9 else { continue }
+            let denominator = simd_dot(direction, normal)
+            guard abs(denominator) > 0.0001 else { continue }
+            let center = SIMD3<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
+            let distance = simd_dot(center - rayOrigin, normal) / denominator
+            guard distance.isFinite, distance > 0, distance <= nearestDistance else { continue }
+            let position = rayOrigin + direction * distance
+            let local = simd_inverse(transform) * SIMD4<Float>(position, 1)
+            guard position.y.isFinite, position.y < rayOrigin.y,
+                  abs(local.x) <= plane.extentWidth * 0.5,
+                  abs(local.y) <= plane.extentHeight * 0.5 else { continue }
+            nearest = position
+            nearestDistance = distance
+        }
+        return nearest
+    }
 
     /// Called on the frame thread after the renderer stops.
     func shutdown() {

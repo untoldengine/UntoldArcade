@@ -109,68 +109,82 @@ struct ContentView: View {
 
     @State private var distance: Double = 3
     @State private var flightTime: Double = 0.35
+    @State private var floorPlaced = false
     @State private var shotStatus = "Start the experience to take a penalty"
     private let statusTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("ImmersiveGol")
-                .font(.extraLargeTitle)
-                .fontWeight(.bold)
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("ImmersiveGol")
+                    .font(.extraLargeTitle)
+                    .fontWeight(.bold)
 
-            Text("Powered by Untold Engine")
-                .font(.title)
-                .foregroundColor(.secondary)
-
-        Button(action: {
-            Task {
-                await openImmersiveSpace(id: "ImmersiveSpace")
-            }
-        }) {
-                Label("Start Experience", systemImage: "visionpro.fill")
-                    .frame(minWidth: 250)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Distance: \(distance, specifier: "%.1f") m")
-                Slider(value: $distance, in: 2...10, step: 0.5)
-                Text("Maximum flight time: \(flightTime, specifier: "%.2f") s")
-                Slider(value: $flightTime, in: 0.2...0.5, step: 0.05)
-                Button("Repeat Shot") {
-                    XRHolder.shared.gameScene?.requestPenalty(settings: PenaltySettings(
-                        distance: Float(distance), flightTime: Float(flightTime)))
-                }
-                .buttonStyle(.borderedProminent)
-                Text(shotStatus)
-                    .font(.headline)
-                Text("Face the shot direction, press Repeat Shot, then raise your palms and react to the ball.")
-                    .font(.caption)
+                Text("Powered by Untold Engine")
+                    .font(.title)
                     .foregroundColor(.secondary)
-            }
-
-            Button("Repeat Physics Check") {
-                XRHolder.shared.gameScene?.requestPhysicsReset()
-            }
-            .buttonStyle(.bordered)
-
-            Button("Drop Ball Above Palm") {
-                XRHolder.shared.gameScene?.requestPalmDrop()
-            }
-            .buttonStyle(.bordered)
 
             Button(action: {
-                openWindow(id: "EngineStatsPanel")
+                Task {
+                    await openImmersiveSpace(id: "ImmersiveSpace")
+                }
             }) {
-                Label("Engine Stats", systemImage: "chart.xyaxis.line")
-                    .frame(minWidth: 250)
+                    Label("Start Experience", systemImage: "visionpro.fill")
+                        .frame(minWidth: 250)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Text("Look at your real floor and pinch to place the grass before playing.")
+                    .font(.headline)
+                Button("Place Floor Again") {
+                    XRHolder.shared.gameScene?.requestFloorPlacement()
+                }
+                .buttonStyle(.bordered)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Distance: \(distance, specifier: "%.1f") m")
+                    Slider(value: $distance, in: 2...10, step: 0.5)
+                    Text("Maximum flight time: \(flightTime, specifier: "%.2f") s")
+                    Slider(value: $flightTime, in: 0.2...0.5, step: 0.05)
+                    Button("Repeat Shot") {
+                        XRHolder.shared.gameScene?.requestPenalty(settings: PenaltySettings(
+                            distance: Float(distance), flightTime: Float(flightTime)))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!floorPlaced)
+                    Text(shotStatus)
+                        .font(.headline)
+                    Text("Face the shot direction, press Repeat Shot, then raise your palms and react to the ball.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Button("Repeat Physics Check") {
+                    XRHolder.shared.gameScene?.requestPhysicsReset()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!floorPlaced)
+
+                Button("Drop Ball Above Palm") {
+                    XRHolder.shared.gameScene?.requestPalmDrop()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!floorPlaced)
+
+                Button(action: {
+                    openWindow(id: "EngineStatsPanel")
+                }) {
+                    Label("Engine Stats", systemImage: "chart.xyaxis.line")
+                        .frame(minWidth: 250)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .padding(30)
         }
-        .padding(30)
         .onReceive(statusTimer) { _ in
+            floorPlaced = XRHolder.shared.gameScene?.isFloorPlaced ?? false
             shotStatus = XRHolder.shared.gameScene?.shotStatus
                 ?? "Start the experience to take a penalty"
         }

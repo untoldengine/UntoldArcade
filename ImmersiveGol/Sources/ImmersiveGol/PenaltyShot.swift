@@ -32,17 +32,17 @@ struct PenaltyTrajectory: Sendable {
     let flightTime: Float
 
     init(settings: PenaltySettings, head: simd_float4x4, gravity: SIMD3<Float>,
-         aim: PenaltyAim = .random()) {
+         aim: PenaltyAim = .random(), floorY: Float = 0) {
         let settings = settings.clamped
         let position = SIMD3<Float>(head.columns.3.x, head.columns.3.y, head.columns.3.z)
         let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
         forward = simd_length_squared(horizontal) > 0.001
             ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
         let right = simd_cross(forward, SIMD3<Float>(0, 1, 0))
-        keeperPosition = SIMD3<Float>(position.x, 0, position.z)
+        keeperPosition = SIMD3<Float>(position.x, floorY, position.z)
         // Chest-height target slightly ahead of the body and within arm's reach.
         target = keeperPosition + forward * 0.55 + right * aim.lateralOffset
-            + SIMD3<Float>(0, max(0.6, position.y - 0.35 + aim.heightOffset), 0)
+            + SIMD3<Float>(0, max(0.6, position.y - floorY - 0.35 + aim.heightOffset), 0)
         origin = keeperPosition + forward * settings.distance + SIMD3<Float>(0, 0.11, 0)
         // Keep the flight on its rising path to the target, rather than a lob
         // above it. Long requested times are shortened at close range.

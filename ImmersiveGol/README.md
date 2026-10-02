@@ -25,11 +25,15 @@ physics demo works at runtime.
 
 Open `ImmersiveGol.xcodeproj` in Xcode and run the ImmersiveGol scheme on Apple
 Vision Pro or a visionOS simulator. The deployment target is visionOS 26.
-Select **Start Experience** in the control window.
+Select **Start Experience** in the control window. Look at your real floor and
+pinch to place the grass. The grass and ball stay hidden until a detected floor
+is selected; shot and drop controls become available after placement. If no
+floor is detected at the pinch location, scan the floor and pinch again.
 
-The soccer ball model appears 3 metres ahead at a centre height of 1.5 m.
+The soccer ball model appears 3 metres ahead at a centre height of 1.5 m above
+the selected floor.
 It falls, bounces on the green floor, and rests with its centre approximately
-0.11 m above the floor. The Xcode console prints `ImmersiveGol M1 PASS` after
+0.11 m above the selected floor. The Xcode console prints `ImmersiveGol M1 PASS` after
 observing a fall, a floor contact, and 0.5 seconds of rest. A check that does
 not settle within 10 seconds prints diagnostic values. Use **Repeat Physics
 Check** to drop the same ball again.
@@ -67,7 +71,7 @@ motion is capped at 6 m/s by the M1 Jolt settings. Session shutdown cancels
 tracking and removes both colliders.
 
 Hand tracking requires a real headset. On an unsupported simulator, the palm
-colliders remain parked and the M1 floor check still runs. Both palm markers have
+colliders remain parked. The M1 floor check runs after floor placement. Both palm markers have
 been verified on the headset. Tracking loss/reacquisition, ball contacts, and
 closing and reopening the immersive space remain checks to confirm separately.
 Goalie gloves and catching come later.
@@ -145,6 +149,34 @@ simulated pose. Mass, collider dimensions, random shots, and palm interactions
 retain their existing settings. The visionOS simulator build passed, and the
 model and both textures were verified in the app bundle. Headset validation of
 the model appearance remains pending.
+
+### M3.e — Real floor placement
+
+On startup, look at the floor and pinch. The engine's spatial selection ray is
+intersected with classified horizontal floor planes from its thread-safe
+`RealSurfacePlaneStore`. A hit must be inside the detected extent and within
+8 m. Misses keep placement pending and show a retry instruction. There is no
+assumed y = 0 fallback, including in the simulator.
+
+The grass stays horizontal with its top and static Jolt collider at the selected
+height. The initial drop, resting-height check, and penalty origins use this
+floor height; targets remain at chest height relative to the player. Palms
+continue tracking during placement. **Place Floor Again** cancels the current
+shot, hides the grass/ball, and waits for a new pinch. Placement is retained for
+the current immersive session and repeated after reopening.
+
+The pinned engine real-surface picker assumes XZ/+Y plane geometry. This demo
+uses a small adapter over the engine's plane store with ARKit's XY/+Z extent
+convention, following CoolBasket's device-tested conversion (DOC-012).
+
+Validation: the visionOS simulator build passed. Temporary host checks passed
+15 floor-picking cases (bounds, extent offsets, nearest hits, invalid rays, and
+non-floor rejection) and 3 trajectory checks at different floor heights.
+
+Headset check: place on your real floor, verify the grass meets it and the ball
+rests on it, then try both palm blocks. Pinch away from a detected floor to check
+the retry prompt; use **Place Floor Again** to verify repositioning. A real
+floor scan is required to exercise this flow.
 
 ## Integration
 
