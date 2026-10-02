@@ -41,7 +41,7 @@ struct ImmersiveGolApp: App {
             ContentView()
         }
         .windowStyle(.plain)
-        .defaultSize(width: 600, height: 400)
+        .defaultSize(width: 640, height: 650)
 
         WindowGroup("Engine Stats", id: "EngineStatsPanel") {
             EngineStatsWindowView(store: EngineStatsWindowStore.shared)
@@ -107,8 +107,14 @@ struct ContentView: View {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.openWindow) private var openWindow
 
+    @State private var distance: Double = 3
+    @State private var flightTime: Double = 1
+    @State private var aim: PenaltyAim = .center
+    @State private var shotStatus = "Start the experience to take a penalty"
+    private let statusTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
+
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 16) {
             Text("ImmersiveGol")
                 .font(.extraLargeTitle)
                 .fontWeight(.bold)
@@ -127,6 +133,29 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Distance: \(distance, specifier: "%.1f") m")
+                Slider(value: $distance, in: 2...10, step: 0.5)
+                Text("Flight time: \(flightTime, specifier: "%.1f") s")
+                Slider(value: $flightTime, in: 0.6...1.5, step: 0.1)
+                Picker("Aim", selection: $aim) {
+                    ForEach(PenaltyAim.allCases, id: \.self) { target in
+                        Text(target.rawValue).tag(target)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Button("Repeat Shot") {
+                    XRHolder.shared.gameScene?.requestPenalty(settings: PenaltySettings(
+                        distance: Float(distance), flightTime: Float(flightTime), aim: aim))
+                }
+                .buttonStyle(.borderedProminent)
+                Text(shotStatus)
+                    .font(.headline)
+                Text("Face the shot direction, press Repeat Shot, then raise your palms to the purple marker.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Button("Repeat Physics Check") {
                 XRHolder.shared.gameScene?.requestPhysicsReset()
@@ -147,7 +176,11 @@ struct ContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
         }
-        .padding(60)
+        .padding(30)
+        .onReceive(statusTimer) { _ in
+            shotStatus = XRHolder.shared.gameScene?.shotStatus
+                ?? "Start the experience to take a penalty"
+        }
     }
 }
 

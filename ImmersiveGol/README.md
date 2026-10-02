@@ -71,6 +71,45 @@ been verified on the headset. Tracking loss/reacquisition, ball contacts, and
 closing and reopening the immersive space remain checks to confirm separately.
 Goalie gloves and catching come later.
 
+## M3 — First penalty
+
+**Status:** implementation and simulator build completed; headset shot validation
+is pending. Both palm markers were confirmed on the headset during M2.
+
+1. Start the experience. Choose **Distance** (2–10 m), **Flight time**
+   (0.6–1.5 seconds), and **Left**, **Center**, or **Right** aim in the control window.
+   Defaults are 3 m, 1 second, and Center. Shorter flight times make faster shots.
+2. Face the direction from which the ball should arrive and press **Repeat Shot**.
+   The current head position and horizontal heading establish the goalie frame.
+   The ball waits at the penalty spot during a three-second countdown.
+3. Raise a palm to the purple target marker. It is 0.55 m ahead of the goalie,
+   0.35 m below head height, with a 0.22 m lateral offset for left/right aims.
+   The target stays fixed for that shot, allowing either hand to block it.
+4. The ball launches from floor height. Jolt handles its flight and palm impacts.
+   The control window and console report which palm made contact. If the whole
+   ball passes the captured goalie plane, feedback reports **Passed goalie**,
+   including whether a palm touched it. Otherwise, after flight time plus three
+   seconds, feedback reports a deflection or an end without palm contact.
+5. Press **Repeat Shot** for another attempt using the current settings and goalie
+   frame. Repeating during a countdown or flight replaces the previous attempt.
+
+`PenaltyShot.swift` computes launch velocity with gravity, the engine's 60 Hz
+fixed step, and Jolt 5.6's default linear damping of 0.05. This keeps the ball
+aligned with the marker across the available settings. These integration
+assumptions must be revisited if physics stepping or damping changes.
+
+An independent host Jolt check exercised 54 trajectories (distance/flight-time
+limits and defaults, all aims, and two headings), both palm identities, repeat
+resets, and parked-hand misses. All passed. Real hand prediction and blocking
+still need headset validation: try a left-palm block, a right-palm block, and an
+unblocked shot, then change distance and repeat.
+
+M3 feedback checks palm contact and passing the goalie plane. Goal-mouth bounds,
+scoring, catching, the animated shooter, and stadium presentation come later.
+**Repeat Physics Check** and **Drop Ball Above Palm** remain available and cancel
+an active penalty. The simulator uses a fixed goalie pose if head tracking is
+unavailable; its palm colliders remain parked.
+
 ## Integration
 
 - `GameScene.swift` owns Jolt registration, scene construction, and the drop

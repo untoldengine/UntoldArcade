@@ -20,6 +20,17 @@ final class GameScene: @unchecked Sendable {
     private let handTracking = GoalieHandTracking()
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
     private var trackedHands: Set<GoalieHandSide> = []
+    private var targetEntity: EntityID = .invalid
+    private var requestedShot: PenaltySettings?
+    private var statusText = "Ready for first penalty"
+    private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
+    private struct ActiveShot {
+        var trajectory: PenaltyTrajectory
+        var launchedAt: TimeInterval
+        var firstBlock: GoalieHandSide?
+    }
+    private var activeShot: ActiveShot?
+    private static let gravity = SIMD3<Float>(0, -9.8, 0)
     private var ballEntity: EntityID = .invalid
     private var floorEntity: EntityID = .invalid
     private var sunEntity: EntityID = .invalid
@@ -41,6 +52,9 @@ final class GameScene: @unchecked Sendable {
     /// Call before creating UntoldEngineXR: the backend choice locks on the
     /// first physics substep and persists across immersive-space reopenings.
     static func installPhysics() -> JoltPhysicsBackend? {
+        var world = PhysicsWorldConfiguration()
+        world.gravity = Self.gravity
+        PhysicsCoordinator.shared.setWorldConfiguration(world)
         var settings = JoltWorldSettings()
         settings.continuousCollision = true
         settings.maxKinematicStep = 1.0
@@ -60,6 +74,11 @@ final class GameScene: @unchecked Sendable {
         configureEngineSystems()
         setupPhysicsCheck()
         setupPalms()
+        let target = SphereNode(radius: 0.035, segments: [16, 12], name: "ImmersiveGol.shotTarget")
+            .baseColor(0.8, 0.2, 1)
+            .roughness(0.6)
+        targetEntity = target.entityID
+        translateTo(entityId: targetEntity, position: Self.parkedPosition)
         handTracking.start()
     }
 
@@ -79,7 +98,7 @@ final class GameScene: @unchecked Sendable {
         let floor = CubeNode(size: 1, name: "ImmersiveGol.floor")
             .baseColor(0.12, 0.35, 0.16)
             .roughness(0.9)
-            .scaleTo(x: 12, y: 0.1, z: 12)
+            .scaleTo(x: 32, y: 0.1, z: 32)
         floorEntity = floor.entityID
         // The top of the box is y = 0, matching the XR world floor.
         translateTo(entityId: floorEntity, position: SIMD3<Float>(0, -0.05, -3))
@@ -87,7 +106,7 @@ final class GameScene: @unchecked Sendable {
         registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
         if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
             // Collider dimensions are explicit world metres, independent of visual scale.
-            collider.shape = .box(halfExtents: SIMD3<Float>(6, 0.05, 6))
+            collider.shape = .box(halfExtents: SIMD3<Float>(16, 0.05, 16))
             collider.friction = 0.6
             collider.restitution = 0
         }
@@ -128,6 +147,10 @@ final class GameScene: @unchecked Sendable {
                 if (event.entityA == self.ballEntity && event.entityB == entity)
                     || (event.entityB == self.ballEntity && event.entityA == entity) {
                     Logger.log(message: "ImmersiveGol M2: ball blocked by \(side.rawValue) palm")
+                    if self.activeShot != nil, self.activeShot?.firstBlock == nil {
+                        self.activeShot?.firstBlock = side
+                        self.setShotStatus("Palm contact: \(side.rawValue)")
+                    }
                 }
             }
         }
@@ -140,6 +163,81 @@ final class GameScene: @unchecked Sendable {
 
     func requestPalmDrop() {
         requestLock.withLock { palmDropRequested = true }
+    }
+
+    func requestPenalty(settings: PenaltySettings) {
+        requestLock.withLock { requestedShot = settings.clamped }
+    }
+
+    var shotStatus: String {
+        requestLock.withLock { statusText }
+    }
+
+    private func setShotStatus(_ text: String) {
+        requestLock.withLock { statusText = text }
+        Logger.log(message: "ImmersiveGol M3: \(text)")
+    }
+
+    private func cancelPenalty() {
+        countdown = nil
+        activeShot = nil
+        translateTo(entityId: targetEntity, position: Self.parkedPosition)
+    }
+
+    private func updatePenalty(now: TimeInterval) {
+        let settings = requestLock.withLock { () -> PenaltySettings? in
+            defer { requestedShot = nil }
+            return requestedShot
+        }
+        if let settings {
+            var head = handTracking.headTransform(now: now)
+            #if targetEnvironment(simulator)
+            if head == nil {
+                var fallback = matrix_identity_float4x4
+                fallback.columns.3 = SIMD4<Float>(0, 1.65, 0, 1)
+                head = fallback
+            }
+            #endif
+            guard let head else {
+                setShotStatus("Waiting for head tracking. Try Repeat Shot again.")
+                return
+            }
+            let trajectory = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity)
+            guard physics.resetBody(entity: ballEntity, position: trajectory.origin, velocity: .zero) else {
+                requestPenalty(settings: settings)
+                return
+            }
+            cancelPenalty()
+            checkFinished = true
+            countdown = (trajectory, now + 3)
+            translateTo(entityId: targetEntity, position: trajectory.target)
+            setShotStatus("Shot in 3 — raise your hands")
+        }
+        if let pending = countdown {
+            if now >= pending.launchAt {
+                guard physics.resetBody(entity: ballEntity, position: pending.trajectory.origin,
+                                        velocity: pending.trajectory.velocity) else { return }
+                activeShot = ActiveShot(trajectory: pending.trajectory, launchedAt: now)
+                countdown = nil
+                setShotStatus("Ball launched — block the purple target")
+            } else {
+                let text = "Shot in \(Int(ceil(pending.launchAt - now))) — raise your hands"
+                if shotStatus != text { setShotStatus(text) }
+            }
+        }
+        guard let shot = activeShot, let state = physics.bodyState(for: ballEntity) else { return }
+        // Whole ball beyond the captured keeper plane. M3 has no goal-mouth bounds yet.
+        let passed = simd_dot(state.position - shot.trajectory.keeperPosition, shot.trajectory.forward)
+            < -Self.ballRadius
+        if passed {
+            setShotStatus(shot.firstBlock.map { "Touched by \($0.rawValue) palm; passed goalie" }
+                          ?? "Passed goalie — try again")
+            activeShot = nil
+        } else if now - shot.launchedAt > Double(shot.trajectory.flightTime) + 3 {
+            setShotStatus(shot.firstBlock.map { "Deflected by \($0.rawValue) palm" }
+                          ?? "Shot ended without palm contact")
+            activeShot = nil
+        }
     }
 
     @MainActor
@@ -193,6 +291,8 @@ final class GameScene: @unchecked Sendable {
             return resetRequested
         }
         if shouldReset {
+            cancelPenalty()
+            setShotStatus("M1 floor check")
             if physics.resetBody(entity: ballEntity, position: Self.spawnPosition, velocity: .zero) {
                 observedFall = false
                 observedFloorContact = false
@@ -209,6 +309,8 @@ final class GameScene: @unchecked Sendable {
             return palmDropRequested
         }
         if shouldDropAbovePalm {
+            cancelPenalty()
+            setShotStatus("M2 palm drop check")
             let now = ProcessInfo.processInfo.systemUptime
             let palm = handTracking.palmPosition(.right, now: now)
                 ?? handTracking.palmPosition(.left, now: now)
@@ -225,6 +327,7 @@ final class GameScene: @unchecked Sendable {
                 Logger.log(message: "ImmersiveGol M2: show a tracked palm before requesting a drop")
             }
         }
+        updatePenalty(now: ProcessInfo.processInfo.systemUptime)
         guard !checkFinished, let state = physics.bodyState(for: ballEntity) else { return }
         checkTime += deltaTime
         if state.position.y < Self.spawnPosition.y - 0.1 && state.velocity.y < -0.1 {
@@ -249,7 +352,7 @@ final class GameScene: @unchecked Sendable {
         handTracking.stop()
         contactSubscription?.cancel()
         contactSubscription = nil
-        for entity in [ballEntity, floorEntity, sunEntity] + Array(palmEntities.values) where entity != .invalid {
+        for entity in [ballEntity, floorEntity, sunEntity, targetEntity] + Array(palmEntities.values) where entity != .invalid {
             destroyEntity(entityId: entity)
             // Remove now so reopening does not depend on another coordinator step.
             physics.didRemoveBody(entity: entity)

@@ -11,6 +11,7 @@
 		35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */; };
 		42B02B89EC0976165BAEB500 /* GoalieHandTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */; };
 		6F32B801311516808AF653A4 /* Spinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E4D2790079A8B768A35336 /* Spinner.swift */; };
+		83A6917A2A82B16EC762BAE8 /* PenaltyShot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C79B86BEDB51850E28495B2 /* PenaltyShot.swift */; };
 		8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3207A665FF30620E333EFB06 /* UntoldComponentKit */; };
 		95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 14991CF5C75437498320D0FB /* UntoldEngineAR */; };
 		A633A61314EE6CEE4DD9EE3E /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4399CD651431DA8D866F30BB /* GameScene.swift */; };
@@ -26,6 +27,7 @@
 		454ECA1E84F042688BC8BD21 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneUtils.swift; sourceTree = "<group>"; };
 		8051A09235BCDBFB0352CC5F /* GameData */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GameData; path = Sources/ImmersiveGol/GameData; sourceTree = SOURCE_ROOT; };
+		8C79B86BEDB51850E28495B2 /* PenaltyShot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenaltyShot.swift; sourceTree = "<group>"; };
 		C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveGolApp.swift; sourceTree = "<group>"; };
 		F6BF92ADAA8C83EE0B78FCDC /* ImmersiveGol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImmersiveGol.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -53,6 +55,7 @@
 				002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */,
 				C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */,
 				454ECA1E84F042688BC8BD21 /* Info.plist */,
+				8C79B86BEDB51850E28495B2 /* PenaltyShot.swift */,
 			);
 			path = ImmersiveGol;
 			sourceTree = "<group>";
@@ -174,6 +177,7 @@
 				0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */,
 				42B02B89EC0976165BAEB500 /* GoalieHandTracking.swift in Sources */,
 				C1D7E3CAD534D96726B0E122 /* ImmersiveGolApp.swift in Sources */,
+				83A6917A2A82B16EC762BAE8 /* PenaltyShot.swift in Sources */,
 				6F32B801311516808AF653A4 /* Spinner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

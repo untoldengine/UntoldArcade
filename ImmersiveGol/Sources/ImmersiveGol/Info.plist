@@ -36,7 +36,7 @@
 	<key>NSHandsTrackingUsageDescription</key>
 	<string>ImmersiveGol tracks your palms so you can block the ball with your hands.</string>
 	<key>NSWorldSensingUsageDescription</key>
-	<string>{{PROJECT_NAME}} uses world sensing to provide immersive AR experiences.</string>
+	<string>ImmersiveGol uses world tracking to place penalty shots relative to your position.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationPreferredDefaultSceneSessionRole</key>

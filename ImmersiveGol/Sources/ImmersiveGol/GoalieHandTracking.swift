@@ -17,31 +17,43 @@ final class GoalieHandTracking: @unchecked Sendable {
 
     private let session = ARKitSession()
     private let lock = NSLock()
+    private var worldTracking: WorldTrackingProvider?
     private var provider: HandTrackingProvider?
     private var task: Task<Void, Never>?
     private var samples: [GoalieHandSide: Sample] = [:]
     private static let fallbackLifetime: TimeInterval = 0.15
 
     func start() {
-        guard HandTrackingProvider.isSupported else {
+        if !HandTrackingProvider.isSupported {
             print("ImmersiveGol M2: hand tracking unavailable; palm colliders remain parked")
-            return
         }
         lock.withLock {
             guard task == nil else { return }
             // Providers are one-shot. Each new scene creates a fresh provider.
             let hands = HandTrackingProvider()
-            provider = hands
+            var providers: [any DataProvider] = []
+            if HandTrackingProvider.isSupported {
+                provider = hands
+                providers.append(hands)
+            }
+            if WorldTrackingProvider.isSupported {
+                let world = WorldTrackingProvider()
+                worldTracking = world
+                providers.append(world)
+            }
+            guard !providers.isEmpty else { return }
             task = Task { [weak self] in
                 guard let self else { return }
                 do {
-                    try await self.session.run([hands])
+                    try await self.session.run(providers)
                     guard !Task.isCancelled else { return }
                     await withTaskGroup(of: Void.self) { group in
-                        group.addTask {
-                            for await update in hands.anchorUpdates {
-                                guard !Task.isCancelled else { break }
-                                self.receive(update)
+                        if HandTrackingProvider.isSupported {
+                            group.addTask {
+                                for await update in hands.anchorUpdates {
+                                    guard !Task.isCancelled else { break }
+                                    self.receive(update)
+                                }
                             }
                         }
                         group.addTask {
@@ -64,6 +76,7 @@ final class GoalieHandTracking: @unchecked Sendable {
                 self.lock.withLock {
                     self.samples.removeAll()
                     self.provider = nil
+                    self.worldTracking = nil
                 }
             }
         }
@@ -73,11 +86,18 @@ final class GoalieHandTracking: @unchecked Sendable {
         let runningTask = lock.withLock { () -> Task<Void, Never>? in
             defer { task = nil }
             provider = nil
+            worldTracking = nil
             samples.removeAll()
             return task
         }
         runningTask?.cancel()
         session.stop()
+    }
+
+    func headTransform(now: TimeInterval) -> simd_float4x4? {
+        let world = lock.withLock { worldTracking }
+        guard let world, world.state == .running else { return nil }
+        return world.queryDeviceAnchor(atTimestamp: now)?.originFromAnchorTransform
     }
 
     /// Uses the same 50 ms prediction as CoolBasket. A short-lived streamed
