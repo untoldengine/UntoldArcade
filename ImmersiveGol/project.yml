@@ -39,6 +39,7 @@ targets:
                 UNTOLD_ENGINE_PACKAGE_ROOT: "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine"
                 MTL_HEADER_SEARCH_PATHS: "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include"
                 CODE_SIGN_STYLE: Automatic
+                DEVELOPMENT_TEAM: PXXZLXYJ26
       configs:
         Debug:
           SWIFT_OPTIMIZATION_LEVEL: -Onone

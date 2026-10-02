@@ -109,7 +109,6 @@ struct ContentView: View {
 
     @State private var distance: Double = 3
     @State private var flightTime: Double = 0.35
-    @State private var aim: PenaltyAim = .center
     @State private var shotStatus = "Start the experience to take a penalty"
     private let statusTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
 
@@ -139,20 +138,14 @@ struct ContentView: View {
                 Slider(value: $distance, in: 2...10, step: 0.5)
                 Text("Maximum flight time: \(flightTime, specifier: "%.2f") s")
                 Slider(value: $flightTime, in: 0.2...0.5, step: 0.05)
-                Picker("Aim", selection: $aim) {
-                    ForEach(PenaltyAim.allCases, id: \.self) { target in
-                        Text(target.rawValue).tag(target)
-                    }
-                }
-                .pickerStyle(.segmented)
                 Button("Repeat Shot") {
                     XRHolder.shared.gameScene?.requestPenalty(settings: PenaltySettings(
-                        distance: Float(distance), flightTime: Float(flightTime), aim: aim))
+                        distance: Float(distance), flightTime: Float(flightTime)))
                 }
                 .buttonStyle(.borderedProminent)
                 Text(shotStatus)
                     .font(.headline)
-                Text("Face the shot direction, press Repeat Shot, then raise your palms to the purple marker.")
+                Text("Face the shot direction, press Repeat Shot, then raise your palms and react to the ball.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

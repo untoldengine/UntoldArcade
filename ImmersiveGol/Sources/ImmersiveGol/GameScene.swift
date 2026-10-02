@@ -20,7 +20,6 @@ final class GameScene: @unchecked Sendable {
     private let handTracking = GoalieHandTracking()
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
     private var trackedHands: Set<GoalieHandSide> = []
-    private var targetEntity: EntityID = .invalid
     private var requestedShot: PenaltySettings?
     private var statusText = "Ready for first penalty"
     private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
@@ -74,11 +73,6 @@ final class GameScene: @unchecked Sendable {
         configureEngineSystems()
         setupPhysicsCheck()
         setupPalms()
-        let target = SphereNode(radius: 0.035, segments: [16, 12], name: "ImmersiveGol.shotTarget")
-            .baseColor(0.8, 0.2, 1)
-            .roughness(0.6)
-        targetEntity = target.entityID
-        translateTo(entityId: targetEntity, position: Self.parkedPosition)
         handTracking.start()
     }
 
@@ -181,7 +175,6 @@ final class GameScene: @unchecked Sendable {
     private func cancelPenalty() {
         countdown = nil
         activeShot = nil
-        translateTo(entityId: targetEntity, position: Self.parkedPosition)
     }
 
     private func updatePenalty(now: TimeInterval) {
@@ -210,7 +203,6 @@ final class GameScene: @unchecked Sendable {
             cancelPenalty()
             checkFinished = true
             countdown = (trajectory, now + 3)
-            translateTo(entityId: targetEntity, position: trajectory.target)
             setShotStatus("Shot in 3 — raise your hands")
         }
         if let pending = countdown {
@@ -352,7 +344,7 @@ final class GameScene: @unchecked Sendable {
         handTracking.stop()
         contactSubscription?.cancel()
         contactSubscription = nil
-        for entity in [ballEntity, floorEntity, sunEntity, targetEntity] + Array(palmEntities.values) where entity != .invalid {
+        for entity in [ballEntity, floorEntity, sunEntity] + Array(palmEntities.values) where entity != .invalid {
             destroyEntity(entityId: entity)
             // Remove now so reopening does not depend on another coordinator step.
             physics.didRemoveBody(entity: entity)

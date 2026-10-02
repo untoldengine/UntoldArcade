@@ -74,37 +74,39 @@ Goalie gloves and catching come later.
 ## M3 — First penalty
 
 **Status:** the user confirmed the first penalty works on the headset. The
-flight was subsequently adjusted to reduce its upward arc; this adjustment
-needs a headset check.
+flatter flight (M3.b) was also confirmed on the headset. Random targeting
+(M3.c) needs a headset check.
 
 1. Start the experience. Choose **Distance** (2–10 m), **Maximum flight time**
-   (0.2–0.5 seconds), and **Left**, **Center**, or **Right** aim in the control window.
-   Defaults are 3 m, 0.35 seconds, and Center. Shorter flight times make faster shots.
+   (0.2–0.5 seconds) in the control window. Each shot chooses its aim randomly.
+   Defaults are 3 m and 0.35 seconds. Shorter flight times make faster shots.
    Close-range shots may shorten the requested time further to keep the flight
    directed toward the goalie; the launch status shows the actual time.
 2. Face the direction from which the ball should arrive and press **Repeat Shot**.
    The current head position and horizontal heading establish the goalie frame.
    The ball waits at the penalty spot during a three-second countdown.
-3. Raise a palm to the purple target marker. It is 0.55 m ahead of the goalie,
-   0.35 m below head height, with a 0.22 m lateral offset for left/right aims.
+3. Raise your palms and react to the ball. A random target is chosen 0.55 m ahead
+   of the goalie, within ±0.35 m sideways and ±0.2 m vertically of the chest-height
+   center (0.35 m below head height, with a 0.6 m minimum target height).
    The target stays fixed for that shot, allowing either hand to block it.
+   The aim picker and purple target marker have been removed.
 4. The ball launches from floor height. Jolt handles its flight and palm impacts.
    The control window and console report which palm made contact. If the whole
    ball passes the captured goalie plane, feedback reports **Passed goalie**,
    including whether a palm touched it. Otherwise, after flight time plus three
    seconds, feedback reports a deflection or an end without palm contact.
 5. Press **Repeat Shot** for another attempt using the current settings and goalie
-   frame. Repeating during a countdown or flight replaces the previous attempt.
+   frame, with a fresh random target. Repeating during a countdown or flight replaces the previous attempt.
 
 `PenaltyShot.swift` computes launch velocity with gravity, the engine's 60 Hz
 fixed step, and Jolt 5.6's default linear damping of 0.05. This keeps the ball
-aligned with the marker across the available settings. The flight limit keeps
+aligned with the chosen target across the available settings. The flight limit keeps
 the ball rising toward the target rather than lobbing above it, and short-range
 shots favor horizontal launch velocity over vertical launch velocity. These integration
 assumptions must be revisited if physics stepping or damping changes.
 
 An independent host Jolt check exercised 54 trajectories (distance/flight-time
-limits and defaults, all aims, and two headings), both palm identities, repeat
+limits and defaults, the original three aims, and two headings), both palm identities, repeat
 resets, and parked-hand misses. All passed. Real hand prediction and blocking
 still need headset validation: try a left-palm block, a right-palm block, and an
 unblocked shot, then change distance and repeat.
@@ -114,6 +116,18 @@ scoring, catching, the animated shooter, and stadium presentation come later.
 **Repeat Physics Check** and **Drop Ball Above Palm** remain available and cancel
 an active penalty. The simulator uses a fixed goalie pose if head tracking is
 unavailable; its palm colliders remain parked.
+
+### M3.c — Random targeting
+
+Each attempt samples continuous lateral and height offsets, rather than selecting
+among three lanes. Direction is selected before the countdown and never follows
+the hands during flight. The target hint is hidden so blocking requires reacting
+to the ball. Distance and maximum flight time remain configurable.
+
+The visionOS simulator build passed. Verification covered 90 trajectories at the
+random area's corners and center, both palm colliders, repeat resets, parked-hand
+misses, and 1,000 random samples within the intended bounds. Headset validation
+of random targeting remains pending.
 
 ## Integration
 

@@ -1,28 +1,23 @@
 import simd
 
-enum PenaltyAim: String, CaseIterable, Sendable {
-    case left = "Left"
-    case center = "Center"
-    case right = "Right"
+/// Reachable offsets relative to the goalie's chest-height target.
+struct PenaltyAim: Sendable {
+    var lateralOffset: Float = 0
+    var heightOffset: Float = 0
 
-    var lateralOffset: Float {
-        switch self {
-        case .left: return -0.22
-        case .center: return 0
-        case .right: return 0.22
-        }
+    static func random() -> Self {
+        Self(lateralOffset: Float.random(in: -0.35...0.35),
+             heightOffset: Float.random(in: -0.2...0.2))
     }
 }
 
 struct PenaltySettings: Sendable {
     var distance: Float = 3
     var flightTime: Float = 0.35
-    var aim: PenaltyAim = .center
 
     var clamped: Self {
         Self(distance: distance.isFinite ? min(max(distance, 2), 10) : 3,
-             flightTime: flightTime.isFinite ? min(max(flightTime, 0.2), 0.5) : 0.35,
-             aim: aim)
+             flightTime: flightTime.isFinite ? min(max(flightTime, 0.2), 0.5) : 0.35)
     }
 }
 
@@ -36,7 +31,8 @@ struct PenaltyTrajectory: Sendable {
     let keeperPosition: SIMD3<Float>
     let flightTime: Float
 
-    init(settings: PenaltySettings, head: simd_float4x4, gravity: SIMD3<Float>) {
+    init(settings: PenaltySettings, head: simd_float4x4, gravity: SIMD3<Float>,
+         aim: PenaltyAim = .random()) {
         let settings = settings.clamped
         let position = SIMD3<Float>(head.columns.3.x, head.columns.3.y, head.columns.3.z)
         let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
@@ -45,8 +41,8 @@ struct PenaltyTrajectory: Sendable {
         let right = simd_cross(forward, SIMD3<Float>(0, 1, 0))
         keeperPosition = SIMD3<Float>(position.x, 0, position.z)
         // Chest-height target slightly ahead of the body and within arm's reach.
-        target = keeperPosition + forward * 0.55 + right * settings.aim.lateralOffset
-            + SIMD3<Float>(0, max(0.6, position.y - 0.35), 0)
+        target = keeperPosition + forward * 0.55 + right * aim.lateralOffset
+            + SIMD3<Float>(0, max(0.6, position.y - 0.35 + aim.heightOffset), 0)
         origin = keeperPosition + forward * settings.distance + SIMD3<Float>(0, 0.11, 0)
         // Keep the flight on its rising path to the target, rather than a lob
         // above it. Long requested times are shortened at close range.
