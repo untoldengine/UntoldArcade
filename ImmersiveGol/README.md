@@ -189,6 +189,28 @@ Headset check: select the floor, confirm the real furniture remains visible,
 and verify the ball bounces/rests on the real floor and can be blocked by either
 palm. Use **Place Floor Again** to repeat calibration.
 
+## M3.g — Stadium scene
+
+The demo now loads `GameData/Scenes/goaliegame.untoldscene` with
+`loadUntoldScene(named: "goaliegame")`. Its completion finds the named **Ball**
+and **PlanePhysics** entities with `findEntity(name:)`. Input is gated with
+`setSceneReady` until loading succeeds and both names are found. A load failure
+or missing name shows an error in the control window.
+
+The scene supplies the stadium, ball mesh, physics plane, camera, and light.
+The app creates only the palm proxies. Once loading finishes, the XR frame
+thread configures the loaded entities: PlanePhysics becomes transparent with
+no shadows, while Ball retains the existing 22 cm gameplay diameter and Jolt
+sphere collider. Plane collider dimensions follow the authored procedural
+plane's X/Z scale. Floor calibration changes its Y and preserves its authored
+X/Z position. Random shots, repeat controls, and palm collisions remain in place.
+
+Loaded scene entities are tracked for cleanup when the immersive experience
+closes, including the stadium hierarchy. The visionOS simulator build passed;
+the scene bundle and required names were verified. The current stadium export
+has 16 model references and 13 texture references, all present in GameData.
+The user confirmed the stadium scene and authorized the M3.g commit.
+
 ## Integration
 
 - `GameScene.swift` owns Jolt registration, scene construction, and the drop

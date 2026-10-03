@@ -21,7 +21,7 @@ final class GameScene: @unchecked Sendable {
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
     private var trackedHands: Set<GoalieHandSide> = []
     private var requestedShot: PenaltySettings?
-    private var statusText = "Look at the real floor, then pinch and release to set the floor height"
+    private var statusText = "Loading goaliegame scene…"
     private var placementReady = false // Protected by requestLock for the control window.
     private var floorPlacementRequested = false
     private var floorY: Float? // Frame-thread placement state.
@@ -35,11 +35,20 @@ final class GameScene: @unchecked Sendable {
     }
     private var activeShot: ActiveShot?
     private static let gravity = SIMD3<Float>(0, -9.8, 0)
-    private var ballMeshLoaded = false // Protected by requestLock; async loader writes.
+    private struct LoadedScene {
+        var ball: EntityID?
+        var floor: EntityID?
+        var entities: [EntityID]
+        var succeeded: Bool
+    }
+    private var pendingScene: LoadedScene? // Protected by requestLock; loader publishes.
+    private var sceneLoaded = false // Frame-thread state.
+    private var loadedEntities: [EntityID] = []
+    private var authoredFloorPosition = SIMD3<Float>.zero
+    private var floorHalfExtents = SIMD3<Float>(16, 0.05, 16)
     private var ballPhysicsInstalled = false // XR frame-thread state.
     private var ballEntity: EntityID = .invalid
     private var floorEntity: EntityID = .invalid
-    private var sunEntity: EntityID = .invalid
     private var contactSubscription: EventSubscription?
     private let requestLock = NSLock()
     private var resetRequested = false
@@ -77,18 +86,18 @@ final class GameScene: @unchecked Sendable {
         self.physics = physics
         setupAssetPaths()
         configureEngineSystems()
-        setupPhysicsCheck()
         setupPalms()
+        setupContactEvents()
         handTracking.start()
+        loadGameScene()
     }
 
     @MainActor
     private func configureEngineSystems() {
         gameMode = true
         registerXREvents()
-        // XR shutdown clears readiness; restore it when reopening this scene.
-        // The engine loading gate still suppresses input while the ball loads.
-        setSceneReady(true)
+        // Input stays gated until the authored scene and required entities load.
+        setSceneReady(false)
         SceneRootTransform.shared.reset()
         ScenePluginSystem.discoverInApp()
         ScenePluginSystem.install()
@@ -99,35 +108,56 @@ final class GameScene: @unchecked Sendable {
     }
 
     @MainActor
-    private func setupPhysicsCheck() {
-        floorEntity = createEntity()
-        setEntityName(entityId: floorEntity, name: "ImmersiveGol.floor")
-        let floorMeshes = BasicPrimitives.createPlane(width: 1, depth: 1)
-        setEntityMeshDirect(entityId: floorEntity, meshes: floorMeshes, assetName: "Plane")
-        updateMaterialColor(entityId: floorEntity, color: colorFromSimd(SIMD4<Float>(0.5, 0.5, 0.5, 1)))
-        updateMaterialRoughness(entityId: floorEntity, roughness: 0.9)
-        updateMaterialOpacity(entityId: floorEntity, opacity: 0)
-        scene.get(component: RenderComponent.self, for: floorEntity)?.castsShadow = false
-        scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
-
-        ballEntity = createEntity()
-        setEntityName(entityId: ballEntity, name: "ImmersiveGol.ball")
-        setEntityMeshAsync(entityId: ballEntity, filename: "ball", withExtension: "untold") { [weak self] loaded in
+    private func loadGameScene() {
+        let existing = Set(scene.getAllEntities())
+        loadUntoldScene(named: "goaliegame") { [weak self] success in
             guard let self else { return }
-            if loaded {
-                self.requestLock.withLock { self.ballMeshLoaded = true }
-            } else {
-                Logger.log(message: "ImmersiveGol: ball model failed to load")
+            let ball = success ? findEntity(name: "Ball") : nil
+            let plane = success ? findEntity(name: "PlanePhysics") : nil
+            let entities = scene.getAllEntities().filter { !existing.contains($0) }
+            let ready = success && ball != nil && plane != nil
+            self.requestLock.withLock {
+                self.pendingScene = LoadedScene(ball: ball, floor: plane,
+                                                entities: entities, succeeded: ready)
+                if !ready {
+                    self.statusText = "Could not load goaliegame with Ball and PlanePhysics. Check the console."
+                }
             }
+            setSceneReady(ready)
         }
+    }
 
-        let sun = DirectionalLightNode(name: "ImmersiveGol.sun")
-            .color(1, 0.98, 0.92)
-            .intensity(2)
-            .rotateBy(angle: -50, axis: [.x])
-            .rotateBy(angle: 30, axis: [.y])
-        sunEntity = sun.entityID
+    // Apply loader results and configure gameplay on the XR frame thread.
+    private func finishSceneLoading() {
+        let loaded = requestLock.withLock { () -> LoadedScene? in
+            defer { pendingScene = nil }
+            return pendingScene
+        }
+        guard let loaded else { return }
+        loadedEntities = loaded.entities
+        guard loaded.succeeded, let ball = loaded.ball, let floor = loaded.floor else {
+            setShotStatus("Could not load goaliegame with Ball and PlanePhysics. Check the console.")
+            Logger.log(message: "ImmersiveGol: scene load failed or required named entities are missing")
+            return
+        }
+        ballEntity = ball
+        floorEntity = floor
+        authoredFloorPosition = getLocalPosition(entityId: floor)
+        // The serialized procedural plane is 1 m across before its authored scale.
+        let scale = getScale(entityId: floor)
+        floorHalfExtents = SIMD3<Float>(max(abs(scale.x) * 0.5, 0.1), 0.05,
+                                       max(abs(scale.z) * 0.5, 0.1))
+        updateMaterialOpacity(entityId: floor, opacity: 0)
+        scene.get(component: RenderComponent.self, for: floor)?.castsShadow = false
+        scene.get(component: RenderComponent.self, for: floor)?.isVisible = false
+        scene.get(component: RenderComponent.self, for: ball)?.isVisible = false
+        sceneLoaded = true
+        setShotStatus("Look at the real floor, then pinch and release to set the floor height")
+        Logger.log(message: "ImmersiveGol: goaliegame loaded; found Ball=\(ball), PlanePhysics=\(floor)")
+    }
 
+    @MainActor
+    private func setupContactEvents() {
         contactSubscription = PhysicsEvents.shared.onContact { [weak self] event in
             guard let self, event.phase == .began else { return }
             if (event.entityA == self.ballEntity && event.entityB == self.floorEntity)
@@ -147,10 +177,9 @@ final class GameScene: @unchecked Sendable {
         }
     }
 
-    /// The loader applies the asset's root transform. Wait for it to finish
-    /// before sizing/placing the model and registering its physics body.
+    /// The authored scene must finish loading before gameplay configures the ball.
     private func setupBallPhysicsWhenLoaded() {
-        guard requestLock.withLock({ ballMeshLoaded }) else { return }
+        guard sceneLoaded else { return }
         scene.get(component: RenderComponent.self, for: ballEntity)?.isVisible = floorY != nil
         guard floorY != nil, !ballPhysicsInstalled else { return }
         // The supplied model has a native diameter of approximately 1 m.
@@ -298,6 +327,8 @@ final class GameScene: @unchecked Sendable {
 
     func update(deltaTime: Float) {
         guard gameMode else { return }
+        finishSceneLoading()
+        guard sceneLoaded else { return }
         let rePlace = requestLock.withLock { () -> Bool in
             defer { floorPlacementRequested = false }
             return floorPlacementRequested
@@ -387,7 +418,7 @@ final class GameScene: @unchecked Sendable {
     }
 
     func handleInput() {
-        guard gameMode else { return }
+        guard gameMode, sceneLoaded else { return }
         let state = getXRSpatialInputState()
         guard floorY == nil, state.spatialTapActive else { return }
         Logger.log(message: "ImmersiveGol: placement tap received")
@@ -414,13 +445,13 @@ final class GameScene: @unchecked Sendable {
         let forward = simd_length_squared(horizontal) > 0.001
             ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
         spawnPosition = center + forward * 3 + SIMD3<Float>(0, 1.5, 0)
-        let floorPosition = SIMD3<Float>(center.x, y, center.z)
+        let floorPosition = SIMD3<Float>(authoredFloorPosition.x, y, authoredFloorPosition.z)
         translateTo(entityId: floorEntity, position: floorPosition)
         if !floorPhysicsInstalled {
             registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
             registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
             if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
-                collider.shape = .box(halfExtents: SIMD3<Float>(16, 0.05, 16))
+                collider.shape = .box(halfExtents: floorHalfExtents)
                 // Visual plane is at hit Y; the slab's top is at the same Y.
                 collider.localOffset = SIMD3<Float>(0, -0.05, 0)
                 collider.friction = 0.6
@@ -470,14 +501,21 @@ final class GameScene: @unchecked Sendable {
         unregisterXREvents()
         contactSubscription?.cancel()
         contactSubscription = nil
-        for entity in [ballEntity, floorEntity, sunEntity] + Array(palmEntities.values) where entity != .invalid {
+        let unpublished = requestLock.withLock { () -> [EntityID] in
+            defer { pendingScene = nil }
+            return pendingScene?.entities ?? []
+        }
+        let owned = Set(loadedEntities + unpublished + Array(palmEntities.values))
+        for entity in owned where entity != .invalid {
             destroyEntity(entityId: entity)
             // Remove now so reopening does not depend on another coordinator step.
             physics.didRemoveBody(entity: entity)
         }
         ballEntity = .invalid
         floorEntity = .invalid
-        sunEntity = .invalid
+        loadedEntities.removeAll()
+        sceneLoaded = false
+        setSceneReady(false)
         palmEntities.removeAll()
         trackedHands.removeAll()
     }
