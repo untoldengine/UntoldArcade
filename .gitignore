@@ -60,3 +60,4 @@ Carthage/Build/
 # CoolWeb glove cook previews (Scripts/convert-gloves.sh output, eyeball-only)
 CoolWeb/Sources/CoolWeb/Resources/Models/preview_*.png
 CoolWeb/Sources/CoolWeb/Resources/Models/palm_*.png
+*.tmp.md
