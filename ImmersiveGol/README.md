@@ -211,6 +211,51 @@ the scene bundle and required names were verified. The current stadium export
 has 16 model references and 13 texture references, all present in GameData.
 The user confirmed the stadium scene and authorized the M3.g commit.
 
+## M4 — Goalie gloves
+
+The app creates separate left/right glove entities and loads `left-glove.untold`
+and `right-glove.untold` asynchronously from `GameData/Models/gloves`. Glove
+loading passes each full bundled file path: the engine's bare-name lookup
+does not search the extra `gloves` folder. Startup logs identify the requested
+path and whether each load completed successfully.
+The stadium finishes loading and becomes scene-ready before glove loading starts.
+Gloves then load left followed by right, using `blockRenderLoop: false` so their
+load duration does not pause the stadium's rendering. Short ECS registration
+sections still use the engine's mutation gate. Shutdown prevents starting a
+queued glove load after the immersive space closes.
+Glove loading does not add physics bodies: the existing 7 cm palm spheres remain the
+kinematic colliders, and their colored markers have been removed.
+
+Each frame queries one predicted palm pose per hand and uses it for both the
+collider and glove. The palm position retains the wrist/knuckle midpoint used
+in M2; rotation comes from the wrist-to-knuckle direction and across-palm axis,
+with chirality accounted for. The 50 ms prediction and 150 ms streamed fallback
+apply to the complete pose. Lost tracking hides the glove and parks the collider;
+reacquisition restores both.
+Incomplete joint poses on an otherwise tracked hand can use the last complete
+streamed pose until its 150 ms expiry. Explicitly untracked anchors still park
+the collider immediately.
+
+Fit is applied after async loading on the XR frame thread: scale 0.25 gives an
+approximately 25 cm cuff-to-fingertip length, a -90° Y rotation aligns the
+exported palm-facing axis, and a model-space palm origin provides the attachment
+offset. `gloveScale`, `gloveRotation`, and `glovePalmOrigin` in `GameScene` are
+the initial fit settings for headset tuning. Shutdown removes glove entities.
+
+The supplied `.untold` files and Blender source contain no skeleton or armature.
+These gloves therefore follow palm position/rotation as solid meshes; finger
+articulation requires a rigged export. The visionOS simulator build passed;
+both models and their three shared textures were verified in the app bundle.
+Headset validation remains pending:
+check left/right fit, turn palms over, block with either hand, hide/reveal hands,
+and close/reopen the immersive space.
+
+Headset testing confirmed the stadium and glove loads complete with the revised
+startup order. The immersive space now requests `.upperLimbVisibility(.hidden)`,
+matching CoolWeb's glove mode, so system-composited real hands do not cover the
+rendered gloves. Hand tracking continues to drive the glove poses and colliders.
+This controls compositing; any remaining physical fit offset is tuned separately.
+
 ## Integration
 
 - `GameScene.swift` owns Jolt registration, scene construction, and the drop

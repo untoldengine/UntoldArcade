@@ -100,6 +100,9 @@ struct ImmersiveGolApp: App {
         })
     }
         .immersionStyle(selection: $immersionStyle, in: .mixed)
+        // Glove visuals replace the hands; prevent the system's hand overlay
+        // from being composited in front of them (same approach as CoolWeb).
+        .upperLimbVisibility(.hidden)
     }
 }
 

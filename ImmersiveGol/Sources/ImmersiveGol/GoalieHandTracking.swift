@@ -7,11 +7,16 @@ enum GoalieHandSide: String, CaseIterable, Sendable {
     case right
 }
 
+struct GoaliePalmPose: Sendable {
+    var position: SIMD3<Float>
+    var rotation: simd_quatf
+}
+
 /// Owns hand tracking separately from the engine's world-tracking session.
 /// ARKit updates publish snapshots; the XR frame thread queries palm positions.
 final class GoalieHandTracking: @unchecked Sendable {
     private struct Sample {
-        var palm: SIMD3<Float>
+        var palm: GoaliePalmPose
         var receivedAt: TimeInterval
     }
 
@@ -103,12 +108,20 @@ final class GoalieHandTracking: @unchecked Sendable {
     /// Uses the same 50 ms prediction as CoolBasket. A short-lived streamed
     /// fallback covers missing predictions without leaving a stale hand active.
     func palmPosition(_ side: GoalieHandSide, now: TimeInterval) -> SIMD3<Float>? {
+        palmPose(side, now: now)?.position
+    }
+
+    /// One snapshot supplies both glove orientation and the collider target.
+    func palmPose(_ side: GoalieHandSide, now: TimeInterval) -> GoaliePalmPose? {
         let hands = lock.withLock { provider }
         guard let hands, hands.state == .running else { return nil }
         let anchors = hands.handAnchors(at: now + 0.05)
         if let anchor = side == .left ? anchors.0 : anchors.1 {
             // An explicitly untracked anchor must not use a previous good pose.
-            return Self.palm(from: anchor)
+            guard anchor.isTracked else { return nil }
+            if let pose = Self.palm(from: anchor) { return pose }
+            // Predicted anchors can omit individual joints. A recent complete
+            // streamed pose covers this gap with the same bounded lifetime.
         }
         return lock.withLock {
             guard let sample = samples[side],
@@ -119,17 +132,18 @@ final class GoalieHandTracking: @unchecked Sendable {
 
     private func receive(_ update: AnchorUpdate<HandAnchor>) {
         let side: GoalieHandSide = update.anchor.chirality == .left ? .left : .right
-        let position = update.event == .removed ? nil : Self.palm(from: update.anchor)
+        let lost = update.event == .removed || !update.anchor.isTracked
+        let position = lost ? nil : Self.palm(from: update.anchor)
         lock.withLock {
             if let position {
                 samples[side] = Sample(palm: position, receivedAt: ProcessInfo.processInfo.systemUptime)
-            } else {
+            } else if lost {
                 samples.removeValue(forKey: side)
             }
         }
     }
 
-    private static func palm(from anchor: HandAnchor) -> SIMD3<Float>? {
+    private static func palm(from anchor: HandAnchor) -> GoaliePalmPose? {
         guard anchor.isTracked, let skeleton = anchor.handSkeleton else { return nil }
         let names: [HandSkeleton.JointName] = [.wrist, .indexFingerKnuckle, .littleFingerKnuckle]
         var points: [SIMD3<Float>] = []
@@ -142,6 +156,17 @@ final class GoalieHandTracking: @unchecked Sendable {
             points.append(position)
         }
         let knuckleCenter = (points[1] + points[2]) * 0.5
-        return (points[0] + knuckleCenter) * 0.5
+        let alongPalm = knuckleCenter - points[0]
+        guard simd_length_squared(alongPalm) > 0.000001 else { return nil }
+        let y = simd_normalize(alongPalm)
+        // Model +Y points toward the fingertips. Mirror the across-palm axis
+        // for chirality so both poses remain proper rotations, not reflections.
+        let across = (points[1] - points[2]) * (anchor.chirality == .left ? 1 : -1)
+        let perpendicular = across - y * simd_dot(across, y)
+        guard simd_length_squared(perpendicular) > 0.000001 else { return nil }
+        let x = simd_normalize(perpendicular)
+        let z = simd_normalize(simd_cross(x, y))
+        return GoaliePalmPose(position: (points[0] + knuckleCenter) * 0.5,
+                              rotation: simd_quatf(simd_float3x3(columns: (x, y, z))))
     }
 }

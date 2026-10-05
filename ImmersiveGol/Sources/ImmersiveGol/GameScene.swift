@@ -19,6 +19,10 @@ final class GameScene: @unchecked Sendable {
     private let physics: JoltPhysicsBackend
     private let handTracking = GoalieHandTracking()
     private var palmEntities: [GoalieHandSide: EntityID] = [:]
+    private var gloveEntities: [GoalieHandSide: EntityID] = [:]
+    private var loadedGloves: Set<GoalieHandSide> = [] // Frame-thread state.
+    private var pendingGloves: [GoalieHandSide: Bool] = [:] // Protected by requestLock.
+    private var shuttingDown = false // Protected by requestLock.
     private var trackedHands: Set<GoalieHandSide> = []
     private var requestedShot: PenaltySettings?
     private var statusText = "Loading goaliegame scene…"
@@ -61,6 +65,13 @@ final class GameScene: @unchecked Sendable {
 
     private static let ballRadius: Float = 0.11
     private static let palmRadius: Float = 0.07
+    // The exported gloves are approximately 1 m from cuff to fingertip.
+    // Keep fit separate from the physical palm radius for headset tuning.
+    private static let gloveScale: Float = 0.25
+    private static let glovePalmOrigin = SIMD3<Float>(0, -0.1, 0)
+    // The exports point fingers along +Y but their palm faces +X.
+    // Our tracked palm frame uses +Z for the palm-facing normal.
+    private static let gloveRotation = simd_quatf(angle: -.pi / 2, axis: SIMD3<Float>(0, 1, 0))
     private static let parkedPosition = SIMD3<Float>(0, -100, 0)
 
     /// Call before creating UntoldEngineXR: the backend choice locks on the
@@ -87,6 +98,7 @@ final class GameScene: @unchecked Sendable {
         setupAssetPaths()
         configureEngineSystems()
         setupPalms()
+        setupGloves()
         setupContactEvents()
         handTracking.start()
         loadGameScene()
@@ -124,6 +136,12 @@ final class GameScene: @unchecked Sendable {
                 }
             }
             setSceneReady(ready)
+            Logger.log(message: "ImmersiveGol: stadium load completed, ready=\(ready)")
+            if ready {
+                Task { @MainActor [weak self] in
+                    self?.loadGlove(.left)
+                }
+            }
         }
     }
 
@@ -286,13 +304,8 @@ final class GameScene: @unchecked Sendable {
     @MainActor
     private func setupPalms() {
         for side in GoalieHandSide.allCases {
-            // Visible collision proxies for M2 verification, replaced by gloves later.
-            let color = side == .left ? SIMD3<Float>(0.15, 0.65, 1) : SIMD3<Float>(1, 0.35, 0.15)
-            let node = SphereNode(radius: Self.palmRadius, segments: [16, 12],
-                                  name: "ImmersiveGol.\(side.rawValue)Palm")
-                .baseColor(color.x, color.y, color.z)
-                .roughness(0.7)
-            let entity = node.entityID
+            let entity = createEntity()
+            setEntityName(entityId: entity, name: "ImmersiveGol.\(side.rawValue)Palm")
             palmEntities[side] = entity
             translateTo(entityId: entity, position: Self.parkedPosition)
             registerComponent(entityId: entity, componentType: ColliderComponent.self)
@@ -306,16 +319,98 @@ final class GameScene: @unchecked Sendable {
         }
     }
 
+    @MainActor
+    private func setupGloves() {
+        for side in GoalieHandSide.allCases {
+            let entity = createEntity()
+            gloveEntities[side] = entity
+            translateTo(entityId: entity, position: Self.parkedPosition)
+        }
+    }
+
+    /// Start only after the stadium completes. One glove at a time avoids
+    /// overlapping their shared texture uploads with each other or scene loading.
+    @MainActor
+    private func loadGlove(_ side: GoalieHandSide) {
+        guard !requestLock.withLock({ shuttingDown }),
+              let entity = gloveEntities[side] else { return }
+        let name = "\(side.rawValue)-glove"
+        guard let base = assetBasePath else {
+            completeGloveLoad(side, success: false)
+            Logger.log(message: "ImmersiveGol M4: cannot load \(name); GameData path is unavailable")
+            return
+        }
+        // Name lookup probes Models/<name>/<name>.untold, not arbitrary
+        // nested export folders. Preserve the actual URL for relative textures.
+        let url = base.appendingPathComponent("Models/gloves/\(name)/\(name).untold")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            completeGloveLoad(side, success: false)
+            Logger.log(message: "ImmersiveGol M4: glove asset missing at \(url.path)")
+            return
+        }
+        Logger.log(message: "ImmersiveGol M4: loading \(name) from \(url.path)")
+        setEntityMeshAsync(entityId: entity, filename: url.path,
+                           withExtension: "untold", blockRenderLoop: false) { [weak self] success in
+            self?.completeGloveLoad(side, success: success)
+        }
+    }
+
+    private func completeGloveLoad(_ side: GoalieHandSide, success: Bool) {
+        let accepted = requestLock.withLock { () -> Bool in
+            guard !shuttingDown else { return false }
+            pendingGloves[side] = success
+            return true
+        }
+        guard accepted else { return }
+        Logger.log(message: "ImmersiveGol M4: \(side.rawValue)-glove load completed, success=\(success)")
+        if side == .left {
+            Task { @MainActor [weak self] in
+                self?.loadGlove(.right)
+            }
+        }
+    }
+
+    private func finishGloveLoading() {
+        let results = requestLock.withLock { () -> [GoalieHandSide: Bool] in
+            defer { pendingGloves.removeAll() }
+            return pendingGloves
+        }
+        for (side, success) in results {
+            guard let entity = gloveEntities[side] else { continue }
+            guard success else {
+                Logger.log(message: "ImmersiveGol M4: \(side.rawValue) glove failed to load; palm collider remains active")
+                continue
+            }
+            // Apply fit after loading, which can replace the authored root transform.
+            scaleTo(entityId: entity, scale: SIMD3<Float>(repeating: Self.gloveScale))
+            scene.get(component: RenderComponent.self, for: entity)?.isVisible = false
+            loadedGloves.insert(side)
+            Logger.log(message: "ImmersiveGol M4: \(side.rawValue) glove loaded")
+        }
+    }
+
     private func updatePalms() {
         let now = ProcessInfo.processInfo.systemUptime
         for side in GoalieHandSide.allCases {
             guard let entity = palmEntities[side] else { continue }
-            let position = handTracking.palmPosition(side, now: now)
+            let pose = handTracking.palmPose(side, now: now)
             // The coordinator forwards the transform as a Jolt kinematic target.
             // Parking is a >1 m jump, so maxKinematicStep makes it a teleport
             // with zero velocity rather than sweeping the hand through the ball.
-            translateTo(entityId: entity, position: position ?? Self.parkedPosition)
-            if position != nil {
+            translateTo(entityId: entity, position: pose?.position ?? Self.parkedPosition)
+            if let pose { rotateTo(entityId: entity, rotation: pose.rotation) }
+            if let glove = gloveEntities[side], loadedGloves.contains(side) {
+                scene.get(component: RenderComponent.self, for: glove)?.isVisible = pose != nil
+                if let pose {
+                    let rotation = pose.rotation * Self.gloveRotation
+                    let offset = rotation.act(Self.glovePalmOrigin * Self.gloveScale)
+                    translateTo(entityId: glove, position: pose.position - offset)
+                    rotateTo(entityId: glove, rotation: rotation)
+                } else {
+                    translateTo(entityId: glove, position: Self.parkedPosition)
+                }
+            }
+            if pose != nil {
                 if trackedHands.insert(side).inserted {
                     Logger.log(message: "ImmersiveGol M2: \(side.rawValue) palm tracking acquired")
                 }
@@ -328,6 +423,7 @@ final class GameScene: @unchecked Sendable {
     func update(deltaTime: Float) {
         guard gameMode else { return }
         finishSceneLoading()
+        finishGloveLoading()
         guard sceneLoaded else { return }
         let rePlace = requestLock.withLock { () -> Bool in
             defer { floorPlacementRequested = false }
@@ -497,6 +593,7 @@ final class GameScene: @unchecked Sendable {
 
     /// Called on the frame thread after the renderer stops.
     func shutdown() {
+        requestLock.withLock { shuttingDown = true }
         handTracking.stop()
         unregisterXREvents()
         contactSubscription?.cancel()
@@ -505,7 +602,8 @@ final class GameScene: @unchecked Sendable {
             defer { pendingScene = nil }
             return pendingScene?.entities ?? []
         }
-        let owned = Set(loadedEntities + unpublished + Array(palmEntities.values))
+        let owned = Set(loadedEntities + unpublished + Array(palmEntities.values)
+                        + Array(gloveEntities.values))
         for entity in owned where entity != .invalid {
             destroyEntity(entityId: entity)
             // Remove now so reopening does not depend on another coordinator step.
