@@ -256,6 +256,51 @@ matching CoolWeb's glove mode, so system-composited real hands do not cover the
 rendered gloves. Hand tracking continues to drive the glove poses and colliders.
 This controls compositing; any remaining physical fit offset is tuned separately.
 
+## M5 — Animated shooter
+
+After goaliegame completes, the app finds the named `Player` root and binds
+`Animations/forwardstrike.untoldanim` with `setEntityAnimations`. This uses the
+full bundled path and runs before the sequential glove loads. A missing player
+or animation does not stop stadium rendering; Repeat Shot reports the problem.
+
+The exported clip contains 40 samples at 30 fps and lasts about 1.333 seconds.
+The reviewed contact is frame 13, sample index 12, stored at about 0.433 seconds.
+The demo reads this timestamp
+from the clip rather than counting renderer frames. Repeat Shot holds the first
+stance during the existing three-second countdown, restarts the strike, and
+releases the ball exactly once when `getAnimationPlaybackTime` crosses the
+contact timestamp. Jolt then owns the ball. The player holds its final pose
+after the strike. Resets, palm-drop checks, and floor recalibration cancel kicks.
+
+For each shot, the player turns toward the goalie and is positioned using its
+sampled `RightToeBase` pose at contact. The selected distance sets the horizontal
+ball position. The ball's center stays at detected floor Y plus its 0.11 m
+radius; sampled foot height does not lift the ball. The ball stays on the ground
+until release. Aim remains randomized.
+
+The local engine now provides `restartAnimation`, `getAnimationPlaybackTime`,
+and `sampleAnimationJointPosition`; its compiled sampler also holds non-looping
+clips at the end instead of wrapping. The working Xcode project references the
+local engine, and the local `project.yml` matches that dependency. Local dependency
+configuration changes are intentionally left uncommitted. These engine changes
+must be included when building this milestone from another checkout.
+
+Restart preserves compiled animation caches unless the clip's looping setting
+changes, avoiding recompilation at each countdown/kick. Initial pose sampling
+warms playback before the first shot. The `kick started; restart CPU … ms` log
+measures the restart call; it does not measure the entire rendered frame or GPU
+skinning. Headset testing is needed to verify whether the reported start hitch
+is fully resolved.
+
+Headset testing confirmed the frame-13 launch and grounded ball work. Fast glove
+movement can still make the gloves disappear and cause stuttering. High vertex
+counts are a suspected cause, and the user plans to replace the glove model;
+that cause has not been established by profiling.
+
+The simulator build and all 18 focused animation tests passed; animation/model
+resources were verified in the bundle. Headset checks: confirm the right-foot contact and launch coincide,
+repeat several shots, change shot distance, and reset during a countdown/kick.
+
 ## Integration
 
 - `GameScene.swift` owns Jolt registration, scene construction, and the drop
@@ -264,7 +309,7 @@ This controls compositing; any remaining physical fit offset is tuned separately
   Scene cleanup runs after the render loop stops, allowing the space to reopen.
 - `GoalieHandTracking.swift` publishes lock-protected palm snapshots from ARKit;
   physics transforms and ball resets are applied on the XR frame thread.
-- Engine and Jolt dependencies both use `develop`, matching Jolt's manifest.
+- Engine uses the local checkout with the M5 playback helpers; Jolt uses `develop`.
   Retain the workspace's generated `Package.resolved` for reproducible revisions.
 - `project.yml` is the XcodeGen source of truth. Regenerate from the parent
   directory with `xcodegen generate --spec ImmersiveGol/project.yml`.

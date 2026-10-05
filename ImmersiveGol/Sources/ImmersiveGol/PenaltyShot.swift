@@ -32,7 +32,7 @@ struct PenaltyTrajectory: Sendable {
     let flightTime: Float
 
     init(settings: PenaltySettings, head: simd_float4x4, gravity: SIMD3<Float>,
-         aim: PenaltyAim = .random(), floorY: Float = 0) {
+         aim: PenaltyAim = .random(), floorY: Float = 0, shotOrigin: SIMD3<Float>? = nil) {
         let settings = settings.clamped
         let position = SIMD3<Float>(head.columns.3.x, head.columns.3.y, head.columns.3.z)
         let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
@@ -43,11 +43,11 @@ struct PenaltyTrajectory: Sendable {
         // Chest-height target slightly ahead of the body and within arm's reach.
         target = keeperPosition + forward * 0.55 + right * aim.lateralOffset
             + SIMD3<Float>(0, max(0.6, position.y - floorY - 0.35 + aim.heightOffset), 0)
-        origin = keeperPosition + forward * settings.distance + SIMD3<Float>(0, 0.11, 0)
+        origin = shotOrigin ?? (keeperPosition + forward * settings.distance + SIMD3<Float>(0, 0.11, 0))
         // Keep the flight on its rising path to the target, rather than a lob
         // above it. Long requested times are shortened at close range.
         let rise = target.y - origin.y
-        let upwardFlightLimit = sqrt(2 * rise / max(-gravity.y, 0.001))
+        let upwardFlightLimit = sqrt(2 * max(rise, 0.01) / max(-gravity.y, 0.001))
         let dt: Float = 1 / 60
         var steps = max(1, Int(floor(min(settings.flightTime, upwardFlightLimit) / dt + 0.0001)))
         var launch = Self.launchVelocity(origin: origin, target: target, gravity: gravity, steps: steps)

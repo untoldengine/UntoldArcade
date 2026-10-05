@@ -31,6 +31,15 @@ final class GameScene: @unchecked Sendable {
     private var floorY: Float? // Frame-thread placement state.
     private var floorPhysicsInstalled = false
     private var spawnPosition = SIMD3<Float>(0, 1.5, -3)
+    private var shooterEntity: EntityID = .invalid
+    private var shooterReady = false
+    private var shooterPriming = false
+    private static let strikeContactFrame = 13
+    private var shooterContactTime: Float = 13.0 / 30.0
+    private var shooterDuration: Float = 0
+    private var pendingShooter: (contact: Float, duration: Float)? // requestLock
+    private var kick: (trajectory: PenaltyTrajectory, launched: Bool)?
+    private static let strikeName = "forwardstrike"
     private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
     private struct ActiveShot {
         var trajectory: PenaltyTrajectory
@@ -42,6 +51,7 @@ final class GameScene: @unchecked Sendable {
     private struct LoadedScene {
         var ball: EntityID?
         var floor: EntityID?
+        var player: EntityID?
         var entities: [EntityID]
         var succeeded: Bool
     }
@@ -126,10 +136,11 @@ final class GameScene: @unchecked Sendable {
             guard let self else { return }
             let ball = success ? findEntity(name: "Ball") : nil
             let plane = success ? findEntity(name: "PlanePhysics") : nil
+            let player = success ? findEntity(name: "Player") : nil
             let entities = scene.getAllEntities().filter { !existing.contains($0) }
             let ready = success && ball != nil && plane != nil
             self.requestLock.withLock {
-                self.pendingScene = LoadedScene(ball: ball, floor: plane,
+                self.pendingScene = LoadedScene(ball: ball, floor: plane, player: player,
                                                 entities: entities, succeeded: ready)
                 if !ready {
                     self.statusText = "Could not load goaliegame with Ball and PlanePhysics. Check the console."
@@ -139,9 +150,37 @@ final class GameScene: @unchecked Sendable {
             Logger.log(message: "ImmersiveGol: stadium load completed, ready=\(ready)")
             if ready {
                 Task { @MainActor [weak self] in
+                    if let player { self?.loadShooterAnimation(player: player) }
                     self?.loadGlove(.left)
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func loadShooterAnimation(player: EntityID) {
+        guard let base = assetBasePath, !requestLock.withLock({ shuttingDown }) else { return }
+        let url = base.appendingPathComponent("Animations/forwardstrike.untoldanim")
+        do {
+            let asset = try NativeFormatLoader().loadAssetSync(from: url)
+            guard let clip = asset.animationClips.first,
+                  let channel = clip.channels.max(by: { $0.translations.count < $1.translations.count }),
+                  channel.translations.count >= Self.strikeContactFrame else {
+                Logger.log(message: "ImmersiveGol M5: forwardstrike has no frame-\(Self.strikeContactFrame) contact sample")
+                return
+            }
+            // Export stores Blender frame 1 at 1/30 s. Use the reviewed contact frame.
+            let contact = channel.translations[Self.strikeContactFrame - 1].time
+            setEntityAnimations(entityId: player, filename: url.path,
+                                withExtension: "untoldanim", name: Self.strikeName)
+            guard getAllAnimationClips(entityId: player).contains(Self.strikeName) else {
+                Logger.log(message: "ImmersiveGol M5: forwardstrike could not bind to Player")
+                return
+            }
+            pauseAnimationComponent(entityId: player, isPaused: true)
+            requestLock.withLock { pendingShooter = (contact, clip.duration) }
+        } catch {
+            Logger.log(message: "ImmersiveGol M5: animation load failed: \(error)")
         }
     }
 
@@ -158,6 +197,7 @@ final class GameScene: @unchecked Sendable {
             Logger.log(message: "ImmersiveGol: scene load failed or required named entities are missing")
             return
         }
+        shooterEntity = loaded.player ?? .invalid
         ballEntity = ball
         floorEntity = floor
         authoredFloorPosition = getLocalPosition(entityId: floor)
@@ -242,6 +282,9 @@ final class GameScene: @unchecked Sendable {
     }
 
     private func cancelPenalty() {
+        if shooterReady { pauseAnimationComponent(entityId: shooterEntity, isPaused: true) }
+        shooterPriming = false
+        kick = nil
         countdown = nil
         activeShot = nil
     }
@@ -252,6 +295,10 @@ final class GameScene: @unchecked Sendable {
             return requestedShot
         }
         if let settings {
+            guard shooterReady else {
+                setShotStatus("Waiting for Player and forwardstrike animation. Check the console.")
+                return
+            }
             var head = handTracking.headTransform(now: now)
             #if targetEnvironment(simulator)
             if head == nil {
@@ -264,27 +311,70 @@ final class GameScene: @unchecked Sendable {
                 setShotStatus("Waiting for head tracking. Try Repeat Shot again.")
                 return
             }
-            let trajectory = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity, floorY: floorY ?? 0)
+            let aim = PenaltyAim.random()
+            let preview = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity,
+                                            aim: aim, floorY: floorY ?? 0)
+            let rotation = simd_quatf(angle: atan2(-preview.forward.x, -preview.forward.z),
+                                      axis: SIMD3<Float>(0, 1, 0))
+            rotateTo(entityId: shooterEntity, rotation: rotation)
+            translateTo(entityId: shooterEntity, position: SIMD3<Float>(preview.origin.x, floorY ?? 0, preview.origin.z))
+            guard let foot = sampleAnimationJointPosition(entityId: shooterEntity, name: Self.strikeName,
+                                                         jointName: "RightToeBase", time: shooterContactTime) else {
+                setShotStatus("Player is missing the animated RightToeBase joint. Check its rig.")
+                return
+            }
+            // Put the sampled toe one ball radius behind the intended contact point.
+            let desiredToe = preview.origin + preview.forward * Self.ballRadius
+            let shift = SIMD3<Float>(desiredToe.x - foot.x, 0, desiredToe.z - foot.z)
+            translateTo(entityId: shooterEntity, position: getLocalPosition(entityId: shooterEntity) + shift)
+            // Foot sampling aligns only X/Z. The ball stays on the physics floor,
+            // with its center one radius above it, regardless of the foot's height.
+            let trajectory = preview
             guard physics.resetBody(entity: ballEntity, position: trajectory.origin, velocity: .zero) else {
                 requestPenalty(settings: settings)
                 return
             }
             cancelPenalty()
+            restartAnimation(entityId: shooterEntity, name: Self.strikeName)
+            shooterPriming = true
             checkFinished = true
             countdown = (trajectory, now + 3)
             setShotStatus("Shot in 3 — raise your hands")
         }
         if let pending = countdown {
             if now >= pending.launchAt {
-                guard physics.resetBody(entity: ballEntity, position: pending.trajectory.origin,
-                                        velocity: pending.trajectory.velocity) else { return }
-                activeShot = ActiveShot(trajectory: pending.trajectory, launchedAt: now)
+                let restartStarted = ProcessInfo.processInfo.systemUptime
+                restartAnimation(entityId: shooterEntity, name: Self.strikeName)
+                let restartMs = (ProcessInfo.processInfo.systemUptime - restartStarted) * 1000
+                Logger.log(message: String(format: "ImmersiveGol M5: kick started; restart CPU %.2f ms", restartMs))
+                kick = (pending.trajectory, false)
                 countdown = nil
-                setShotStatus(String(format: "Ball launched — %.2f s to target", pending.trajectory.flightTime))
+                setShotStatus("Shooter kicking — raise your hands")
             } else {
                 let text = "Shot in \(Int(ceil(pending.launchAt - now))) — raise your hands"
                 if shotStatus != text { setShotStatus(text) }
             }
+        }
+        if var pending = kick, let time = getAnimationPlaybackTime(entityId: shooterEntity) {
+            if !pending.launched {
+                // Hold the ball on the floor during countdown/windup; release
+                // once the actual clip crosses the reviewed contact frame.
+                let velocity = time >= shooterContactTime ? pending.trajectory.velocity : .zero
+                if physics.resetBody(entity: ballEntity, position: pending.trajectory.origin, velocity: velocity),
+                   time >= shooterContactTime {
+                    pending.launched = true
+                    kick = pending
+                    activeShot = ActiveShot(trajectory: pending.trajectory, launchedAt: now)
+                    Logger.log(message: "ImmersiveGol M5: ball released at clip t=\(time), contact t=\(shooterContactTime)")
+                    setShotStatus("Ball kicked — block it!")
+                }
+            }
+            if pending.launched, time >= shooterDuration {
+                pauseAnimationComponent(entityId: shooterEntity, isPaused: true)
+                kick = nil
+            }
+        } else if let pending = countdown {
+            physics.resetBody(entity: ballEntity, position: pending.trajectory.origin, velocity: .zero)
         }
         guard let shot = activeShot, let state = physics.bodyState(for: ballEntity) else { return }
         // Whole ball beyond the captured keeper plane. M3 has no goal-mouth bounds yet.
@@ -424,6 +514,27 @@ final class GameScene: @unchecked Sendable {
         guard gameMode else { return }
         finishSceneLoading()
         finishGloveLoading()
+        let animation = requestLock.withLock { () -> (contact: Float, duration: Float)? in
+            defer { pendingShooter = nil }
+            return pendingShooter
+        }
+        if let animation, shooterEntity != .invalid {
+            shooterContactTime = animation.contact
+            shooterDuration = animation.duration
+            shooterReady = true
+            setAnimationPolicy(entityId: shooterEntity, policy: .forceOn)
+            setRootMotionEnabled(entityId: shooterEntity, enabled: false)
+            setAnimationPlaybackSpeed(entityId: shooterEntity, speed: 1)
+            restartAnimation(entityId: shooterEntity, name: Self.strikeName)
+            shooterPriming = true
+            Logger.log(message: "ImmersiveGol M5: shooter ready; frame \(Self.strikeContactFrame) at t=\(shooterContactTime), duration=\(shooterDuration)")
+        }
+        // Allow one animation update to display the initial stance, then hold
+        // it for the countdown. Pausing before sampling would leave a bind pose.
+        if shooterPriming, (getAnimationPlaybackTime(entityId: shooterEntity) ?? 0) > 0 {
+            pauseAnimationComponent(entityId: shooterEntity, isPaused: true)
+            shooterPriming = false
+        }
         guard sceneLoaded else { return }
         let rePlace = requestLock.withLock { () -> Bool in
             defer { floorPlacementRequested = false }
