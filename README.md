@@ -91,6 +91,20 @@ open CoolBowling/Examples/CoolBowlingVisionOS/CoolBowlingVisionOS.xcodeproj
 .package(url: "https://github.com/untoldengine/UntoldJoltPhysics.git", branch: "develop")
 ```
 
+### ⚽ CoolFutbol — *visionOS*
+
+![CoolFutbol demo](docs/media/CoolFutbol/demo.gif)
+
+Mixed-reality tabletop soccer: look at a real table and pinch to snap a stadium onto it, two-hand pinch to rotate, tap to confirm — then control one player on a 5v5 pitch with a PSVR2 Sense controller (dribble, pass, shoot) while teammates hold a formation shape that shifts between attacking and defending based on who has the ball. Doubles as a worked example of the engine's core game loop; see the demo's own README for a walkthrough from app bootstrap through `update()`/`handleInput()`.
+
+- ARKit real-surface picking (`pickRealSurfacePosition`) for table-snap placement, with pinch-drag/two-hand-rotate scene manipulation
+- PSVR2 Sense controller input mapped to dribble/pass/shoot via `InputSystem.shared.gameControllerState`
+- Formation/positioning system driving off-ball teammates through custom systems (`registerCustomSystem`)
+
+```bash
+open CoolFutbol/CoolFutbol.xcodeproj
+```
+
 ### 🏛️ ArchvizViewer — *visionOS*
 
 ![ArchvizViewer demo](docs/media/ArchvizViewer/demo.gif)
@@ -199,6 +213,7 @@ UntoldArcade/
 ├── CoolWeb/             # Rendering Extension — Spider-Man web-shooter demo
 ├── CoolBasket/          # Physics Backend — mixed-reality basketball on the plugin seam, on either backend
 ├── CoolBowling/         # visionOS — bowling on the Jolt Physics plugin
+├── CoolFutbol/          # visionOS — mixed-reality tabletop soccer + PSVR2 controls
 ├── ArchvizViewer/       # visionOS — Blender archviz scene in mixed reality
 ├── BedroomTwin/         # visionOS — digital-twin bedroom with channel-based selection
 ├── CityStreaming/       # visionOS — tiled city streaming with LOD/HLOD
