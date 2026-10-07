@@ -2,6 +2,83 @@
 
 A visionOS penalty-goalie prototype built with Untold Engine and UntoldJoltPhysics.
 
+## Experience workflow
+
+1. Press **Start Experience**. Look at the real ground, then pinch and release.
+   The empty immersive space accepts floor input before loading the stadium.
+2. After a classified floor hit, `goaliegame` loads and the invisible physics
+   plane is placed at the measured world Y. The ball starts on the ground.
+3. Once the shooter animation is ready, press **Start Kicking**. The player and
+   ball move together to a random position 11–14 m ahead and up to 1.5 m to either
+   side of the calibrated goalie position. For the demo, shots take about one
+   second to reach the glove area. At foot contact, one tracked palm is chosen;
+   25% of shots aim directly at it and the others aim 20–30 cm around it,
+   keeping the target above the floor. If neither hand is
+   tracked, the target is a reachable spot in front of the user's chest. The
+   target stays fixed after release; the slower shot follows a gentle arc.
+   The initial ball is also 11 m ahead.
+4. Each shot has a three-second countdown, releases at animation frame 13, and
+   automatically schedules another shot after a two-second result interval.
+   The initial goalie facing stays fixed when you look toward different shooters.
+5. **Stop Kicking** cancels countdown, animation, and any active shot, returning
+   the ball to its shot position on the ground. Start again to resume.
+
+Demo console logging is removed, including shot feedback, hand-tracking changes,
+and bundle listings. Gameplay feedback remains in the control window. Engine
+and plugin diagnostics can still print. Console diagnostics described in the
+historical milestone sections below belong to earlier builds.
+
+The player loops `offensiveidle.untoldanim` while waiting, during countdowns,
+between shots, and after Stop Kicking. Both clips bind to the scene's Player.
+The engine's `changeAnimation` smoothly transitions into `forwardstrike` with a
+0.05-second transition half-life, then returns to idle with a 0.15-second
+half-life. The kick remains non-looping and releases the ball at frame 13.
+Root motion now preserves the kick's authored forward travel. After kicking,
+the player returns to the position where the kick started, then transitions to
+idle. Recovery and travel to randomized kick marks use the same movement plan.
+The player's current facing determines the clip: a destination within 45 degrees
+of directly behind uses `jobbackward`; otherwise the player turns toward the
+destination and uses `jogforward`, including lateral travel. Turns happen in
+place using idle, before and after travel, so a directional jog never plays
+while the player faces the wrong travel direction. Each clip's authored horizontal
+travel sets movement speed; travel time depends on the actual distance rather
+than a mandatory full jog cycle. The final turn toward the goal finishes before
+the countdown. A player within 5 cm of its kick mark skips jogging. Stop Kicking cancels
+both recovery and relocation and returns to idle. The countdown holds the kick
+mark steady while transition velocity settles.
+
+Both jog exports required the `mixamorig:` → `mixamorig5:` correction across
+all 65 joint paths, preserving its motion data. The engine's root-motion clock
+was corrected to clamp non-looping clips consistently with the pose sampler;
+that engine change remains uncommitted. Headset checks: kick-to-jog continuity,
+backward travel, no T-pose or teleport on later shots, frame-13 foot contact,
+and stopping during recovery/relocation.
+
+Contact prediction accounts for the kick's initial root heading as well as its
+horizontal root offset. The kick's first Hips yaw is about 5.82 degrees; applying
+only a translation correction after enabling root motion placed the ball beside
+the foot. Both position and facing are held at the planned kick mark through the
+countdown. At frame-13 release, the displayed right toe is checked against the intended
+contact point one ball radius behind the ball. Any remaining X/Z offset from
+root motion, transitions, or frame timing is corrected by moving the player
+before release; both the ball and the player retain their floor height. The
+correction persists into the backward jog. A standalone app math check passed 1,000 actor/root-heading
+cases; headset confirmation of the corrected contact remains pending.
+The idle export's joint namespace was corrected from `mixamorig:` to
+`mixamorig5:` to match the working player/kick rig. All 65 joint paths now match;
+translation and rotation keyframes are unchanged. Future exports must preserve
+the same full bone paths. Loading validates idle paths against the kick before
+enabling playback; registering a clip name alone does not prove rig compatibility.
+
+The experience window exposes only Start Kicking and Stop Kicking after opening.
+Distance sliders, single-shot controls, floor reset, and physics/debug buttons
+have been removed. Simulator compilation checks the integration; verify floor
+calibration, repeated randomized shots, and stopping during both countdown and
+flight on the headset before committing this update.
+
+The milestone sections below record earlier implementation and validation; their
+former debug controls have been replaced by the workflow above.
+
 ## M1 — Physics setup
 
 After creating the project, the first implementation step was to import the
@@ -303,8 +380,8 @@ repeat several shots, change shot distance, and reset during a countdown/kick.
 
 ## Integration
 
-- `GameScene.swift` owns Jolt registration, scene construction, and the drop
-  check. The engine advances physics automatically; do not call `step` again.
+- `GameScene.swift` owns Jolt registration, floor calibration, scene construction, and the automatic
+  kicking loop. The engine advances physics automatically; do not call `step` again.
 - `ImmersiveGolApp.swift` installs Jolt before constructing `UntoldEngineXR`.
   Scene cleanup runs after the render loop stops, allowing the space to reopen.
 - `GoalieHandTracking.swift` publishes lock-protected palm snapshots from ARKit;
@@ -323,5 +400,5 @@ Run from this directory:
 xcodebuild -project ImmersiveGol.xcodeproj -scheme ImmersiveGol -destination 'generic/platform=visionOS Simulator' -derivedDataPath /tmp/ImmersiveGol-M1-build CODE_SIGNING_ALLOWED=NO build
 ```
 
-Compilation and the runtime drop check are separate validations. Observe the
-ball and the console result in an immersive space to confirm runtime behavior.
+Compilation and headset validation are separate checks. Confirm the floor-first
+flow, automatic kicks, hand blocks, and Stop Kicking in an immersive space.

@@ -29,9 +29,6 @@ final class GoalieHandTracking: @unchecked Sendable {
     private static let fallbackLifetime: TimeInterval = 0.15
 
     func start() {
-        if !HandTrackingProvider.isSupported {
-            print("ImmersiveGol M2: hand tracking unavailable; palm colliders remain parked")
-        }
         lock.withLock {
             guard task == nil else { return }
             // Providers are one-shot. Each new scene creates a fresh provider.
@@ -64,19 +61,16 @@ final class GoalieHandTracking: @unchecked Sendable {
                         group.addTask {
                             for await event in self.session.events {
                                 guard !Task.isCancelled else { break }
-                                if case let .dataProviderStateChanged(_, state, error) = event {
+                                if case let .dataProviderStateChanged(_, state, _) = event {
                                     if state != .running {
                                         self.lock.withLock { self.samples.removeAll() }
-                                    }
-                                    if let error {
-                                        print("ImmersiveGol M2: hand tracking error: \(error)")
                                     }
                                 }
                             }
                         }
                     }
                 } catch {
-                    print("ImmersiveGol M2: could not start hand tracking: \(error)")
+                    // Failed sessions leave both hands unavailable; cleanup follows.
                 }
                 self.lock.withLock {
                     self.samples.removeAll()

@@ -23,23 +23,58 @@ final class GameScene: @unchecked Sendable {
     private var loadedGloves: Set<GoalieHandSide> = [] // Frame-thread state.
     private var pendingGloves: [GoalieHandSide: Bool] = [:] // Protected by requestLock.
     private var shuttingDown = false // Protected by requestLock.
-    private var trackedHands: Set<GoalieHandSide> = []
-    private var requestedShot: PenaltySettings?
-    private var statusText = "Loading goaliegame scene…"
+    private var kickingRequest: Bool? // Protected by requestLock.
+    private var kickingActive = false // Frame-thread state.
+    private var kickingSnapshot = false // Protected by requestLock.
+    private var nextShotAt: TimeInterval = 0
+    private var keeperFrame: simd_float4x4?
+    private var statusText = "Look at the ground, then pinch and release to place the stadium"
     private var placementReady = false // Protected by requestLock for the control window.
-    private var floorPlacementRequested = false
     private var floorY: Float? // Frame-thread placement state.
-    private var floorPhysicsInstalled = false
-    private var spawnPosition = SIMD3<Float>(0, 1.5, -3)
+    private var spawnPosition = SIMD3<Float>(0, 0.11, -3)
     private var shooterEntity: EntityID = .invalid
     private var shooterReady = false
-    private var shooterPriming = false
     private static let strikeContactFrame = 13
     private var shooterContactTime: Float = 13.0 / 30.0
+    private var strikeInitialRootYaw: Float = 0
+    private var shooterToe: (entity: EntityID, index: Int)?
     private var shooterDuration: Float = 0
-    private var pendingShooter: (contact: Float, duration: Float)? // requestLock
+    private var jogSpeed: Float = 2.2
+    private var forwardJogSpeed: Float = 2.4
+    private var strikeStartPosition: SIMD3<Float>?
+    private var strikeStartRotation: simd_quatf?
+    private struct ShooterRelocation {
+        // nil identifies post-kick recovery, which finishes in idle.
+        var trajectory: PenaltyTrajectory?
+        var start: SIMD3<Float>
+        var destination: SIMD3<Float>
+        var initialRotation: simd_quatf
+        var travelRotation: simd_quatf
+        var finalRotation: simd_quatf
+        var startedAt: TimeInterval
+        var duration: TimeInterval
+        var turnInDuration: TimeInterval
+        var turnOutDuration: TimeInterval
+        var clip: String
+        var jogging = false
+        var finishing = false
+    }
+    private var shooterKickMark: SIMD3<Float>?
+    private var shooterKickRotation: simd_quatf?
+    private var relocation: ShooterRelocation?
+    private struct ShooterAnimationTiming {
+        var contact: Float
+        var duration: Float
+        var jogSpeed: Float
+        var forwardJogSpeed: Float
+        var rootYaw: Float
+    }
+    private var pendingShooter: ShooterAnimationTiming? // requestLock
     private var kick: (trajectory: PenaltyTrajectory, launched: Bool)?
     private static let strikeName = "forwardstrike"
+    private static let idleName = "offensiveidle"
+    private static let jogName = "jobbackward"
+    private static let forwardJogName = "jogforward"
     private var countdown: (trajectory: PenaltyTrajectory, launchAt: TimeInterval)?
     private struct ActiveShot {
         var trajectory: PenaltyTrajectory
@@ -48,6 +83,8 @@ final class GameScene: @unchecked Sendable {
     }
     private var activeShot: ActiveShot?
     private static let gravity = SIMD3<Float>(0, -9.8, 0)
+    // Temporary performance comparison. Set true to render the authored stadium again.
+    private static let renderStadium = true
     private struct LoadedScene {
         var ball: EntityID?
         var floor: EntityID?
@@ -65,14 +102,6 @@ final class GameScene: @unchecked Sendable {
     private var floorEntity: EntityID = .invalid
     private var contactSubscription: EventSubscription?
     private let requestLock = NSLock()
-    private var resetRequested = false
-    private var palmDropRequested = false
-    private var observedFall = false
-    private var observedFloorContact = false
-    private var settledTime: Float = 0
-    private var checkTime: Float = 0
-    private var checkFinished = false
-
     private static let ballRadius: Float = 0.11
     private static let palmRadius: Float = 0.07
     // The exported gloves are approximately 1 m from cuff to fingertip.
@@ -95,10 +124,8 @@ final class GameScene: @unchecked Sendable {
         settings.maxKinematicStep = 1.0
         settings.maxKinematicSpeed = 6.0
         guard let backend = registerJoltPhysics(settings: settings) else {
-            Logger.log(message: "ImmersiveGol: Jolt registration failed")
             return nil
         }
-        Logger.log(message: "ImmersiveGol: active physics backend = \(backend.id)")
         return backend
     }
 
@@ -111,15 +138,18 @@ final class GameScene: @unchecked Sendable {
         setupGloves()
         setupContactEvents()
         handTracking.start()
-        loadGameScene()
     }
 
     @MainActor
     private func configureEngineSystems() {
+        // The full-size stadium needs outdoor shadow coverage; XR uses this same range.
+        setRendering(.maxShadowCastingDistance(250.0))
+        setRendering(.shadowCascadeCount(3))
+        setRendering(.shadowDistanceFadeFraction(0.1))
         gameMode = true
         registerXREvents()
-        // Input stays gated until the authored scene and required entities load.
-        setSceneReady(false)
+        // Start with an empty scene so spatial input can calibrate the real floor.
+        setSceneReady(true)
         SceneRootTransform.shared.reset()
         ScenePluginSystem.discoverInApp()
         ScenePluginSystem.install()
@@ -131,6 +161,8 @@ final class GameScene: @unchecked Sendable {
 
     @MainActor
     private func loadGameScene() {
+        guard !requestLock.withLock({ shuttingDown }) else { return }
+        setSceneReady(false)
         let existing = Set(scene.getAllEntities())
         loadUntoldScene(named: "goaliegame") { [weak self] success in
             guard let self else { return }
@@ -146,8 +178,8 @@ final class GameScene: @unchecked Sendable {
                     self.statusText = "Could not load goaliegame with Ball and PlanePhysics. Check the console."
                 }
             }
-            setSceneReady(ready)
-            Logger.log(message: "ImmersiveGol: stadium load completed, ready=\(ready)")
+            // Resume the empty scene on failure so the status can still update.
+            setSceneReady(true)
             if ready {
                 Task { @MainActor [weak self] in
                     if let player { self?.loadShooterAnimation(player: player) }
@@ -166,22 +198,97 @@ final class GameScene: @unchecked Sendable {
             guard let clip = asset.animationClips.first,
                   let channel = clip.channels.max(by: { $0.translations.count < $1.translations.count }),
                   channel.translations.count >= Self.strikeContactFrame else {
-                Logger.log(message: "ImmersiveGol M5: forwardstrike has no frame-\(Self.strikeContactFrame) contact sample")
+                setShotStatus("forwardstrike is missing the contact frame. Check the animation export.")
                 return
             }
             // Export stores Blender frame 1 at 1/30 s. Use the reviewed contact frame.
             let contact = channel.translations[Self.strikeContactFrame - 1].time
+            guard let rootChannel = clip.channels.first(where: {
+                $0.jointPath.split(separator: "/").last?.split(separator: ":").last == "Hips"
+            }), let rootRotation = rootChannel.rotations.first?.value else {
+                setShotStatus("forwardstrike is missing its initial Hips rotation. Check the export.")
+                return
+            }
+            let rootYaw = 2 * atan2(rootRotation.y, rootRotation.w)
             setEntityAnimations(entityId: player, filename: url.path,
                                 withExtension: "untoldanim", name: Self.strikeName)
             guard getAllAnimationClips(entityId: player).contains(Self.strikeName) else {
-                Logger.log(message: "ImmersiveGol M5: forwardstrike could not bind to Player")
+                setShotStatus("Could not bind forwardstrike to Player. Check the animation rig.")
+                return
+            }
+            let idleURL = base.appendingPathComponent("Animations/offensiveidle.untoldanim")
+            let idleAsset = try NativeFormatLoader().loadAssetSync(from: idleURL)
+            guard let idleClip = idleAsset.animationClips.first, idleClip.duration > 0 else {
+                setShotStatus("offensiveidle has no playable clip. Check the export.")
+                return
+            }
+            // Both clips target the same player rig. A named clip can load even
+            // when none of its full joint paths match the character's skeleton.
+            let strikePaths = Set(clip.channels.map(\.jointPath))
+            let idlePaths = Set(idleClip.channels.map(\.jointPath))
+            guard !idlePaths.isEmpty, idlePaths.isSubset(of: strikePaths) else {
+                setShotStatus("Idle rig names do not match Player. Export using the same bone names as forwardstrike.")
+                return
+            }
+            setEntityAnimations(entityId: player, filename: idleURL.path,
+                                withExtension: "untoldanim", name: Self.idleName)
+            guard getAllAnimationClips(entityId: player).contains(Self.idleName) else {
+                setShotStatus("Could not load offensiveidle for Player. Check the animation rig and console.")
+                return
+            }
+            let jogURL = base.appendingPathComponent("Animations/jobbackward.untoldanim")
+            let jogAsset = try NativeFormatLoader().loadAssetSync(from: jogURL)
+            guard let jogClip = jogAsset.animationClips.first, jogClip.duration > 0 else {
+                setShotStatus("jobbackward has no playable clip. Check the export.")
+                return
+            }
+            let jogPaths = Set(jogClip.channels.map(\.jointPath))
+            guard !jogPaths.isEmpty, jogPaths.isSubset(of: strikePaths) else {
+                setShotStatus("Backward jog rig names do not match Player. Use the forwardstrike bone names.")
+                return
+            }
+            setEntityAnimations(entityId: player, filename: jogURL.path,
+                                withExtension: "untoldanim", name: Self.jogName)
+            guard getAllAnimationClips(entityId: player).contains(Self.jogName) else {
+                setShotStatus("Could not bind jobbackward to Player. Check the console.")
+                return
+            }
+            let forwardURL = base.appendingPathComponent("Animations/jogforward.untoldanim")
+            let forwardAsset = try NativeFormatLoader().loadAssetSync(from: forwardURL)
+            guard let forwardClip = forwardAsset.animationClips.first, forwardClip.duration > 0 else {
+                setShotStatus("jogforward has no playable clip. Check the export.")
+                return
+            }
+            let forwardPaths = Set(forwardClip.channels.map(\.jointPath))
+            guard !forwardPaths.isEmpty, forwardPaths.isSubset(of: strikePaths) else {
+                setShotStatus("Forward jog rig names do not match Player. Use the forwardstrike bone names.")
+                return
+            }
+            setEntityAnimations(entityId: player, filename: forwardURL.path,
+                                withExtension: "untoldanim", name: Self.forwardJogName)
+            guard getAllAnimationClips(entityId: player).contains(Self.forwardJogName) else {
+                setShotStatus("Could not bind jogforward to Player. Check the console.")
                 return
             }
             pauseAnimationComponent(entityId: player, isPaused: true)
-            requestLock.withLock { pendingShooter = (contact, clip.duration) }
+            requestLock.withLock {
+                pendingShooter = ShooterAnimationTiming(contact: contact, duration: clip.duration,
+                    jogSpeed: Self.authoredJogSpeed(jogClip),
+                    forwardJogSpeed: Self.authoredJogSpeed(forwardClip),
+                    rootYaw: rootYaw)
+            }
         } catch {
-            Logger.log(message: "ImmersiveGol M5: animation load failed: \(error)")
+            setShotStatus("Could not load shooter animations: \(error.localizedDescription)")
         }
+    }
+
+    private static func authoredJogSpeed(_ clip: RuntimeAnimationClip) -> Float {
+        guard let root = clip.channels.first(where: {
+            $0.jointPath.split(separator: "/").last?.split(separator: ":").last == "Hips"
+        }), let start = root.translations.first, let end = root.translations.last,
+              clip.duration > 0 else { return 2.2 }
+        let distance = simd_length(SIMD2<Float>(end.value.x - start.value.x, end.value.z - start.value.z))
+        return distance > 0.01 ? distance / clip.duration : 2.2
     }
 
     // Apply loader results and configure gameplay on the XR frame thread.
@@ -193,8 +300,14 @@ final class GameScene: @unchecked Sendable {
         guard let loaded else { return }
         loadedEntities = loaded.entities
         guard loaded.succeeded, let ball = loaded.ball, let floor = loaded.floor else {
-            setShotStatus("Could not load goaliegame with Ball and PlanePhysics. Check the console.")
-            Logger.log(message: "ImmersiveGol: scene load failed or required named entities are missing")
+            for entity in loadedEntities {
+                destroyEntity(entityId: entity)
+                physics.didRemoveBody(entity: entity)
+            }
+            loadedEntities.removeAll()
+            floorY = nil
+            keeperFrame = nil
+            setShotStatus("Scene load failed. Check the console, then pinch the floor to retry.")
             return
         }
         shooterEntity = loaded.player ?? .invalid
@@ -209,23 +322,36 @@ final class GameScene: @unchecked Sendable {
         scene.get(component: RenderComponent.self, for: floor)?.castsShadow = false
         scene.get(component: RenderComponent.self, for: floor)?.isVisible = false
         scene.get(component: RenderComponent.self, for: ball)?.isVisible = false
+        hideStadiumForPerformanceTest()
         sceneLoaded = true
-        setShotStatus("Look at the real floor, then pinch and release to set the floor height")
-        Logger.log(message: "ImmersiveGol: goaliegame loaded; found Ball=\(ball), PlanePhysics=\(floor)")
+        installFloorPhysics()
+        setShotStatus("Stadium placed — loading the shooter…")
+    }
+
+    private func hideStadiumForPerformanceTest() {
+        guard !Self.renderStadium else { return }
+        guard let stadium = findEntity(name: "Stadium") else {
+            return
+        }
+        var pending = [stadium]
+        while let entity = pending.popLast() {
+            if let render = scene.get(component: RenderComponent.self, for: entity) {
+                render.isVisible = false
+                render.castsShadow = false
+            }
+            if scene.get(component: ScenegraphComponent.self, for: entity) != nil {
+                pending.append(contentsOf: getEntityChildren(parentId: entity))
+            }
+        }
     }
 
     @MainActor
     private func setupContactEvents() {
         contactSubscription = PhysicsEvents.shared.onContact { [weak self] event in
             guard let self, event.phase == .began else { return }
-            if (event.entityA == self.ballEntity && event.entityB == self.floorEntity)
-                || (event.entityB == self.ballEntity && event.entityA == self.floorEntity) {
-                self.observedFloorContact = true
-            }
             for (side, entity) in self.palmEntities {
                 if (event.entityA == self.ballEntity && event.entityB == entity)
                     || (event.entityB == self.ballEntity && event.entityA == entity) {
-                    Logger.log(message: "ImmersiveGol M2: ball blocked by \(side.rawValue) palm")
                     if self.activeShot != nil, self.activeShot?.firstBlock == nil {
                         self.activeShot?.firstBlock = side
                         self.setShotStatus("Palm contact: \(side.rawValue)")
@@ -238,7 +364,6 @@ final class GameScene: @unchecked Sendable {
     /// The authored scene must finish loading before gameplay configures the ball.
     private func setupBallPhysicsWhenLoaded() {
         guard sceneLoaded else { return }
-        scene.get(component: RenderComponent.self, for: ballEntity)?.isVisible = floorY != nil
         guard floorY != nil, !ballPhysicsInstalled else { return }
         // The supplied model has a native diameter of approximately 1 m.
         scaleTo(entityId: ballEntity, scale: SIMD3<Float>(repeating: Self.ballRadius * 2))
@@ -257,19 +382,19 @@ final class GameScene: @unchecked Sendable {
         }
 
         ballPhysicsInstalled = true
-        Logger.log(message: "ImmersiveGol M1: model loaded; dropping ball from 1.5 m, 3 m ahead")
+        scene.get(component: RenderComponent.self, for: ballEntity)?.isVisible = true
     }
 
-    func requestPhysicsReset() {
-        requestLock.withLock { resetRequested = true }
+    func startKicking() {
+        requestLock.withLock { kickingRequest = true }
     }
 
-    func requestPalmDrop() {
-        requestLock.withLock { palmDropRequested = true }
+    func stopKicking() {
+        requestLock.withLock { kickingRequest = false }
     }
 
-    func requestPenalty(settings: PenaltySettings) {
-        requestLock.withLock { requestedShot = settings.clamped }
+    var isKicking: Bool {
+        requestLock.withLock { kickingSnapshot }
     }
 
     var shotStatus: String {
@@ -278,77 +403,205 @@ final class GameScene: @unchecked Sendable {
 
     private func setShotStatus(_ text: String) {
         requestLock.withLock { statusText = text }
-        Logger.log(message: "ImmersiveGol M3: \(text)")
+    }
+
+    private func playShooterIdle() {
+        changeAnimation(entityId: shooterEntity, name: Self.idleName, transitionHalflife: 0.15)
     }
 
     private func cancelPenalty() {
-        if shooterReady { pauseAnimationComponent(entityId: shooterEntity, isPaused: true) }
-        shooterPriming = false
+        if shooterReady { playShooterIdle() }
         kick = nil
         countdown = nil
         activeShot = nil
+        strikeStartPosition = nil
+        strikeStartRotation = nil
+        relocation = nil
+        shooterKickMark = nil
+        shooterKickRotation = nil
+    }
+
+    private func findShooterToe(in entity: EntityID) -> (entity: EntityID, index: Int)? {
+        if scene.get(component: AnimationComponent.self, for: entity) != nil,
+           scene.get(component: SkeletonComponent.self, for: entity) != nil,
+           let info = getSkeletonJointInfo(entityId: entity),
+           let index = info.jointPaths.firstIndex(where: {
+               $0.split(separator: "/").last?.split(separator: ":").last == "RightToeBase"
+           }) {
+            return (entity, index)
+        }
+        let children = scene.get(component: ScenegraphComponent.self, for: entity) != nil
+            ? getEntityChildren(parentId: entity) : []
+        for child in children {
+            if let toe = findShooterToe(in: child) { return toe }
+        }
+        return nil
+    }
+
+    private func displayedToePosition() -> SIMD3<Float>? {
+        guard let toe = shooterToe, let pose = getJointModelTransforms(entityId: toe.entity),
+              pose.indices.contains(toe.index),
+              let world = scene.get(component: WorldTransformComponent.self, for: toe.entity) else { return nil }
+        let point = world.space * pose[toe.index] * SIMD4<Float>(0, 0, 0, 1)
+        return SIMD3<Float>(point.x, point.y, point.z)
+    }
+
+    private func updateShooterTravel(now: TimeInterval) {
+        guard var move = relocation else { return }
+        let elapsed = max(0, now - move.startedAt)
+        if elapsed < move.turnInDuration {
+            // Turn in place before playing a directional jog.
+            translateTo(entityId: shooterEntity, position: move.start)
+            rotateTo(entityId: shooterEntity, rotation: simd_slerp(move.initialRotation, move.travelRotation,
+                       Float(elapsed / move.turnInDuration)))
+        } else if elapsed < move.turnInDuration + move.duration {
+            if !move.jogging {
+                changeAnimation(entityId: shooterEntity, name: move.clip, transitionHalflife: 0.1)
+                move.jogging = true
+            }
+            let fraction = Float((elapsed - move.turnInDuration) / move.duration)
+            translateTo(entityId: shooterEntity, position: move.start + (move.destination - move.start) * fraction)
+            rotateTo(entityId: shooterEntity, rotation: move.travelRotation)
+        } else {
+            if !move.finishing {
+                playShooterIdle()
+                move.finishing = true
+            }
+            let turnElapsed = elapsed - move.turnInDuration - move.duration
+            let fraction = move.turnOutDuration > 0 ? Float(min(turnElapsed / move.turnOutDuration, 1)) : 1
+            translateTo(entityId: shooterEntity, position: move.destination)
+            rotateTo(entityId: shooterEntity, rotation: simd_slerp(move.travelRotation, move.finalRotation, fraction))
+        }
+        relocation = move
+        if elapsed >= move.turnInDuration + move.duration + move.turnOutDuration {
+            relocation = nil
+            if let trajectory = move.trajectory {
+                shooterKickMark = move.destination
+                shooterKickRotation = move.finalRotation
+                countdown = (trajectory, now + 3)
+                setShotStatus("Shot in 3 — raise your hands")
+            }
+        }
+    }
+
+    private func beginShooterTravel(to destination: SIMD3<Float>, rotation: simd_quatf,
+                                    trajectory: PenaltyTrajectory?, now: TimeInterval) {
+        let start = getLocalPosition(entityId: shooterEntity)
+        let facing = getRotationQuaternion(entityId: shooterEntity)
+        let plan = ShooterTravelPlan(displacement: destination - start, facing: facing)
+        let speed = plan.movingForward ? forwardJogSpeed : jogSpeed
+        let clip = plan.movingForward ? Self.forwardJogName : Self.jogName
+        let needsJog = plan.distance > 0.05
+        let travelRotation = needsJog ? plan.rotation : facing
+        playShooterIdle()
+        relocation = ShooterRelocation(trajectory: trajectory, start: start, destination: destination,
+            initialRotation: facing, travelRotation: travelRotation, finalRotation: rotation,
+            startedAt: now, duration: needsJog ? Double(plan.distance / max(speed, 0.1)) : 0,
+            turnInDuration: needsJog ? plan.turnDuration : 0,
+            turnOutDuration: ShooterTravelPlan.turnDuration(from: travelRotation, to: rotation), clip: clip)
+        if needsJog {
+            setShotStatus(plan.movingForward ? "Shooter jogging forward to position" : "Shooter jogging backward to position")
+        }
     }
 
     private func updatePenalty(now: TimeInterval) {
-        let settings = requestLock.withLock { () -> PenaltySettings? in
-            defer { requestedShot = nil }
-            return requestedShot
+        let request = requestLock.withLock { () -> Bool? in
+            defer { kickingRequest = nil }
+            return kickingRequest
         }
-        if let settings {
-            guard shooterReady else {
-                setShotStatus("Waiting for Player and forwardstrike animation. Check the console.")
-                return
+        if let request {
+            kickingActive = request
+            requestLock.withLock { kickingSnapshot = request }
+            if !request {
+                let restingPosition = countdown?.trajectory.origin ?? relocation?.trajectory?.origin ?? kick?.trajectory.origin
+                    ?? activeShot?.trajectory.origin ?? spawnPosition
+                cancelPenalty()
+                physics.resetBody(entity: ballEntity, position: restingPosition, velocity: .zero)
+                setShotStatus("Kicking stopped")
+            } else {
+                nextShotAt = now
             }
-            var head = handTracking.headTransform(now: now)
-            #if targetEnvironment(simulator)
-            if head == nil {
-                var fallback = matrix_identity_float4x4
-                fallback.columns.3 = SIMD4<Float>(spawnPosition.x, (floorY ?? 0) + 1.65, spawnPosition.z + 3, 1)
-                head = fallback
+        }
+        updateShooterTravel(now: now)
+        guard kickingActive else { return }
+        if countdown == nil, kick == nil, activeShot == nil, relocation == nil,
+           now >= nextShotAt {
+            guard shooterReady, var head = keeperFrame else { return }
+            // Use current eye height, rather than the height recorded while
+            // bending down to calibrate. Keep the field position/facing fixed.
+            if let liveHead = handTracking.headTransform(now: now) {
+                head.columns.3.y = liveHead.columns.3.y
             }
-            #endif
-            guard let head else {
-                setShotStatus("Waiting for head tracking. Try Repeat Shot again.")
-                return
+            let settings = PenaltySettings(distance: Float.random(in: 11...14), flightTime: 1.0)
+            let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
+            let forward = simd_length_squared(horizontal) > 0.001
+                ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
+            let right = simd_cross(forward, SIMD3<Float>(0, 1, 0))
+            let keeper = SIMD3<Float>(head.columns.3.x, floorY ?? 0, head.columns.3.z)
+            let origin = keeper + forward * settings.distance
+                + right * Float.random(in: -1.5...1.5) + SIMD3<Float>(0, Self.ballRadius, 0)
+            var preview = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity,
+                                            aim: PenaltyAim(), floorY: floorY ?? 0, shotOrigin: origin)
+            if let target = demoShotTarget(now: now, randomize: false) {
+                preview = preview.aimed(at: target, gravity: Self.gravity)
             }
-            let aim = PenaltyAim.random()
-            let preview = PenaltyTrajectory(settings: settings, head: head, gravity: Self.gravity,
-                                            aim: aim, floorY: floorY ?? 0)
-            let rotation = simd_quatf(angle: atan2(-preview.forward.x, -preview.forward.z),
+            let towardGoal = simd_normalize(SIMD3<Float>(preview.target.x - origin.x, 0, preview.target.z - origin.z))
+            let rotation = simd_quatf(angle: atan2(towardGoal.x, towardGoal.z),
                                       axis: SIMD3<Float>(0, 1, 0))
+            let previousPosition = getLocalPosition(entityId: shooterEntity)
+            let previousRotation = getRotationQuaternion(entityId: shooterEntity)
             rotateTo(entityId: shooterEntity, rotation: rotation)
             translateTo(entityId: shooterEntity, position: SIMD3<Float>(preview.origin.x, floorY ?? 0, preview.origin.z))
             guard let foot = sampleAnimationJointPosition(entityId: shooterEntity, name: Self.strikeName,
                                                          jointName: "RightToeBase", time: shooterContactTime) else {
+                translateTo(entityId: shooterEntity, position: previousPosition)
+                rotateTo(entityId: shooterEntity, rotation: previousRotation)
+                kickingActive = false
+                requestLock.withLock { kickingSnapshot = false }
                 setShotStatus("Player is missing the animated RightToeBase joint. Check its rig.")
                 return
             }
             // Put the sampled toe one ball radius behind the intended contact point.
-            let desiredToe = preview.origin + preview.forward * Self.ballRadius
-            let shift = SIMD3<Float>(desiredToe.x - foot.x, 0, desiredToe.z - foot.z)
-            translateTo(entityId: shooterEntity, position: getLocalPosition(entityId: shooterEntity) + shift)
+            let desiredToe = preview.origin - towardGoal * Self.ballRadius
+            // Extracted root motion applies travel relative to the clip's first
+            // sample, while raw joint sampling includes its initial root offset.
+            let anchor = getLocalPosition(entityId: shooterEntity)
+            let rootStart = sampleAnimationJointPosition(entityId: shooterEntity, name: Self.strikeName,
+                                                        jointName: "Hips", time: 0) ?? anchor
+            let groundedFoot = PenaltyContactAlignment.predictedToe(
+                sampledToe: foot, rootStart: rootStart, anchor: anchor,
+                actorRotation: rotation, initialRootYaw: strikeInitialRootYaw)
+            let shift = SIMD3<Float>(desiredToe.x - groundedFoot.x, 0, desiredToe.z - groundedFoot.z)
+            let destination = anchor + shift
+            // These temporary transforms are used only for joint sampling;
+            // restore the displayed position before deciding how to travel.
+            translateTo(entityId: shooterEntity, position: previousPosition)
+            rotateTo(entityId: shooterEntity, rotation: previousRotation)
             // Foot sampling aligns only X/Z. The ball stays on the physics floor,
             // with its center one radius above it, regardless of the foot's height.
             let trajectory = preview
             guard physics.resetBody(entity: ballEntity, position: trajectory.origin, velocity: .zero) else {
-                requestPenalty(settings: settings)
+                nextShotAt = now + 0.1
                 return
             }
             cancelPenalty()
-            restartAnimation(entityId: shooterEntity, name: Self.strikeName)
-            shooterPriming = true
-            checkFinished = true
-            countdown = (trajectory, now + 3)
-            setShotStatus("Shot in 3 — raise your hands")
+            beginShooterTravel(to: destination, rotation: rotation, trajectory: trajectory, now: now)
         }
         if let pending = countdown {
+            // Keep the kick mark fixed while the jog-to-idle velocity blend
+            // settles; it must not move the contact point during the countdown.
+            if let shooterKickMark { translateTo(entityId: shooterEntity, position: shooterKickMark) }
+            if let shooterKickRotation { rotateTo(entityId: shooterEntity, rotation: shooterKickRotation) }
             if now >= pending.launchAt {
-                let restartStarted = ProcessInfo.processInfo.systemUptime
-                restartAnimation(entityId: shooterEntity, name: Self.strikeName)
-                let restartMs = (ProcessInfo.processInfo.systemUptime - restartStarted) * 1000
-                Logger.log(message: String(format: "ImmersiveGol M5: kick started; restart CPU %.2f ms", restartMs))
+                // A short inertialized transition settles before foot contact.
+                // Switching from idle starts the one-shot kick at time zero.
+                changeAnimation(entityId: shooterEntity, name: Self.strikeName, transitionHalflife: 0.05)
                 kick = (pending.trajectory, false)
                 countdown = nil
+                strikeStartPosition = getLocalPosition(entityId: shooterEntity)
+                strikeStartRotation = getRotationQuaternion(entityId: shooterEntity)
+                shooterKickMark = nil
+                shooterKickRotation = nil
                 setShotStatus("Shooter kicking — raise your hands")
             } else {
                 let text = "Shot in \(Int(ceil(pending.launchAt - now))) — raise your hands"
@@ -359,22 +612,42 @@ final class GameScene: @unchecked Sendable {
             if !pending.launched {
                 // Hold the ball on the floor during countdown/windup; release
                 // once the actual clip crosses the reviewed contact frame.
-                let velocity = time >= shooterContactTime ? pending.trajectory.velocity : .zero
+                let contactReached = time >= shooterContactTime
+                if contactReached, let toe = displayedToePosition() {
+                    let towardGoal = simd_normalize(SIMD3<Float>(pending.trajectory.target.x - pending.trajectory.origin.x, 0,
+                                                                pending.trajectory.target.z - pending.trajectory.origin.z))
+                    let expected = pending.trajectory.origin - towardGoal * Self.ballRadius
+                    // Close the remaining prediction/transition error against
+                    // the pose actually displayed. Preserve the grounded ball
+                    // and player Y; this correction persists into the jog.
+                    let correction = SIMD3<Float>(expected.x - toe.x, 0, expected.z - toe.z)
+                    translateTo(entityId: shooterEntity, position: getLocalPosition(entityId: shooterEntity) + correction)
+                }
+                if contactReached, let target = demoShotTarget(now: now) {
+                    // Choose a target near a tracked palm once; physics owns the flight.
+                    pending.trajectory = pending.trajectory.aimed(at: target, gravity: Self.gravity)
+                }
+                let velocity = contactReached ? pending.trajectory.velocity : .zero
                 if physics.resetBody(entity: ballEntity, position: pending.trajectory.origin, velocity: velocity),
-                   time >= shooterContactTime {
+                   contactReached {
                     pending.launched = true
                     kick = pending
                     activeShot = ActiveShot(trajectory: pending.trajectory, launchedAt: now)
-                    Logger.log(message: "ImmersiveGol M5: ball released at clip t=\(time), contact t=\(shooterContactTime)")
                     setShotStatus("Ball kicked — block it!")
                 }
             }
             if pending.launched, time >= shooterDuration {
-                pauseAnimationComponent(entityId: shooterEntity, isPaused: true)
+                if let position = strikeStartPosition, let rotation = strikeStartRotation {
+                    beginShooterTravel(to: position, rotation: rotation, trajectory: nil, now: now)
+                } else {
+                    playShooterIdle()
+                }
+                strikeStartPosition = nil
+                strikeStartRotation = nil
                 kick = nil
             }
-        } else if let pending = countdown {
-            physics.resetBody(entity: ballEntity, position: pending.trajectory.origin, velocity: .zero)
+        } else if let held = countdown?.trajectory ?? relocation?.trajectory {
+            physics.resetBody(entity: ballEntity, position: held.origin, velocity: .zero)
         }
         guard let shot = activeShot, let state = physics.bodyState(for: ballEntity) else { return }
         // Whole ball beyond the captured keeper plane. M3 has no goal-mouth bounds yet.
@@ -384,11 +657,40 @@ final class GameScene: @unchecked Sendable {
             setShotStatus(shot.firstBlock.map { "Touched by \($0.rawValue) palm; passed goalie" }
                           ?? "Passed goalie — try again")
             activeShot = nil
+            nextShotAt = now + 2
         } else if now - shot.launchedAt > Double(shot.trajectory.flightTime) + 3 {
             setShotStatus(shot.firstBlock.map { "Deflected by \($0.rawValue) palm" }
                           ?? "Shot ended without palm contact")
             activeShot = nil
+            nextShotAt = now + 2
         }
+    }
+
+    private func demoShotTarget(now: TimeInterval, randomize: Bool = true) -> SIMD3<Float>? {
+        let palms = GoalieHandSide.allCases.compactMap { handTracking.palmPosition($0, now: now) }
+        if let palm = palms.randomElement() {
+            // One in four shots aims directly at a glove. The others vary by
+            // 20–30 cm in the goalie's horizontal/vertical catching plane.
+            guard randomize, Int.random(in: 0..<4) != 0 else { return palm }
+            let horizontalRight = keeperFrame.map { SIMD3<Float>($0.columns.0.x, 0, $0.columns.0.z) }
+                ?? SIMD3<Float>(1, 0, 0)
+            let right = simd_length_squared(horizontalRight) > 0.001
+                ? simd_normalize(horizontalRight) : SIMD3<Float>(1, 0, 0)
+            let angle = Float.random(in: 0..<(2 * .pi))
+            let radius = Float.random(in: 0.2...0.3)
+            var target = palm + right * (cos(angle) * radius)
+                + SIMD3<Float>(0, sin(angle) * radius, 0)
+            target.y = max(target.y, (floorY ?? 0) + Self.ballRadius + 0.05)
+            return target
+        }
+        // Hands may be out of tracking at contact. Fall back to a reachable spot
+        // in front of the user's chest rather than a random high or wide target.
+        guard let head = handTracking.headTransform(now: now) ?? keeperFrame else { return nil }
+        let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
+        let forward = simd_length_squared(horizontal) > 0.001
+            ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
+        return SIMD3<Float>(head.columns.3.x, max((floorY ?? 0) + 0.5, head.columns.3.y - 0.35),
+                            head.columns.3.z) + forward * 0.45
     }
 
     @MainActor
@@ -427,7 +729,6 @@ final class GameScene: @unchecked Sendable {
         let name = "\(side.rawValue)-glove"
         guard let base = assetBasePath else {
             completeGloveLoad(side, success: false)
-            Logger.log(message: "ImmersiveGol M4: cannot load \(name); GameData path is unavailable")
             return
         }
         // Name lookup probes Models/<name>/<name>.untold, not arbitrary
@@ -435,10 +736,8 @@ final class GameScene: @unchecked Sendable {
         let url = base.appendingPathComponent("Models/gloves/\(name)/\(name).untold")
         guard FileManager.default.fileExists(atPath: url.path) else {
             completeGloveLoad(side, success: false)
-            Logger.log(message: "ImmersiveGol M4: glove asset missing at \(url.path)")
             return
         }
-        Logger.log(message: "ImmersiveGol M4: loading \(name) from \(url.path)")
         setEntityMeshAsync(entityId: entity, filename: url.path,
                            withExtension: "untold", blockRenderLoop: false) { [weak self] success in
             self?.completeGloveLoad(side, success: success)
@@ -452,7 +751,6 @@ final class GameScene: @unchecked Sendable {
             return true
         }
         guard accepted else { return }
-        Logger.log(message: "ImmersiveGol M4: \(side.rawValue)-glove load completed, success=\(success)")
         if side == .left {
             Task { @MainActor [weak self] in
                 self?.loadGlove(.right)
@@ -468,14 +766,12 @@ final class GameScene: @unchecked Sendable {
         for (side, success) in results {
             guard let entity = gloveEntities[side] else { continue }
             guard success else {
-                Logger.log(message: "ImmersiveGol M4: \(side.rawValue) glove failed to load; palm collider remains active")
                 continue
             }
             // Apply fit after loading, which can replace the authored root transform.
             scaleTo(entityId: entity, scale: SIMD3<Float>(repeating: Self.gloveScale))
             scene.get(component: RenderComponent.self, for: entity)?.isVisible = false
             loadedGloves.insert(side)
-            Logger.log(message: "ImmersiveGol M4: \(side.rawValue) glove loaded")
         }
     }
 
@@ -500,13 +796,6 @@ final class GameScene: @unchecked Sendable {
                     translateTo(entityId: glove, position: Self.parkedPosition)
                 }
             }
-            if pose != nil {
-                if trackedHands.insert(side).inserted {
-                    Logger.log(message: "ImmersiveGol M2: \(side.rawValue) palm tracking acquired")
-                }
-            } else if trackedHands.remove(side) != nil {
-                Logger.log(message: "ImmersiveGol M2: \(side.rawValue) palm tracking lost; collider parked")
-            }
         }
     }
 
@@ -514,192 +803,82 @@ final class GameScene: @unchecked Sendable {
         guard gameMode else { return }
         finishSceneLoading()
         finishGloveLoading()
-        let animation = requestLock.withLock { () -> (contact: Float, duration: Float)? in
+        let animation = requestLock.withLock { () -> ShooterAnimationTiming? in
             defer { pendingShooter = nil }
             return pendingShooter
         }
         if let animation, shooterEntity != .invalid {
             shooterContactTime = animation.contact
+            strikeInitialRootYaw = animation.rootYaw
+            shooterToe = findShooterToe(in: shooterEntity)
             shooterDuration = animation.duration
+            jogSpeed = animation.jogSpeed
+            forwardJogSpeed = animation.forwardJogSpeed
             shooterReady = true
             setAnimationPolicy(entityId: shooterEntity, policy: .forceOn)
-            setRootMotionEnabled(entityId: shooterEntity, enabled: false)
+            setRootMotionEnabled(entityId: shooterEntity, enabled: true)
             setAnimationPlaybackSpeed(entityId: shooterEntity, speed: 1)
-            restartAnimation(entityId: shooterEntity, name: Self.strikeName)
-            shooterPriming = true
-            Logger.log(message: "ImmersiveGol M5: shooter ready; frame \(Self.strikeContactFrame) at t=\(shooterContactTime), duration=\(shooterDuration)")
+            // Configure loop flags once, then use smooth clip switches at runtime.
+            restartAnimation(entityId: shooterEntity, name: Self.strikeName, repeats: false)
+            restartAnimation(entityId: shooterEntity, name: Self.forwardJogName, repeats: true)
+            restartAnimation(entityId: shooterEntity, name: Self.jogName, repeats: true)
+            restartAnimation(entityId: shooterEntity, name: Self.idleName, repeats: true)
+            requestLock.withLock { placementReady = true }
+            setShotStatus("Ready — press Start Kicking, then raise your hands")
         }
-        // Allow one animation update to display the initial stance, then hold
-        // it for the countdown. Pausing before sampling would leave a bind pose.
-        if shooterPriming, (getAnimationPlaybackTime(entityId: shooterEntity) ?? 0) > 0 {
-            pauseAnimationComponent(entityId: shooterEntity, isPaused: true)
-            shooterPriming = false
-        }
-        guard sceneLoaded else { return }
-        let rePlace = requestLock.withLock { () -> Bool in
-            defer { floorPlacementRequested = false }
-            return floorPlacementRequested
-        }
-        if rePlace {
-            floorY = nil
-            requestLock.withLock {
-                placementReady = false
-                resetRequested = false
-                palmDropRequested = false
-                requestedShot = nil
-            }
-            cancelPenalty()
-            scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = false
-            physics.resetBody(entity: ballEntity, position: Self.parkedPosition, velocity: .zero)
-            setShotStatus("Look at the real floor, then pinch and release to set the floor height")
-        }
-        setupBallPhysicsWhenLoaded()
-        // Keep hands updating after the M1 drop check has completed.
         updatePalms()
-        guard let floorY else { return }
-        let shouldReset = requestLock.withLock { () -> Bool in
-            defer { resetRequested = false }
-            return resetRequested
-        }
-        if shouldReset {
-            cancelPenalty()
-            setShotStatus("Floor placed — checking ball drop; penalties are ready")
-            if physics.resetBody(entity: ballEntity, position: spawnPosition, velocity: .zero) {
-                observedFall = false
-                observedFloorContact = false
-                settledTime = 0
-                checkTime = 0
-                checkFinished = false
-                Logger.log(message: "ImmersiveGol M1: repeating drop check")
-            } else {
-                requestPhysicsReset() // Coordinator has not created the body yet.
-            }
-        }
-        let shouldDropAbovePalm = requestLock.withLock { () -> Bool in
-            defer { palmDropRequested = false }
-            return palmDropRequested
-        }
-        if shouldDropAbovePalm {
-            cancelPenalty()
-            setShotStatus("M2 palm drop check")
-            let now = ProcessInfo.processInfo.systemUptime
-            let palm = handTracking.palmPosition(.right, now: now)
-                ?? handTracking.palmPosition(.left, now: now)
-            if let palm {
-                let position = palm + SIMD3<Float>(0, 0.4, 0)
-                if physics.resetBody(entity: ballEntity, position: position, velocity: .zero) {
-                    // Palm interactions are a separate check from M1's floor drop.
-                    checkFinished = true
-                    Logger.log(message: "ImmersiveGol M2: ball dropped above palm; hold your hand beneath it")
-                } else {
-                    requestPalmDrop()
-                }
-            } else {
-                Logger.log(message: "ImmersiveGol M2: show a tracked palm before requesting a drop")
-            }
-        }
+        guard sceneLoaded, floorY != nil else { return }
+        setupBallPhysicsWhenLoaded()
         updatePenalty(now: ProcessInfo.processInfo.systemUptime)
-        guard !checkFinished, let state = physics.bodyState(for: ballEntity) else { return }
-        checkTime += deltaTime
-        if state.position.y < spawnPosition.y - 0.1 && state.velocity.y < -0.1 {
-            observedFall = true
-        }
-        let resting = abs(state.position.y - (floorY + Self.ballRadius)) < 0.02
-            && simd_length(state.velocity) < 0.05
-        settledTime = resting ? settledTime + deltaTime : 0
-        if observedFall && observedFloorContact && settledTime >= 0.5 {
-            checkFinished = true
-            Logger.log(message: "ImmersiveGol M1 PASS: ball fell, hit floor, and settled at y=\(state.position.y)")
-        } else if checkTime > 10 {
-            checkFinished = true
-            Logger.log(message: "ImmersiveGol M1 FAIL: fall=\(observedFall), contact=\(observedFloorContact), y=\(state.position.y), speed=\(simd_length(state.velocity))")
-        }
     }
 
     var isFloorPlaced: Bool {
         requestLock.withLock { placementReady }
     }
 
-    func requestFloorPlacement() {
-        requestLock.withLock { floorPlacementRequested = true }
-    }
-
     func handleInput() {
-        guard gameMode, sceneLoaded else { return }
+        guard gameMode, floorY == nil else { return }
         let state = getXRSpatialInputState()
-        guard floorY == nil, state.spatialTapActive else { return }
-        Logger.log(message: "ImmersiveGol: placement tap received")
+        guard state.spatialTapActive else { return }
         guard let hit = pickRealSurfacePosition(
             rayOrigin: state.rayOriginWorld,
             rayDirection: state.rayDirectionWorld,
             filter: .floorOnly
         ) else {
-            RealSurfacePlaneStore.shared.logAllPlanes()
-            setShotStatus("No classified floor detected here yet. Scan the floor, then pinch and release again.")
+            setShotStatus("No floor detected yet. Look around the ground, then pinch and release again.")
             return
         }
-        Logger.log(message: "ImmersiveGol: tapped surface (\(hit.surfaceKind))", vector: hit.worldPosition)
-        let y = hit.worldPosition.y
-        let head = handTracking.headTransform(now: ProcessInfo.processInfo.systemUptime)
-        // Keep engine-provided world coordinates and entity coordinates identical.
-        SceneRootTransform.shared.reset()
-        RealSurfacePlaneStore.shared.logAllPlanes()
-        Logger.log(message: "ImmersiveGol: floor hit y=\(y), head y=\(head?.columns.3.y.description ?? "unavailable")")
-        let center = head.map { SIMD3<Float>($0.columns.3.x, y, $0.columns.3.z) }
-            ?? hit.worldPosition
-        let horizontal = head.map { SIMD3<Float>(-$0.columns.2.x, 0, -$0.columns.2.z) }
-            ?? SIMD3<Float>(0, 0, -1)
+        guard let head = handTracking.headTransform(now: ProcessInfo.processInfo.systemUptime) else {
+            setShotStatus("Waiting for head tracking. Pinch the floor again.")
+            return
+        }
+        // Freeze the keeper's location and facing so looking at a new shooter
+        // does not rotate the next random position around the room.
+        keeperFrame = head
+        floorY = hit.worldPosition.y
+        let horizontal = SIMD3<Float>(-head.columns.2.x, 0, -head.columns.2.z)
         let forward = simd_length_squared(horizontal) > 0.001
             ? simd_normalize(horizontal) : SIMD3<Float>(0, 0, -1)
-        spawnPosition = center + forward * 3 + SIMD3<Float>(0, 1.5, 0)
-        let floorPosition = SIMD3<Float>(authoredFloorPosition.x, y, authoredFloorPosition.z)
-        translateTo(entityId: floorEntity, position: floorPosition)
-        if !floorPhysicsInstalled {
-            registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
-            registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
-            if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
-                collider.shape = .box(halfExtents: floorHalfExtents)
-                // Visual plane is at hit Y; the slab's top is at the same Y.
-                collider.localOffset = SIMD3<Float>(0, -0.05, 0)
-                collider.friction = 0.6
-                collider.restitution = 0
-            }
-            scene.get(component: RigidBodyComponent.self, for: floorEntity)?.motionType = .static
-            floorPhysicsInstalled = true
-        } else {
-            physics.resetBody(entity: floorEntity, position: floorPosition, velocity: .zero)
-        }
-        floorY = y
-        scene.get(component: RenderComponent.self, for: floorEntity)?.isVisible = true
-        requestLock.withLock {
-            placementReady = true
-            resetRequested = true
-        }
-        setShotStatus("Floor placed — ready for penalties")
-        Logger.log(message: "ImmersiveGol: grass and collider anchored at floor y=\(y)")
-        Logger.log(message: "ImmersiveGol: grass entity position", vector: getPosition(entityId: floorEntity))
-        logGrassGeometry()
-
+        spawnPosition = SIMD3<Float>(head.columns.3.x, hit.worldPosition.y + Self.ballRadius,
+                                     head.columns.3.z) + forward * 11
+        SceneRootTransform.shared.reset()
+        setShotStatus("Floor found — loading the stadium…")
+        Task { @MainActor [weak self] in self?.loadGameScene() }
     }
 
-    private func logGrassGeometry() {
-        guard let render = scene.get(component: RenderComponent.self, for: floorEntity),
-              let world = scene.get(component: WorldTransformComponent.self, for: floorEntity) else { return }
-        for mesh in render.mesh {
-            let model = world.space * mesh.localSpace
-            var minY = Float.infinity
-            var maxY = -Float.infinity
-            for x in [mesh.boundingBox.min.x, mesh.boundingBox.max.x] {
-                for y in [mesh.boundingBox.min.y, mesh.boundingBox.max.y] {
-                    for z in [mesh.boundingBox.min.z, mesh.boundingBox.max.z] {
-                        let point = model * SIMD4<Float>(x, y, z, 1)
-                        minY = min(minY, point.y)
-                        maxY = max(maxY, point.y)
-                    }
-                }
-            }
-            Logger.log(message: "ImmersiveGol: grass rendered bounds y=\(minY)...\(maxY), expected floor y=\(floorY ?? .nan)")
+    private func installFloorPhysics() {
+        guard let floorY else { return }
+        let position = SIMD3<Float>(authoredFloorPosition.x, floorY, authoredFloorPosition.z)
+        translateTo(entityId: floorEntity, position: position)
+        registerComponent(entityId: floorEntity, componentType: ColliderComponent.self)
+        registerComponent(entityId: floorEntity, componentType: RigidBodyComponent.self)
+        if let collider = scene.get(component: ColliderComponent.self, for: floorEntity) {
+            collider.shape = .box(halfExtents: floorHalfExtents)
+            collider.localOffset = SIMD3<Float>(0, -0.05, 0)
+            collider.friction = 0.6
+            collider.restitution = 0
         }
+        scene.get(component: RigidBodyComponent.self, for: floorEntity)?.motionType = .static
     }
 
     /// Called on the frame thread after the renderer stops.
@@ -726,7 +905,6 @@ final class GameScene: @unchecked Sendable {
         sceneLoaded = false
         setSceneReady(false)
         palmEntities.removeAll()
-        trackedHands.removeAll()
     }
 }
 

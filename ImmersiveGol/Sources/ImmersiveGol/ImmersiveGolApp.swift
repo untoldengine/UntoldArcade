@@ -90,12 +90,7 @@ struct ImmersiveGolApp: App {
                     t.qualityOfService = .userInteractive
                     XRHolder.shared.renderThread = t
                     t.start()
-                } else {
-                    print("❌ Failed to initialize UntoldEngineXR!")
-                    print("❌ LayerRenderer might be invalid or engine initialization failed")
                 }
-            } else {
-                print("⚠️ XR system already initialized")
             }
         })
     }
@@ -108,88 +103,74 @@ struct ImmersiveGolApp: App {
 
 struct ContentView: View {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
-    @Environment(\.openWindow) private var openWindow
-
-    @State private var distance: Double = 3
-    @State private var flightTime: Double = 0.35
+    @State private var experienceOpen = false
+    @State private var opening = false
+    @State private var runtimeObserved = false
     @State private var floorPlaced = false
-    @State private var shotStatus = "Start the experience to take a penalty"
+    @State private var kicking = false
+    @State private var shotStatus = "Start the experience to place your stadium"
     private let statusTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Text("ImmersiveGol")
-                    .font(.extraLargeTitle)
-                    .fontWeight(.bold)
-
-                Text("Powered by Untold Engine")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-
-            Button(action: {
-                Task {
-                    await openImmersiveSpace(id: "ImmersiveSpace")
+        VStack(spacing: 24) {
+            Text("ImmersiveGol")
+                .font(.extraLargeTitle)
+                .fontWeight(.bold)
+            if !experienceOpen {
+                Button("Start Experience") {
+                    opening = true
+                    Task {
+                        let result = await openImmersiveSpace(id: "ImmersiveSpace")
+                        if case .opened = result {
+                            experienceOpen = true
+                            shotStatus = "Look at the ground, then pinch and release to place the stadium"
+                        }
+                        opening = false
+                    }
                 }
-            }) {
-                    Label("Start Experience", systemImage: "visionpro.fill")
-                        .frame(minWidth: 250)
-                }
+                .disabled(opening)
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                Text("Look at your real floor, then pinch and release to set the floor height before playing.")
-                    .font(.headline)
-                Button("Place Floor Again") {
-                    XRHolder.shared.gameScene?.requestFloorPlacement()
+            } else {
+                if !floorPlaced {
+                    Text("Look at the ground, then pinch and release.")
+                        .font(.title2)
+                    Text("The stadium will appear after the floor is detected.")
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.bordered)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Distance: \(distance, specifier: "%.1f") m")
-                    Slider(value: $distance, in: 2...10, step: 0.5)
-                    Text("Maximum flight time: \(flightTime, specifier: "%.2f") s")
-                    Slider(value: $flightTime, in: 0.2...0.5, step: 0.05)
-                    Button("Repeat Shot") {
-                        XRHolder.shared.gameScene?.requestPenalty(settings: PenaltySettings(
-                            distance: Float(distance), flightTime: Float(flightTime)))
+                HStack(spacing: 16) {
+                    Button("Start Kicking") {
+                        XRHolder.shared.gameScene?.startKicking()
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!floorPlaced)
-                    Text(shotStatus)
-                        .font(.headline)
-                    Text("Face the shot direction, press Repeat Shot, then raise your palms and react to the ball.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    .disabled(!floorPlaced || kicking)
+                    Button("Stop Kicking") {
+                        XRHolder.shared.gameScene?.stopKicking()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!kicking)
                 }
-
-                Button("Repeat Physics Check") {
-                    XRHolder.shared.gameScene?.requestPhysicsReset()
-                }
-                .buttonStyle(.bordered)
-                .disabled(!floorPlaced)
-
-                Button("Drop Ball Above Palm") {
-                    XRHolder.shared.gameScene?.requestPalmDrop()
-                }
-                .buttonStyle(.bordered)
-                .disabled(!floorPlaced)
-
-                Button(action: {
-                    openWindow(id: "EngineStatsPanel")
-                }) {
-                    Label("Engine Stats", systemImage: "chart.xyaxis.line")
-                        .frame(minWidth: 250)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
             }
-            .padding(30)
+            Text(shotStatus)
+                .font(.headline)
         }
+        .controlSize(.large)
+        .padding(30)
         .onReceive(statusTimer) { _ in
-            floorPlaced = XRHolder.shared.gameScene?.isFloorPlaced ?? false
-            shotStatus = XRHolder.shared.gameScene?.shotStatus
-                ?? "Start the experience to take a penalty"
+            let game = XRHolder.shared.gameScene
+            floorPlaced = game?.isFloorPlaced ?? false
+            kicking = game?.isKicking ?? false
+            if let game {
+                // Recover if this window was recreated while XR was running.
+                runtimeObserved = true
+                experienceOpen = true
+                shotStatus = game.shotStatus
+            } else if runtimeObserved, XRHolder.shared.xr == nil {
+                // An opened space may still be initializing its renderer. Only
+                // treat missing runtime state as closure after seeing it run.
+                runtimeObserved = false
+                experienceOpen = false
+                shotStatus = "Start the experience to place your stadium"
+            }
         }
     }
 }
