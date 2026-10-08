@@ -144,8 +144,8 @@ final class GameScene: @unchecked Sendable {
     private func configureEngineSystems() {
         // The full-size stadium needs outdoor shadow coverage; XR uses this same range.
         setRendering(.maxShadowCastingDistance(250.0))
-        setRendering(.shadowCascadeCount(3))
-        setRendering(.shadowDistanceFadeFraction(0.1))
+//        setRendering(.shadowCascadeCount(3))
+//        setRendering(.shadowDistanceFadeFraction(0.1))
         gameMode = true
         registerXREvents()
         // Start with an empty scene so spatial input can calibrate the real floor.
