@@ -1,5 +1,5 @@
 {
-  "originHash" : "aab838b9af5e94b9193441f6536be327ad2e0eb727a1db3273d15840b647199e",
+  "originHash" : "1610b232f4cf651bde9138acab1733f9075eaa3c3cfdace0d011b287a6ef6fd5",
   "pins" : [
     {
       "identity" : "joltphysics",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/untoldengine/UntoldEngine.git",
       "state" : {
         "branch" : "develop",
-        "revision" : "3ff79c0964451b06f356d8f7344e81039f8a47a2"
+        "revision" : "23d66a7360f9367982d8b43570d46fba4a41c34b"
       }
     },
     {

@@ -7,13 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		038CD14E307408CF00571D7F /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD14D307408CF00571D7F /* UntoldComponentKit */; };
+		038CD150307408CF00571D7F /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD14F307408CF00571D7F /* UntoldEngine */; };
+		038CD152307408CF00571D7F /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD151307408CF00571D7F /* UntoldEngineAR */; };
+		038CD154307408CF00571D7F /* UntoldEngineMeshCook in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD153307408CF00571D7F /* UntoldEngineMeshCook */; };
+		038CD156307408CF00571D7F /* UntoldEngineShaderSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD155307408CF00571D7F /* UntoldEngineShaderSupport */; };
+		038CD158307408CF00571D7F /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 038CD157307408CF00571D7F /* UntoldEngineXR */; };
+		03AED4A33079AC03008E331E /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4A23079AC03008E331E /* UntoldComponentKit */; };
+		03AED4A53079AC03008E331E /* UntoldEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4A43079AC03008E331E /* UntoldEngine */; };
+		03AED4A73079AC03008E331E /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4A63079AC03008E331E /* UntoldEngineAR */; };
+		03AED4A93079AC03008E331E /* UntoldEngineMeshCook in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4A83079AC03008E331E /* UntoldEngineMeshCook */; };
+		03AED4AB3079AC03008E331E /* UntoldEngineShaderSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4AA3079AC03008E331E /* UntoldEngineShaderSupport */; };
+		03AED4AD3079AC03008E331E /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = 03AED4AC3079AC03008E331E /* UntoldEngineXR */; };
 		0A977BEFBD908C4CE5AB8CA5 /* GameSceneUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5258EAD93C49E3FCD1C4277F /* GameSceneUtils.swift */; };
-		35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */ = {isa = PBXBuildFile; productRef = D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */; };
 		42B02B89EC0976165BAEB500 /* GoalieHandTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002F07ED7BD39226DCEC4979 /* GoalieHandTracking.swift */; };
 		6F32B801311516808AF653A4 /* Spinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E4D2790079A8B768A35336 /* Spinner.swift */; };
 		83A6917A2A82B16EC762BAE8 /* PenaltyShot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C79B86BEDB51850E28495B2 /* PenaltyShot.swift */; };
-		8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */ = {isa = PBXBuildFile; productRef = 3207A665FF30620E333EFB06 /* UntoldComponentKit */; };
-		95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */ = {isa = PBXBuildFile; productRef = 14991CF5C75437498320D0FB /* UntoldEngineAR */; };
 		A633A61314EE6CEE4DD9EE3E /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4399CD651431DA8D866F30BB /* GameScene.swift */; };
 		B116E9EDBB05B31D18ADEFCE /* GameData in Resources */ = {isa = PBXBuildFile; fileRef = 8051A09235BCDBFB0352CC5F /* GameData */; };
 		C1D7E3CAD534D96726B0E122 /* ImmersiveGolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F569D33BCF774E653633CA /* ImmersiveGolApp.swift */; };
@@ -38,9 +47,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				DB45657ED1E34A56BF814B56 /* UntoldJoltPhysics in Frameworks */,
-				35161C291A01A9C2BE96A121 /* UntoldEngineXR in Frameworks */,
-				95732109C7DDBE745335817B /* UntoldEngineAR in Frameworks */,
-				8CFE9F904E5ED9FDB48E6BD7 /* UntoldComponentKit in Frameworks */,
+				03AED4AB3079AC03008E331E /* UntoldEngineShaderSupport in Frameworks */,
+				038CD156307408CF00571D7F /* UntoldEngineShaderSupport in Frameworks */,
+				038CD158307408CF00571D7F /* UntoldEngineXR in Frameworks */,
+				03AED4A33079AC03008E331E /* UntoldComponentKit in Frameworks */,
+				038CD154307408CF00571D7F /* UntoldEngineMeshCook in Frameworks */,
+				038CD152307408CF00571D7F /* UntoldEngineAR in Frameworks */,
+				038CD150307408CF00571D7F /* UntoldEngine in Frameworks */,
+				03AED4A53079AC03008E331E /* UntoldEngine in Frameworks */,
+				03AED4AD3079AC03008E331E /* UntoldEngineXR in Frameworks */,
+				038CD14E307408CF00571D7F /* UntoldComponentKit in Frameworks */,
+				03AED4A93079AC03008E331E /* UntoldEngineMeshCook in Frameworks */,
+				03AED4A73079AC03008E331E /* UntoldEngineAR in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,9 +130,18 @@
 			name = ImmersiveGol;
 			packageProductDependencies = (
 				6FA23712979B8152F76A2A4C /* UntoldJoltPhysics */,
-				D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */,
-				14991CF5C75437498320D0FB /* UntoldEngineAR */,
-				3207A665FF30620E333EFB06 /* UntoldComponentKit */,
+				038CD14D307408CF00571D7F /* UntoldComponentKit */,
+				038CD14F307408CF00571D7F /* UntoldEngine */,
+				038CD151307408CF00571D7F /* UntoldEngineAR */,
+				038CD153307408CF00571D7F /* UntoldEngineMeshCook */,
+				038CD155307408CF00571D7F /* UntoldEngineShaderSupport */,
+				038CD157307408CF00571D7F /* UntoldEngineXR */,
+				03AED4A23079AC03008E331E /* UntoldComponentKit */,
+				03AED4A43079AC03008E331E /* UntoldEngine */,
+				03AED4A63079AC03008E331E /* UntoldEngineAR */,
+				03AED4A83079AC03008E331E /* UntoldEngineMeshCook */,
+				03AED4AA3079AC03008E331E /* UntoldEngineShaderSupport */,
+				03AED4AC3079AC03008E331E /* UntoldEngineXR */,
 			);
 			productName = ImmersiveGol;
 			productReference = F6BF92ADAA8C83EE0B78FCDC /* ImmersiveGol.app */;
@@ -144,8 +171,8 @@
 			mainGroup = B1A48538A90A86E5BD29F133;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */,
 				E183C7C19E1D8FC904AE57F1 /* XCRemoteSwiftPackageReference "UntoldJoltPhysics" */,
+				03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E135B49E65CD05C9F9BEA2E1 /* Products */;
@@ -377,9 +404,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+		03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/untoldengine/UntoldEngine.git";
+			repositoryURL = "https://github.com/untoldengine/UntoldEngine";
 			requirement = {
 				branch = develop;
 				kind = branch;
@@ -396,25 +423,64 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		14991CF5C75437498320D0FB /* UntoldEngineAR */ = {
+		038CD14D307408CF00571D7F /* UntoldComponentKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldComponentKit;
+		};
+		038CD14F307408CF00571D7F /* UntoldEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngine;
+		};
+		038CD151307408CF00571D7F /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
 			productName = UntoldEngineAR;
 		};
-		3207A665FF30620E333EFB06 /* UntoldComponentKit */ = {
+		038CD153307408CF00571D7F /* UntoldEngineMeshCook */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineMeshCook;
+		};
+		038CD155307408CF00571D7F /* UntoldEngineShaderSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngineShaderSupport;
+		};
+		038CD157307408CF00571D7F /* UntoldEngineXR */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UntoldEngineXR;
+		};
+		03AED4A23079AC03008E331E /* UntoldComponentKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldComponentKit;
+		};
+		03AED4A43079AC03008E331E /* UntoldEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngine;
+		};
+		03AED4A63079AC03008E331E /* UntoldEngineAR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineAR;
+		};
+		03AED4A83079AC03008E331E /* UntoldEngineMeshCook */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineMeshCook;
+		};
+		03AED4AA3079AC03008E331E /* UntoldEngineShaderSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineShaderSupport;
+		};
+		03AED4AC3079AC03008E331E /* UntoldEngineXR */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 03AED4A13079AC03008E331E /* XCRemoteSwiftPackageReference "UntoldEngine" */;
+			productName = UntoldEngineXR;
 		};
 		6FA23712979B8152F76A2A4C /* UntoldJoltPhysics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E183C7C19E1D8FC904AE57F1 /* XCRemoteSwiftPackageReference "UntoldJoltPhysics" */;
 			productName = UntoldJoltPhysics;
-		};
-		D66AC1A563FB1231DBDC6F40 /* UntoldEngineXR */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 36BACA42DB8A709912FFF6B5 /* XCRemoteSwiftPackageReference "UntoldEngine" */;
-			productName = UntoldEngineXR;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
