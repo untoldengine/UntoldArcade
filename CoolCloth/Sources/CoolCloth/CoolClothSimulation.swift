@@ -91,6 +91,23 @@ public final class CoolClothSimulation: @unchecked Sendable {
         var targetWorld: SIMD3<Float>
     }
 
+    /// A capsule collider in world space.
+    public struct Capsule: Equatable, Sendable {
+        public var start: SIMD3<Float>
+        public var end: SIMD3<Float>
+        public var radius: Float
+        /// Fraction of the penetration removed per substep (1 = hard
+        /// projection; lower is gentler on cloth pinned near the body).
+        public var softness: Float
+
+        public init(start: SIMD3<Float>, end: SIMD3<Float>, radius: Float, softness: Float = 1) {
+            self.start = start
+            self.end = end
+            self.radius = radius
+            self.softness = softness
+        }
+    }
+
     struct FrameState: Sendable {
         let paused: Bool
         let resetGeneration: UInt64
@@ -111,6 +128,10 @@ public final class CoolClothSimulation: @unchecked Sendable {
         let grab: Grab?
         let grabRadiusWorld: Float
         let lightDirection: SIMD3<Float>
+        /// World targets for the pinned top row, by column (nil: pins stay
+        /// at their rest positions).
+        let pinTargets: [SIMD3<Float>]?
+        let capsules: [Capsule]
     }
 
     private let lock = NSLock()
@@ -133,6 +154,8 @@ public final class CoolClothSimulation: @unchecked Sendable {
     private var grab: Grab?
     private var grabRadiusWorld: Float = 0.06
     private var lightDirection = simd_normalize(SIMD3<Float>(0.6, 1.4, 0.8))
+    private var pinTargets: [SIMD3<Float>]?
+    private var capsules: [Capsule] = []
 
     private init() {}
 
@@ -167,6 +190,13 @@ public final class CoolClothSimulation: @unchecked Sendable {
 
     public func setMaterial(_ preset: CoolClothMaterialPreset) {
         setMaterial(preset.parameters)
+    }
+
+    /// Speed cap (m/s) for every particle; lower it for cloth attached to
+    /// a body, where collisions against pinned particles can throw energy in.
+    public func setMaxSpeed(_ metersPerSecond: Float) {
+        guard metersPerSecond.isFinite, metersPerSecond > 0 else { return }
+        lock.withLock { maxSpeed = metersPerSecond }
     }
 
     /// substeps 1...16, iterations 1...8. One iteration per substep is the XPBD
@@ -239,6 +269,32 @@ public final class CoolClothSimulation: @unchecked Sendable {
         lock.withLock { grabRadiusWorld = worldMeters }
     }
 
+    /// Where the pinned top row hangs from, one world position per column
+    /// (`gridSize` entries; fewer are spread along the row). Lets the sheet
+    /// ride on something that moves, like a cape on a character's
+    /// shoulders. nil returns the pins to their rest positions.
+    public func setPinTargets(worldPositions: [SIMD3<Float>]?) {
+        guard let worldPositions else {
+            lock.withLock { pinTargets = nil }
+            return
+        }
+        guard worldPositions.count >= 2, worldPositions.allSatisfy(\.allFinite) else { return }
+        let resampled: [SIMD3<Float>] = (0 ..< Self.gridSize).map { column in
+            let t = Float(column) / Float(Self.gridSize - 1) * Float(worldPositions.count - 1)
+            let i = min(Int(t), worldPositions.count - 2)
+            let f = t - Float(i)
+            return worldPositions[i] + f * (worldPositions[i + 1] - worldPositions[i])
+        }
+        lock.withLock { pinTargets = resampled }
+    }
+
+    /// Capsule colliders in world space (up to `coolClothCapsuleCount`); an
+    /// empty list clears them.
+    public func setCapsules(_ capsules: [Capsule]) {
+        let valid = capsules.filter { $0.start.allFinite && $0.end.allFinite && $0.radius.isFinite && $0.radius > 0 }
+        lock.withLock { self.capsules = Array(valid.prefix(coolClothCapsuleCount)) }
+    }
+
     func consumeFrameState() -> FrameState {
         lock.withLock {
             let state = FrameState(
@@ -260,7 +316,9 @@ public final class CoolClothSimulation: @unchecked Sendable {
                 sphereActive: sphereActive,
                 grab: grab,
                 grabRadiusWorld: grabRadiusWorld,
-                lightDirection: lightDirection
+                lightDirection: lightDirection,
+                pinTargets: pinTargets,
+                capsules: capsules
             )
             pendingDeltaTime = 0
             return state
@@ -288,6 +346,8 @@ public final class CoolClothSimulation: @unchecked Sendable {
             grab = nil
             grabRadiusWorld = 0.06
             lightDirection = simd_normalize(SIMD3<Float>(0.6, 1.4, 0.8))
+            pinTargets = nil
+            capsules = []
         }
     }
 }
@@ -364,4 +424,19 @@ public func releaseCoolClothGrab() {
 
 public func setCoolClothGrabRadius(worldMeters: Float) {
     CoolClothSimulation.shared.setGrabRadius(worldMeters: worldMeters)
+}
+
+/// See `CoolClothSimulation.setPinTargets(worldPositions:)`.
+public func setCoolClothPinTargets(worldPositions: [SIMD3<Float>]?) {
+    CoolClothSimulation.shared.setPinTargets(worldPositions: worldPositions)
+}
+
+/// See `CoolClothSimulation.setCapsules(_:)`.
+public func setCoolClothCapsules(_ capsules: [CoolClothSimulation.Capsule]) {
+    CoolClothSimulation.shared.setCapsules(capsules)
+}
+
+/// See `CoolClothSimulation.setMaxSpeed(_:)`.
+public func setCoolClothMaxSpeed(_ metersPerSecond: Float) {
+    CoolClothSimulation.shared.setMaxSpeed(metersPerSecond)
 }

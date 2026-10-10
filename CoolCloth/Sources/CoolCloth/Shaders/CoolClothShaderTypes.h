@@ -15,8 +15,8 @@ struct CoolClothSimParams {
     metal::float4 grabTarget;   // xyz local grab target, w world floor Y
     metal::float4 compliance;   // x stretch, y shear, z bend, w Jacobi relaxation
     metal::float4 misc;         // x damping, y rest spacing, z time, w max speed
-    metal::uint4 flags;         // x pin mode, y grab active, z sphere active, w unused
-    metal::uint4 grab;          // xy grabbed particle, z grab radius in particles, w unused
+    metal::uint4 flags;         // x pin mode, y grab active, z sphere active, w pin targets active
+    metal::uint4 grab;          // xy grabbed particle, z grab radius in particles, w capsule count
 };
 
 struct CoolClothSceneUniforms {
@@ -39,8 +39,22 @@ enum CoolClothPinModeValue {
     CoolClothPinTopSpaced = 4,
 };
 
+// Attachment targets: one world position per column of the top row, w = 1
+// when active. Lets a pinned edge follow something that moves (a cape on
+// a character's shoulders).
+#define CoolClothPinTargetCount 128
+// Capsule colliders: a = xyz + radius in w, b = xyz.
+#define CoolClothCapsuleCount 8
+
+struct CoolClothCapsule {
+    metal::float4 a;   // xyz start, w radius
+    metal::float4 b;   // xyz end, w push-out fraction per substep (0 = 1)
+};
+
 enum CoolClothSimBufferIndex {
     CoolClothSimParamsIndex = 0,
+    CoolClothPinTargetsIndex = 1,
+    CoolClothCapsulesIndex = 2,
 };
 
 enum CoolClothSceneBufferIndex {

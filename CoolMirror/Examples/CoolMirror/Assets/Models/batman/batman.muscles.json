@@ -1,0 +1,749 @@
+{
+  "forwardReference" : {
+    "from" : "Bip01_L_Foot",
+    "to" : "Bip01_L_Toe0"
+  },
+  "muscles" : [
+    {
+      "bellyRadius" : 0.035,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 110,
+        "joint" : "Bip01_L_Forearm",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.18,
+        "joint" : "Bip01_L_Forearm",
+        "offset" : [
+          0,
+          0,
+          0.03
+        ],
+        "tip" : "Bip01_L_Hand"
+      },
+      "maxContraction" : 0.25,
+      "name" : "bicepsL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_L_UpperArm",
+        "offset" : [
+          0,
+          0,
+          0.045
+        ],
+        "tip" : "Bip01_L_Forearm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.033,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 4.9999995,
+        "joint" : "Bip01_L_Forearm",
+        "startAngle" : 90
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.06,
+        "joint" : "Bip01_L_Forearm",
+        "offset" : [
+          0,
+          0,
+          -0.03
+        ],
+        "tip" : "Bip01_L_Hand"
+      },
+      "maxContraction" : 0.15,
+      "name" : "tricepsL",
+      "origin" : {
+        "fraction" : 0.1,
+        "joint" : "Bip01_L_UpperArm",
+        "offset" : [
+          0,
+          0,
+          -0.045
+        ],
+        "tip" : "Bip01_L_Forearm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "Bip01_L_UpperArm",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.45,
+        "joint" : "Bip01_L_UpperArm",
+        "offset" : [
+          0.02,
+          0,
+          0
+        ],
+        "tip" : "Bip01_L_Forearm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "deltoidL",
+      "origin" : {
+        "fraction" : 0.9,
+        "joint" : "Bip01_L_Clavicle",
+        "offset" : [
+          0.02,
+          0.05,
+          0
+        ],
+        "tip" : "Bip01_L_UpperArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.04,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 79.99999,
+        "joint" : "Bip01_L_UpperArm",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.2,
+        "joint" : "Bip01_L_UpperArm",
+        "offset" : [
+          0,
+          0,
+          0.04
+        ],
+        "tip" : "Bip01_L_Forearm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "pectoralL",
+      "origin" : {
+        "fraction" : 0.6,
+        "joint" : "Bip01_Spine2",
+        "offset" : [
+          0.06,
+          0.02,
+          0.1
+        ],
+        "tip" : "Bip01_Spine3"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.03,
+      "boneRadius" : 0.018,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 60,
+        "joint" : "Bip01_L_Hand",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.85,
+        "joint" : "Bip01_L_Forearm",
+        "offset" : [
+          0,
+          0,
+          0.02
+        ],
+        "tip" : "Bip01_L_Hand"
+      },
+      "maxContraction" : 0.2,
+      "name" : "forearmFlexorsL",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_L_Forearm",
+        "offset" : [
+          0,
+          0,
+          0.035
+        ],
+        "tip" : "Bip01_L_Hand"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.035,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.055,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "Bip01_L_Calf",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_L_Calf",
+        "offset" : [
+          0,
+          0,
+          0.05
+        ],
+        "tip" : "Bip01_L_Foot"
+      },
+      "maxContraction" : 0.2,
+      "name" : "quadricepsL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_L_Thigh",
+        "offset" : [
+          0,
+          0,
+          0.06
+        ],
+        "tip" : "Bip01_L_Calf"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "Bip01_L_Calf",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_L_Calf",
+        "offset" : [
+          0,
+          0,
+          -0.04
+        ],
+        "tip" : "Bip01_L_Foot"
+      },
+      "maxContraction" : 0.15,
+      "name" : "hamstringsL",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_L_Thigh",
+        "offset" : [
+          0,
+          0,
+          -0.06
+        ],
+        "tip" : "Bip01_L_Calf"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.018,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.06,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "Bip01_L_Thigh",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.3,
+        "joint" : "Bip01_L_Thigh",
+        "offset" : [
+          0.03,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_L_Calf"
+      },
+      "maxContraction" : 0.15,
+      "name" : "gluteusL",
+      "origin" : {
+        "fraction" : 0,
+        "joint" : "Bip01_Pelvis",
+        "offset" : [
+          0.06,
+          0,
+          -0.08
+        ],
+        "tip" : "Bip01_Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.025,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "Bip01_L_Foot",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0,
+        "joint" : "Bip01_L_Foot",
+        "offset" : [
+          0,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_L_Toe0"
+      },
+      "maxContraction" : 0.2,
+      "name" : "calfL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_L_Calf",
+        "offset" : [
+          0,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_L_Foot"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.045,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.035,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 110,
+        "joint" : "Bip01_R_Forearm",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.18,
+        "joint" : "Bip01_R_Forearm",
+        "offset" : [
+          -0,
+          0,
+          0.03
+        ],
+        "tip" : "Bip01_R_Hand"
+      },
+      "maxContraction" : 0.25,
+      "name" : "bicepsR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_R_UpperArm",
+        "offset" : [
+          -0,
+          0,
+          0.045
+        ],
+        "tip" : "Bip01_R_Forearm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.033,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 4.9999995,
+        "joint" : "Bip01_R_Forearm",
+        "startAngle" : 90
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.06,
+        "joint" : "Bip01_R_Forearm",
+        "offset" : [
+          -0,
+          0,
+          -0.03
+        ],
+        "tip" : "Bip01_R_Hand"
+      },
+      "maxContraction" : 0.15,
+      "name" : "tricepsR",
+      "origin" : {
+        "fraction" : 0.1,
+        "joint" : "Bip01_R_UpperArm",
+        "offset" : [
+          -0,
+          0,
+          -0.045
+        ],
+        "tip" : "Bip01_R_Forearm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "Bip01_R_UpperArm",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.45,
+        "joint" : "Bip01_R_UpperArm",
+        "offset" : [
+          -0.02,
+          0,
+          0
+        ],
+        "tip" : "Bip01_R_Forearm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "deltoidR",
+      "origin" : {
+        "fraction" : 0.9,
+        "joint" : "Bip01_R_Clavicle",
+        "offset" : [
+          -0.02,
+          0.05,
+          0
+        ],
+        "tip" : "Bip01_R_UpperArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.04,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 79.99999,
+        "joint" : "Bip01_R_UpperArm",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.2,
+        "joint" : "Bip01_R_UpperArm",
+        "offset" : [
+          -0,
+          0,
+          0.04
+        ],
+        "tip" : "Bip01_R_Forearm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "pectoralR",
+      "origin" : {
+        "fraction" : 0.6,
+        "joint" : "Bip01_Spine2",
+        "offset" : [
+          -0.06,
+          0.02,
+          0.1
+        ],
+        "tip" : "Bip01_Spine3"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.03,
+      "boneRadius" : 0.018,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 60,
+        "joint" : "Bip01_R_Hand",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.85,
+        "joint" : "Bip01_R_Forearm",
+        "offset" : [
+          -0,
+          0,
+          0.02
+        ],
+        "tip" : "Bip01_R_Hand"
+      },
+      "maxContraction" : 0.2,
+      "name" : "forearmFlexorsR",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_R_Forearm",
+        "offset" : [
+          -0,
+          0,
+          0.035
+        ],
+        "tip" : "Bip01_R_Hand"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.035,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.055,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "Bip01_R_Calf",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_R_Calf",
+        "offset" : [
+          -0,
+          0,
+          0.05
+        ],
+        "tip" : "Bip01_R_Foot"
+      },
+      "maxContraction" : 0.2,
+      "name" : "quadricepsR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_R_Thigh",
+        "offset" : [
+          -0,
+          0,
+          0.06
+        ],
+        "tip" : "Bip01_R_Calf"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "Bip01_R_Calf",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_R_Calf",
+        "offset" : [
+          -0,
+          0,
+          -0.04
+        ],
+        "tip" : "Bip01_R_Foot"
+      },
+      "maxContraction" : 0.15,
+      "name" : "hamstringsR",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "Bip01_R_Thigh",
+        "offset" : [
+          -0,
+          0,
+          -0.06
+        ],
+        "tip" : "Bip01_R_Calf"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.018,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.06,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "Bip01_R_Thigh",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.3,
+        "joint" : "Bip01_R_Thigh",
+        "offset" : [
+          -0.03,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_R_Calf"
+      },
+      "maxContraction" : 0.15,
+      "name" : "gluteusR",
+      "origin" : {
+        "fraction" : 0,
+        "joint" : "Bip01_Pelvis",
+        "offset" : [
+          -0.06,
+          0,
+          -0.08
+        ],
+        "tip" : "Bip01_Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.025,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "Bip01_R_Foot",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0,
+        "joint" : "Bip01_R_Foot",
+        "offset" : [
+          -0,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_R_Toe0"
+      },
+      "maxContraction" : 0.2,
+      "name" : "calfR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "Bip01_R_Calf",
+        "offset" : [
+          -0,
+          0,
+          -0.05
+        ],
+        "tip" : "Bip01_R_Foot"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.045,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.05,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "Bip01_Spine",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.8,
+        "joint" : "Bip01_Spine2",
+        "offset" : [
+          0,
+          0,
+          0.09
+        ],
+        "tip" : "Bip01_Spine3"
+      },
+      "maxContraction" : 0.15,
+      "name" : "abdominals",
+      "origin" : {
+        "fraction" : 0.2,
+        "joint" : "Bip01_Pelvis",
+        "offset" : [
+          0,
+          0,
+          0.1
+        ],
+        "tip" : "Bip01_Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    }
+  ]
+}

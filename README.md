@@ -83,6 +83,21 @@ Mixed-reality bowling on the shared Jolt Physics plugin — the demo that needs 
 open CoolBowling/Examples/CoolBowlingVisionOS/CoolBowlingVisionOS.xcodeproj
 ```
 
+### 🪞 CoolMirror — *visionOS + iPhone · Character Deformation · Motion Capture*
+
+<!-- MEDIA: docs/media/CoolMirror/demo.gif -->
+<!-- ![CoolMirror demo](docs/media/CoolMirror/demo.gif) -->
+
+A virtual mirror: a rigged, high-poly character stands in front of you and moves as you do. An iPhone on a stand tracks your body (ARKit body tracking, sent over the local network), the headset adds what it knows far better, your head and your hands, and the character is held between the two: its head where yours is, its planted feet where they landed, its hands on its body where yours are on yours. Underneath it is the showcase of the engine's character-deformation stack: switch the skinning live (vertex shader, compute linear blend, dual quaternion, Direct Delta Mush), drag morph sliders, let pose drivers fire the biceps as the elbows curl, turn on the volumetric XPBD muscle simulation or the ML deformer trained on it, and hang a Jolt soft-body cape on Batman. **Requires a physical Vision Pro and an iPhone** with a rear camera that supports body tracking.
+
+- External poses, per-limb reach IK and the deformation compute pass from the engine; cloth from the shared Jolt Physics plugin
+- Capture filtered against recorded sessions: the recordings replay as regression tests on a Mac
+- One Xcode project, two targets: the mirror (visionOS) and the capture app (iPhone)
+
+```bash
+open CoolMirror/Examples/CoolMirror/CoolMirror.xcodeproj
+```
+
 ### 🧲 UntoldJoltPhysics — *plugin · Physics Backend*
 
 [Jolt Physics](https://github.com/jrouwe/JoltPhysics) behind the engine's physics backend seam, as a Swift package every demo can depend on: [untoldengine/UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics). Jolt comes as source from the [untoldengine/JoltPhysics](https://github.com/untoldengine/JoltPhysics) fork (the upstream tree plus a `Package.swift`) and SwiftPM compiles it — no binaries — for macOS, iOS and visionOS. CoolBasket can run on it instead of its built-in backend: pick "Jolt Physics" in its control window.

@@ -103,3 +103,25 @@ public func coolClothParticleWorldPosition(column: Int, row: Int) -> SIMD3<Float
     let world = model * SIMD4<Float>(local.x, local.y, local.z, 1)
     return SIMD3<Float>(world.x, world.y, world.z)
 }
+
+/// World-space bounds of the sheet from the last simulation readback, with
+/// the number of non-finite particles: a diagnostic for a sheet that has
+/// blown up. nil before the first frame.
+public func coolClothWorldBounds() -> (min: SIMD3<Float>, max: SIMD3<Float>, nonFinite: Int)? {
+    let (positions, gridSize, model) = CoolClothPickingStore.shared.snapshot()
+    guard gridSize > 0, !positions.isEmpty else { return nil }
+    var lower = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+    var upper = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+    var nonFinite = 0
+    for p in positions {
+        let world = model * SIMD4<Float>(p.x, p.y, p.z, 1)
+        guard world.x.isFinite, world.y.isFinite, world.z.isFinite else {
+            nonFinite += 1
+            continue
+        }
+        lower = simd_min(lower, SIMD3<Float>(world.x, world.y, world.z))
+        upper = simd_max(upper, SIMD3<Float>(world.x, world.y, world.z))
+    }
+    guard nonFinite < positions.count else { return (.zero, .zero, nonFinite) }
+    return (lower, upper, nonFinite)
+}

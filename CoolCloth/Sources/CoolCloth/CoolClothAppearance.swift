@@ -16,6 +16,7 @@ public final class CoolClothAppearance: @unchecked Sendable {
         let sheenIntensity: Float
         let ambient: Float
         let ballVisible: Bool
+        let visible: Bool
     }
 
     private let lock = NSLock()
@@ -28,6 +29,7 @@ public final class CoolClothAppearance: @unchecked Sendable {
     private var sheenIntensity: Float = 0.35
     private var ambient: Float = 0.38
     private var ballVisible = false
+    private var visible = true
 
     private init() {}
 
@@ -73,6 +75,11 @@ public final class CoolClothAppearance: @unchecked Sendable {
         lock.withLock { ballVisible = visible }
     }
 
+    /// Whether the sheet is drawn at all (the simulation keeps running).
+    public func setVisible(_ visible: Bool) {
+        lock.withLock { self.visible = visible }
+    }
+
     func state() -> State {
         lock.withLock {
             State(
@@ -84,7 +91,8 @@ public final class CoolClothAppearance: @unchecked Sendable {
                 sheenColor: sheenColor,
                 sheenIntensity: sheenIntensity,
                 ambient: ambient,
-                ballVisible: ballVisible
+                ballVisible: ballVisible,
+                visible: visible
             )
         }
     }
@@ -100,6 +108,7 @@ public final class CoolClothAppearance: @unchecked Sendable {
             sheenIntensity = 0.35
             ambient = 0.38
             ballVisible = false
+            visible = true
         }
     }
 }
@@ -128,4 +137,9 @@ public func setCoolClothColors(
 
 public func setCoolClothBallVisible(_ visible: Bool) {
     CoolClothAppearance.shared.setBallVisible(visible)
+}
+
+/// Shows or hides the sheet (the simulation keeps running while hidden).
+public func setCoolClothVisible(_ visible: Bool) {
+    CoolClothAppearance.shared.setVisible(visible)
 }

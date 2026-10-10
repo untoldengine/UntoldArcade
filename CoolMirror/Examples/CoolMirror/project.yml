@@ -1,0 +1,123 @@
+# One project, two apps: the visionOS mirror and the iPhone capture app.
+# Both link the local CoolMirror package, which Xcode can only open from one
+# project at a time — hence a single project so both can run side by side.
+# Regenerate after adding files: `xcodegen generate` in this folder.
+name: CoolMirror
+
+packages:
+  CoolMirror:
+    path: ../..
+  UntoldEngine:
+    url: https://github.com/untoldengine/UntoldEngine.git
+    branch: develop
+  CoolCloth:
+    path: ../../../CoolCloth
+  UntoldJoltPhysics:
+    url: https://github.com/untoldengine/UntoldJoltPhysics.git
+    branch: develop
+
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 53X2422NYU
+
+targets:
+  CoolMirrorVisionOS:
+    # Its shared scheme is under `schemes` below.
+    type: application
+    platform: visionOS
+    deploymentTarget: 2.0
+    sources:
+      - path: visionOS
+      - path: Assets/Models
+        type: folder
+        buildPhase: resources
+      - path: Assets/Animations
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: CoolMirror
+        product: CoolMirror
+      - package: CoolCloth
+        product: CoolCloth
+      - package: UntoldJoltPhysics
+        product: UntoldJoltPhysics
+      - package: UntoldEngine
+        product: UntoldEngine
+      - package: UntoldEngine
+        product: UntoldEngineXR
+      - package: UntoldEngine
+        product: UntoldEngineAR
+      - package: UntoldEngine
+        product: UntoldEngineShaderSupport
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miolabs.CoolMirrorVisionOS
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: visionOS/Info.plist
+        TARGETED_DEVICE_FAMILY: "7"
+        SUPPORTED_PLATFORMS: "xros xrsimulator"
+        UNTOLD_ENGINE_PACKAGE_ROOT: "$(BUILD_DIR)/../../SourcePackages/checkouts/UntoldEngine"
+        MTL_HEADER_SEARCH_PATHS: "$(inherited) $(UNTOLD_ENGINE_PACKAGE_ROOT)/Sources/UntoldEngineShaderSupport/include"
+        MTL_FAST_MATH: YES
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+          MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: -O
+
+  CoolMirrorCapture:
+    # Shared scheme, so xcodebuild and a fresh clone find the target.
+    scheme:
+      testTargets: []
+    type: application
+    platform: iOS
+    deploymentTarget: 17.0
+    sources:
+      - path: iOS
+    dependencies:
+      - package: CoolMirror
+        product: CoolMirrorMocap
+    info:
+      path: iOS/Info.plist
+      properties:
+        CFBundleDisplayName: CoolMirror Capture
+        UILaunchScreen: {}
+        # ARKit body tracking only processes landscape frames
+        # ("ABPKPersonIDTracker: Portrait image is not supported").
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIRequiredDeviceCapabilities: [arkit]
+        NSCameraUsageDescription: Tracks your body with the rear camera and streams the pose to the CoolMirror visionOS app.
+        NSLocalNetworkUsageDescription: Finds the CoolMirror visionOS app on your local network to stream your body pose to it.
+        NSBonjourServices: [_coolmirror._udp]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miolabs.coolmirrorcapture
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+
+schemes:
+  # Shared, so xcodebuild and a fresh clone find the target. Run and
+  # Profile build Release: in Debug the Swift packages compile at -Onone
+  # and Jolt at -O0 with its asserts on, which is ten to thirty times
+  # slower for the cape cloth and the mocap filters, and a Jolt assert
+  # aborts the app where Release carries on.
+  CoolMirrorVisionOS:
+    build:
+      targets:
+        CoolMirrorVisionOS: all
+    run:
+      config: Release
+    test:
+      config: Debug
+      targets: []
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

@@ -43,7 +43,7 @@ public enum CoolClothPluginContract {
     public static let shaderFunctionNames = [
         "coolClothInitKernel",
         "coolClothPredictKernel",
-        "coolClothSolveKernel",
+        "coolClothSolveKernel2",
         "coolClothFinalizeKernel",
         "coolClothNormalKernel",
         "coolClothVertex",

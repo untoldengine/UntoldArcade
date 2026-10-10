@@ -10,9 +10,20 @@ struct CoolClothSimParams {
     var grabTarget: SIMD4<Float>   // xyz local grab target, w world floor Y
     var compliance: SIMD4<Float>   // x stretch, y shear, z bend, w Jacobi relaxation
     var misc: SIMD4<Float>         // x damping, y rest spacing, z time, w max speed
-    var flags: SIMD4<UInt32>       // x pin mode, y grab active, z sphere active, w unused
-    var grab: SIMD4<UInt32>        // xy grabbed particle, z grab radius in particles, w unused
+    var flags: SIMD4<UInt32>       // x pin mode, y grab active, z sphere active, w pin targets active
+    var grab: SIMD4<UInt32>        // xy grabbed particle, z grab radius in particles, w capsule count
 }
+
+/// CPU representation of `CoolClothCapsule` in Metal.
+struct CoolClothCapsuleData {
+    var a: SIMD4<Float>   // xyz start, w radius
+    var b: SIMD4<Float>   // xyz end, w push-out fraction per substep (0 = 1)
+}
+
+/// Attachment targets per top-row column (world, w = 1 when active).
+let coolClothPinTargetCount = 128
+/// Capsule colliders the solver accepts.
+let coolClothCapsuleCount = 8
 
 /// CPU representation of `CoolClothSceneUniforms` in Metal.
 struct CoolClothSceneUniforms {
@@ -29,6 +40,8 @@ struct CoolClothSceneUniforms {
 
 enum CoolClothSimBufferIndex: Int {
     case params = 0
+    case pinTargets = 1
+    case capsules = 2
 }
 
 enum CoolClothSceneBufferIndex: Int {

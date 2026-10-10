@@ -11,10 +11,25 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
 
     private static let gridSize = CoolClothSimulation.gridSize
     /// Rest distance between grid neighbors in cloth-local units (grid spans [-1,1]).
-    private static let restSpacing = 2.0 / Float(gridSize - 1)
+    static let restSpacing = 2.0 / Float(gridSize - 1)
+
+    /// Longest substep the Jacobi solver holds (a 90 Hz frame in 8 steps):
+    /// at longer frames the requested count is raised so the substep never
+    /// exceeds it, otherwise the sheet goes non-finite (seen at 34 fps with
+    /// 12 substeps). Capped at 32 substeps per frame.
+    static let maxSubstepDuration: Float = 1.0 / 720.0
+
+    static func substepCount(frameDelta: Float, requested: Int) -> Int {
+        let needed = Int((frameDelta / maxSubstepDuration).rounded(.up))
+        return min(max(requested, needed, 1), 32)
+    }
 
     private let encodeLock = NSLock()
     private var currentTextureIsA = true
+    /// The grid has been written at least once; before that the position
+    /// textures hold garbage and the sheet must not be drawn.
+    private var initializedOnce = false
+    private var solveBindings: SolveBindings?
     private var appliedResetGeneration: UInt64 = .max
     private var simulationTime: Float = 0
     private var geometryInitialized = false
@@ -128,7 +143,7 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
         for (id, function, name) in [
             (CoolClothPluginContract.initPipelineID, "coolClothInitKernel", "CoolCloth Init"),
             (CoolClothPluginContract.predictPipelineID, "coolClothPredictKernel", "CoolCloth Predict"),
-            (CoolClothPluginContract.solvePipelineID, "coolClothSolveKernel", "CoolCloth Solve"),
+            (CoolClothPluginContract.solvePipelineID, "coolClothSolveKernel2", "CoolCloth Solve"),
             (CoolClothPluginContract.finalizePipelineID, "coolClothFinalizeKernel", "CoolCloth Finalize"),
             (CoolClothPluginContract.normalPipelineID, "coolClothNormalKernel", "CoolCloth Normals"),
         ] {
@@ -225,20 +240,23 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
             snapshotPositions(from: currentSource(textures), model: model)
 
             var params = makeParams(state: state, model: model, invModel: invModel, dt: 0)
+            solveBindings = makeSolveBindings(state: state)
 
-            if state.resetGeneration != appliedResetGeneration {
+            if state.resetGeneration != appliedResetGeneration || !initializedOnce {
                 encodeInit(context, textures: textures, params: params)
                 appliedResetGeneration = state.resetGeneration
+                initializedOnce = true
                 simulationTime = 0
             }
 
             guard !state.paused else { return }
 
             let frameDelta = min(max(state.deltaTime, 1.0 / 240.0), 1.0 / 30.0)
-            let substepDelta = frameDelta / Float(state.substeps)
+            let substeps = Self.substepCount(frameDelta: frameDelta, requested: state.substeps)
+            let substepDelta = frameDelta / Float(substeps)
             params.gravityDt.w = substepDelta
 
-            for _ in 0 ..< state.substeps {
+            for _ in 0 ..< substeps {
                 params.misc.z = simulationTime
                 encodePredict(context, textures: textures, params: params)
                 for _ in 0 ..< state.iterations {
@@ -251,7 +269,7 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
         }
     }
 
-    private func makeParams(
+    func makeParams(
         state: CoolClothSimulation.FrameState,
         model: simd_float4x4,
         invModel: simd_float4x4,
@@ -287,15 +305,41 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
                 state.pinMode.rawValue,
                 state.grab != nil ? 1 : 0,
                 state.sphereActive ? 1 : 0,
-                0
+                state.pinTargets != nil ? 1 : 0
             ),
             grab: SIMD4<UInt32>(
                 UInt32(state.grab?.column ?? 0),
                 UInt32(state.grab?.row ?? 0),
                 grabRadiusInParticles(state.grabRadiusWorld, model: model),
-                0
+                UInt32(min(state.capsules.count, coolClothCapsuleCount))
             )
         )
+    }
+
+    /// Per-column attachment targets and capsule colliders, bound next to
+    /// the params on every simulation kernel (small enough for setBytes).
+    struct SolveBindings {
+        var pinTargets: [SIMD4<Float>]
+        var capsules: [CoolClothCapsuleData]
+    }
+
+    func makeSolveBindings(state: CoolClothSimulation.FrameState) -> SolveBindings {
+        var pins = [SIMD4<Float>](repeating: .zero, count: coolClothPinTargetCount)
+        if let targets = state.pinTargets {
+            for (column, target) in targets.prefix(coolClothPinTargetCount).enumerated() {
+                pins[column] = SIMD4<Float>(target, 1)
+            }
+        }
+        var capsules = [CoolClothCapsuleData](
+            repeating: CoolClothCapsuleData(a: .zero, b: .zero), count: coolClothCapsuleCount
+        )
+        for (index, capsule) in state.capsules.prefix(coolClothCapsuleCount).enumerated() {
+            capsules[index] = CoolClothCapsuleData(
+                a: SIMD4<Float>(capsule.start, capsule.radius),
+                b: SIMD4<Float>(capsule.end, min(max(capsule.softness, 0.05), 1))
+            )
+        }
+        return SolveBindings(pinTargets: pins, capsules: capsules)
     }
 
     /// Converts the world-space grab radius into simulation-grid units using
@@ -344,6 +388,14 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
             length: MemoryLayout<CoolClothSimParams>.stride,
             index: CoolClothSimBufferIndex.params.rawValue
         )
+        if var bindings = solveBindings {
+            bindings.pinTargets.withUnsafeMutableBytes { raw in
+                encoder.setBytes(raw.baseAddress!, length: raw.count, index: CoolClothSimBufferIndex.pinTargets.rawValue)
+            }
+            bindings.capsules.withUnsafeMutableBytes { raw in
+                encoder.setBytes(raw.baseAddress!, length: raw.count, index: CoolClothSimBufferIndex.capsules.rawValue)
+            }
+        }
         return (encoder, pipeline)
     }
 
@@ -502,9 +554,11 @@ final class CoolClothRenderExtension: RenderExtension, @unchecked Sendable {
         }
 
         encodeLock.withLock {
+            guard initializedOnce else { return }
+            let appearance = CoolClothAppearance.shared.state()
+            guard appearance.visible else { return }
             initializeGeometryIfNeeded(indexBuffer: indexBuffer, ballBuffer: ballVertices)
             ensureDefaultFabric(device: context.device)
-            let appearance = CoolClothAppearance.shared.state()
             guard let fabric = appearance.fabricTexture ?? defaultFabricTexture,
                   let encoder = context.sceneRenderTargets.makeRenderCommandEncoder(
                       actions: .loadAndStore,

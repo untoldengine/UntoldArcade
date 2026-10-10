@@ -123,10 +123,12 @@ kernel void coolClothPredictKernel(texture2d<float, access::read> posSrc [[textu
 // substep the Lagrange multipliers start at zero, so Δλ = -C / (Σw + α/dt²)
 // needs no per-constraint storage. Collisions and the grab constraint run after
 // the distance solve, in world space.
-kernel void coolClothSolveKernel(texture2d<float, access::read> posSrc [[texture(0)]],
+kernel void coolClothSolveKernel2(texture2d<float, access::read> posSrc [[texture(0)]],
                                  texture2d<float, access::write> posDst [[texture(1)]],
                                  texture2d<float, access::read> prev [[texture(2)]],
                                  constant CoolClothSimParams &p [[buffer(CoolClothSimParamsIndex)]],
+                                 constant float4 *pinTargets [[buffer(CoolClothPinTargetsIndex)]],
+                                 constant CoolClothCapsule *capsules [[buffer(CoolClothCapsulesIndex)]],
                                  uint2 gid [[thread_position_in_grid]]) {
     const int w = posSrc.get_width();
     const int h = posSrc.get_height();
@@ -136,6 +138,16 @@ kernel void coolClothSolveKernel(texture2d<float, access::read> posSrc [[texture
     float4 x4 = posSrc.read(gid);
     float3 x = x4.xyz;
     const float wi = x4.w;
+
+    // A pinned top-row particle follows its attachment target when one is
+    // set (world space → cloth local), so a pinned edge can ride on a
+    // moving body.
+    if (wi == 0.0 && p.flags.w != 0 && gid.y == 0 && (int)gid.x < CoolClothPinTargetCount) {
+        float4 target = pinTargets[gid.x];
+        if (target.w > 0.0) {
+            x = (p.invModel * float4(target.xyz, 1.0)).xyz;
+        }
+    }
 
     if (wi > 0.0) {
         const float dt = p.gravityDt.w;
@@ -195,6 +207,26 @@ kernel void coolClothSolveKernel(texture2d<float, access::read> posSrc [[texture
             float len = length(d);
             if (len < r && len > 1e-6) {
                 xw += d / len * (r - len);
+            }
+        }
+        // Capsules (a body): push out of the nearest point on each segment.
+        const uint capsuleCount = min(p.grab.w, (uint)CoolClothCapsuleCount);
+        for (uint i = 0; i < capsuleCount; i++) {
+            float3 a = capsules[i].a.xyz;
+            float3 b = capsules[i].b.xyz;
+            float r = capsules[i].a.w + thickness;
+            float3 ab = b - a;
+            float abLen2 = max(dot(ab, ab), 1e-8);
+            float t = clamp(dot(xw - a, ab) / abLen2, 0.0, 1.0);
+            float3 closest = a + ab * t;
+            float3 d = xw - closest;
+            float len = length(d);
+            if (len < r && len > 1e-6) {
+                // Soft push-out (b.w = fraction of the penetration removed
+                // per substep, 1 when unset): a full projection against
+                // pinned neighbours pumps energy into the sheet.
+                float soft = capsules[i].b.w > 0.0 ? capsules[i].b.w : 1.0;
+                xw += d / len * (r - len) * soft;
             }
         }
         x = (p.invModel * float4(xw, 1.0)).xyz;

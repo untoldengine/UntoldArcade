@@ -1,0 +1,749 @@
+{
+  "forwardReference" : {
+    "from" : "mixamorig:LeftFoot",
+    "to" : "mixamorig:LeftToeBase"
+  },
+  "muscles" : [
+    {
+      "bellyRadius" : 0.035,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 110,
+        "joint" : "mixamorig:LeftForeArm",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.18,
+        "joint" : "mixamorig:LeftForeArm",
+        "offset" : [
+          0,
+          0,
+          0.03
+        ],
+        "tip" : "mixamorig:LeftHand"
+      },
+      "maxContraction" : 0.25,
+      "name" : "bicepsL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:LeftArm",
+        "offset" : [
+          0,
+          0,
+          0.045
+        ],
+        "tip" : "mixamorig:LeftForeArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.033,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 4.9999995,
+        "joint" : "mixamorig:LeftForeArm",
+        "startAngle" : 90
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.06,
+        "joint" : "mixamorig:LeftForeArm",
+        "offset" : [
+          0,
+          0,
+          -0.03
+        ],
+        "tip" : "mixamorig:LeftHand"
+      },
+      "maxContraction" : 0.15,
+      "name" : "tricepsL",
+      "origin" : {
+        "fraction" : 0.1,
+        "joint" : "mixamorig:LeftArm",
+        "offset" : [
+          0,
+          0,
+          -0.045
+        ],
+        "tip" : "mixamorig:LeftForeArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "mixamorig:LeftArm",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.45,
+        "joint" : "mixamorig:LeftArm",
+        "offset" : [
+          0.02,
+          0,
+          0
+        ],
+        "tip" : "mixamorig:LeftForeArm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "deltoidL",
+      "origin" : {
+        "fraction" : 0.9,
+        "joint" : "mixamorig:LeftShoulder",
+        "offset" : [
+          0.02,
+          0.05,
+          0
+        ],
+        "tip" : "mixamorig:LeftArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.04,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 79.99999,
+        "joint" : "mixamorig:LeftArm",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.2,
+        "joint" : "mixamorig:LeftArm",
+        "offset" : [
+          0,
+          0,
+          0.04
+        ],
+        "tip" : "mixamorig:LeftForeArm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "pectoralL",
+      "origin" : {
+        "fraction" : 0.6,
+        "joint" : "mixamorig:Spine2",
+        "offset" : [
+          0.06,
+          0.02,
+          0.1
+        ],
+        "tip" : "mixamorig:Spine3"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.03,
+      "boneRadius" : 0.018,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 60,
+        "joint" : "mixamorig:LeftHand",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.85,
+        "joint" : "mixamorig:LeftForeArm",
+        "offset" : [
+          0,
+          0,
+          0.02
+        ],
+        "tip" : "mixamorig:LeftHand"
+      },
+      "maxContraction" : 0.2,
+      "name" : "forearmFlexorsL",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:LeftForeArm",
+        "offset" : [
+          0,
+          0,
+          0.035
+        ],
+        "tip" : "mixamorig:LeftHand"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.035,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.055,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "mixamorig:LeftLeg",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:LeftLeg",
+        "offset" : [
+          0,
+          0,
+          0.05
+        ],
+        "tip" : "mixamorig:LeftFoot"
+      },
+      "maxContraction" : 0.2,
+      "name" : "quadricepsL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:LeftUpLeg",
+        "offset" : [
+          0,
+          0,
+          0.06
+        ],
+        "tip" : "mixamorig:LeftLeg"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "mixamorig:LeftLeg",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:LeftLeg",
+        "offset" : [
+          0,
+          0,
+          -0.04
+        ],
+        "tip" : "mixamorig:LeftFoot"
+      },
+      "maxContraction" : 0.15,
+      "name" : "hamstringsL",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:LeftUpLeg",
+        "offset" : [
+          0,
+          0,
+          -0.06
+        ],
+        "tip" : "mixamorig:LeftLeg"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.018,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.06,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "mixamorig:LeftUpLeg",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.3,
+        "joint" : "mixamorig:LeftUpLeg",
+        "offset" : [
+          0.03,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:LeftLeg"
+      },
+      "maxContraction" : 0.15,
+      "name" : "gluteusL",
+      "origin" : {
+        "fraction" : 0,
+        "joint" : "mixamorig:Pelvis",
+        "offset" : [
+          0.06,
+          0,
+          -0.08
+        ],
+        "tip" : "mixamorig:Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.025,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "mixamorig:LeftFoot",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0,
+        "joint" : "mixamorig:LeftFoot",
+        "offset" : [
+          0,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:LeftToeBase"
+      },
+      "maxContraction" : 0.2,
+      "name" : "calfL",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:LeftLeg",
+        "offset" : [
+          0,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:LeftFoot"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.045,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.035,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 110,
+        "joint" : "mixamorig:RightForeArm",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.18,
+        "joint" : "mixamorig:RightForeArm",
+        "offset" : [
+          -0,
+          0,
+          0.03
+        ],
+        "tip" : "mixamorig:RightHand"
+      },
+      "maxContraction" : 0.25,
+      "name" : "bicepsR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:RightArm",
+        "offset" : [
+          -0,
+          0,
+          0.045
+        ],
+        "tip" : "mixamorig:RightForeArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.033,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 4.9999995,
+        "joint" : "mixamorig:RightForeArm",
+        "startAngle" : 90
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.06,
+        "joint" : "mixamorig:RightForeArm",
+        "offset" : [
+          -0,
+          0,
+          -0.03
+        ],
+        "tip" : "mixamorig:RightHand"
+      },
+      "maxContraction" : 0.15,
+      "name" : "tricepsR",
+      "origin" : {
+        "fraction" : 0.1,
+        "joint" : "mixamorig:RightArm",
+        "offset" : [
+          -0,
+          0,
+          -0.045
+        ],
+        "tip" : "mixamorig:RightForeArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.02,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "mixamorig:RightArm",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.45,
+        "joint" : "mixamorig:RightArm",
+        "offset" : [
+          -0.02,
+          0,
+          0
+        ],
+        "tip" : "mixamorig:RightForeArm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "deltoidR",
+      "origin" : {
+        "fraction" : 0.9,
+        "joint" : "mixamorig:RightShoulder",
+        "offset" : [
+          -0.02,
+          0.05,
+          0
+        ],
+        "tip" : "mixamorig:RightArm"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.04,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 79.99999,
+        "joint" : "mixamorig:RightArm",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.2,
+        "joint" : "mixamorig:RightArm",
+        "offset" : [
+          -0,
+          0,
+          0.04
+        ],
+        "tip" : "mixamorig:RightForeArm"
+      },
+      "maxContraction" : 0.2,
+      "name" : "pectoralR",
+      "origin" : {
+        "fraction" : 0.6,
+        "joint" : "mixamorig:Spine2",
+        "offset" : [
+          -0.06,
+          0.02,
+          0.1
+        ],
+        "tip" : "mixamorig:Spine3"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.04,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.03,
+      "boneRadius" : 0.018,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 60,
+        "joint" : "mixamorig:RightHand",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.85,
+        "joint" : "mixamorig:RightForeArm",
+        "offset" : [
+          -0,
+          0,
+          0.02
+        ],
+        "tip" : "mixamorig:RightHand"
+      },
+      "maxContraction" : 0.2,
+      "name" : "forearmFlexorsR",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:RightForeArm",
+        "offset" : [
+          -0,
+          0,
+          0.035
+        ],
+        "tip" : "mixamorig:RightHand"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.035,
+      "tendonRadius" : 0.012,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.055,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "mixamorig:RightLeg",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:RightLeg",
+        "offset" : [
+          -0,
+          0,
+          0.05
+        ],
+        "tip" : "mixamorig:RightFoot"
+      },
+      "maxContraction" : 0.2,
+      "name" : "quadricepsR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:RightUpLeg",
+        "offset" : [
+          -0,
+          0,
+          0.06
+        ],
+        "tip" : "mixamorig:RightLeg"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.03,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 100,
+        "joint" : "mixamorig:RightLeg",
+        "startAngle" : 15
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:RightLeg",
+        "offset" : [
+          -0,
+          0,
+          -0.04
+        ],
+        "tip" : "mixamorig:RightFoot"
+      },
+      "maxContraction" : 0.15,
+      "name" : "hamstringsR",
+      "origin" : {
+        "fraction" : 0.08,
+        "joint" : "mixamorig:RightUpLeg",
+        "offset" : [
+          -0,
+          0,
+          -0.06
+        ],
+        "tip" : "mixamorig:RightLeg"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.018,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.06,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 90,
+        "joint" : "mixamorig:RightUpLeg",
+        "startAngle" : 19.999998
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.3,
+        "joint" : "mixamorig:RightUpLeg",
+        "offset" : [
+          -0.03,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:RightLeg"
+      },
+      "maxContraction" : 0.15,
+      "name" : "gluteusR",
+      "origin" : {
+        "fraction" : 0,
+        "joint" : "mixamorig:Pelvis",
+        "offset" : [
+          -0.06,
+          0,
+          -0.08
+        ],
+        "tip" : "mixamorig:Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.045,
+      "boneRadius" : 0.025,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "mixamorig:RightFoot",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0,
+        "joint" : "mixamorig:RightFoot",
+        "offset" : [
+          -0,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:RightToeBase"
+      },
+      "maxContraction" : 0.2,
+      "name" : "calfR",
+      "origin" : {
+        "fraction" : 0.12,
+        "joint" : "mixamorig:RightLeg",
+        "offset" : [
+          -0,
+          0,
+          -0.05
+        ],
+        "tip" : "mixamorig:RightFoot"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.045,
+      "tendonRadius" : 0.015,
+      "volumeCompliance" : 0
+    },
+    {
+      "bellyRadius" : 0.05,
+      "boneRadius" : 0,
+      "crossCompliance" : 1e-05,
+      "damping" : 6,
+      "driver" : {
+        "fullAngle" : 45,
+        "joint" : "mixamorig:Spine",
+        "startAngle" : 9.999999
+      },
+      "fiberCompliance" : 1e-06,
+      "insertion" : {
+        "fraction" : 0.8,
+        "joint" : "mixamorig:Spine2",
+        "offset" : [
+          0,
+          0,
+          0.09
+        ],
+        "tip" : "mixamorig:Spine3"
+      },
+      "maxContraction" : 0.15,
+      "name" : "abdominals",
+      "origin" : {
+        "fraction" : 0.2,
+        "joint" : "mixamorig:Pelvis",
+        "offset" : [
+          0,
+          0,
+          0.1
+        ],
+        "tip" : "mixamorig:Spine"
+      },
+      "rings" : 7,
+      "segments" : 8,
+      "skinInfluence" : 0.05,
+      "tendonRadius" : 0.02,
+      "volumeCompliance" : 0
+    }
+  ]
+}
