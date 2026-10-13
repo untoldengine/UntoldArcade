@@ -14,6 +14,12 @@ landed, and what the phone got wrong in between spread along the body like a
 lean. The hands follow the headset while it sees them and the phone while it
 does not, and the change never shows.
 
+This README isn't just about the mirror itself. It's also a walkthrough of
+**how a more involved Untold Engine XR app is put together** — one with a
+second data source (the iPhone) feeding the character every frame, a
+swappable deformation stack, and a physics plugin — using this project's own
+code as the example.
+
 ## What's inside
 
 | Piece | What it demonstrates |
@@ -49,6 +55,177 @@ The panel's toggles compare each stage with what it replaces: **Mirror**,
 **Reach** (hands by reach IK), **Head** (held by the headset's head and the
 planted feet), **Hands** (the headset's hands). Allow hand tracking when
 asked, or the hands stay the phone's.
+
+## How this app is built
+
+### 1. Boot: two engine subsystems before the renderer exists
+
+Most Untold Engine XR apps only need `UntoldEngineXR(layerRenderer:)`. This one
+needs two more things set up *before* that call, in
+`Examples/CoolMirror/visionOS/CoolMirrorVisionOSXRApp.swift`:
+
+```swift
+CoolMirrorGame.registerRenderPlugins()          // the cape's cloth plugin
+let joltBackend = registerJoltPhysics(settings: joltSettings)
+
+guard let xr = UntoldEngineXR(layerRenderer: layerRenderer) else { return }
+xr.setImmersionMode(xrImmersionMode: .mixed)
+
+let game = CoolMirrorGame()
+game.setJoltBackend(joltBackend)
+game.start()
+xr.setupCallbacks(
+    gameUpdate: { dt in game.update(deltaTime: dt) },
+    handleInput: { game.handleInput() }
+)
+```
+
+- **`registerRenderPlugins()`** installs a custom render plugin (here, the
+  cape's cloth pass) into the pipeline — a hook most demos never touch,
+  needed only when a feature adds its own GPU pass.
+- **`registerJoltPhysics(settings:)`** stands up the shared Jolt Physics
+  plugin (also used by CoolBasket, CoolBowling) and hands back a
+  `JoltPhysicsBackend` that `CoolMirrorGame` threads down to whatever needs
+  rigid bodies or cloth — here, Batman's cape (`CoolMirrorJoltCape`).
+- Both calls happen **before** `UntoldEngineXR(layerRenderer:)` — plugins and
+  physics backends have to exist before the renderer that will call into them
+  does.
+
+Two more providers get wired after `start()`, both closures the engine calls
+every render-thread frame rather than values read once:
+
+```swift
+game.setMocapHeadPoseProvider { [weak xr] in xr?.currentDevicePose }
+game.setMocapHandProvider { [weak hands] in hands?.hands ?? [:] }
+```
+
+The headset already knows where the wearer's head and hands are, every frame,
+more precisely than a phone watching from across the room ever could — so
+rather than re-deriving them, the mocap controller just asks for them.
+
+### 2. Initialization — `CoolMirrorGame.start()`
+
+```swift
+public func start() {
+    registerXREvents()
+    setSceneReady(true)
+    setCharacter(character)
+}
+```
+
+Smaller than most demos' `init()` because there's no `.untoldscene` to load —
+no authored lights, cameras, or placed entities. `setCharacter(_:)` is doing
+the work a scene file usually would: it creates one entity, loads a mesh
+*asynchronously*, and only touches that entity again inside the completion
+handler:
+
+```swift
+let entity = createEntity()
+setEntityMeshAsync(entityId: entity, filename: newCharacter.rawValue, withExtension: "untold") { [weak self] _ in
+    guard let self, self.generation == expectedGeneration, let characterId = self.characterId else { return }
+    // ...translateTo, rotateTo, scaleTo, setEntityMuscleRig, applyClip(), applySkinningPath()...
+}
+```
+
+The `generation` counter guards against the completion firing after the user
+has already switched characters again (or the scene is tearing down) — the
+same hazard `loadUntoldScene(named:completion:)` guards against with its own
+"is the scene still ready" check, just handled by hand here since there's no
+scene-load API doing it for a single async mesh load.
+
+### 3. The per-frame loop: thin on the surface, busy underneath
+
+```swift
+public nonisolated func update(deltaTime: Float) {
+    mocap.update()
+    cape.update(deltaTime: deltaTime)
+    joltCape.update(deltaTime: deltaTime)
+}
+
+public nonisolated func handleInput() {}
+```
+
+`handleInput()` is empty — this app has no spatial-pinch or controller input
+to translate (the SwiftUI control window's `@Observable` bindings call
+straight into `CoolMirrorGame`'s setters instead, off the render thread).
+`update()` doesn't do simulation itself either; it just fans out to three
+collaborators that do, each driven by the same `deltaTime`/render tick. This
+is the demo's version of CoolFutbol's registered custom systems — same idea
+(independent per-frame updaters), done as plain delegate calls because there
+are only three of them.
+
+### 4. Driving a skinned character without a scene file: `setEntityExternalPose`
+
+Every frame, `CoolMirrorMocapController.update()` turns the iPhone's latest
+tracked frame into **per-joint world-space rotation deltas** and a root
+translation, then hands them to the engine in one call:
+
+```swift
+setEntityExternalPose(
+    entityId: characterId,
+    worldRotationDeltas: result.worldRotationDeltas,
+    rootJoint: result.rootJoint,
+    rootTranslationDelta: result.rootTranslationDelta,
+    weight: retargeter.options.weight
+)
+```
+
+This is the engine's hook for driving a skeleton from *outside* its own
+animation clips — the clip underneath keeps playing (frozen, once mocap is
+enabled) and these deltas layer on top, per joint, blended by `weight`. Hands
+and feet go through a second engine API, `setReachIKChainTargets`, because a
+hand or foot needs to *reach a position* (a spot on the body, a point on the
+floor), not just copy a captured rotation:
+
+```swift
+setReachIKChainWeights(entityId: characterId, weights: weights)
+setReachIKChainTargets(
+    entityId: characterId, targets: targets, weight: options.weight,
+    halflife: Self.reachHalflife, reach: Self.reachExtent, targetHalflife: Self.reachTargetHalflife
+)
+```
+
+`setReachIKChains(entityId:chains:)` (called once, lazily, the first time
+a character is driven) tells the engine which three-joint chains
+(shoulder→elbow→hand, hip→knee→ankle) it's allowed to solve; after that,
+`setReachIKChainTargets` just moves the end effector each frame. Everything
+upstream of these two calls — `MocapRetargeter`, `MocapBodyAnchor`,
+`MocapFootAnchor`, `MocapArmReach`, `MocapHandLadder` in
+`Sources/CoolMirrorMocap/` — is this demo's own code, pure data transforms
+with no engine dependency; they exist to produce the deltas and targets these
+two API calls need, and are unit-tested in isolation for exactly that reason.
+
+### 5. The deformation stack: swapping engine systems live
+
+The control window's skinning/muscle/morph pickers all resolve to the same
+small set of calls on `CoolMirrorGame`:
+
+```swift
+setEntityDeformation(entityId: characterId, skinningMode: .lbs)   // or .dqs, .ddm
+removeEntityDeformation(entityId: characterId)                    // back to vertex-shader skinning
+setEntityMuscleRig(entityId: characterId, rig: CoolMirrorMuscles.rig(for: newCharacter))
+setEntityMuscleSimulation(entityId: characterId, enabled: muscleMode == .simulation)
+setEntityMLDeformer(entityId: characterId, enabled: muscleMode == .mlDeformer)
+setEntityPoseDrivers(entityId: characterId, enabled: enabled)
+setEntityMorphTargetWeight(entityId: characterId, name: name, weight: weight)
+```
+
+The pattern to take away: skinning mode, muscle simulation, the ML deformer,
+pose drivers and morph targets are all **independent engine systems toggled
+per entity**, not a single monolithic "character state." `applySkinningPath()`
+and `applyMuscles()` in `CoolMirrorGame` exist only to re-apply the demo's own
+settings (which muscles are disabled, manual activations, flex) each time one
+of those systems is swapped out from under it — the engine itself treats each
+call as independent.
+
+That's the shape of it: **boot registers plugins and a physics backend
+before the renderer exists → `start()` creates one entity and loads its mesh
+asynchronously → every frame, three collaborators (`mocap`, `cape`,
+`joltCape`) each turn their own inputs into calls against
+`setEntityExternalPose`/`setReachIKChainTargets`/`setEntityDeformation` and
+friends.** Everything else — the ARKit retargeting math, the recording
+format, the cape's cloth setup — is this codebase's own code built on top of
+that same handful of engine entry points.
 
 ## Recordings
 
