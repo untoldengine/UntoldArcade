@@ -1,0 +1,12 @@
+// Shared build settings for UntoldViewer. The bundle identifier is composed from a
+// prefix so a developer can build under their own team and identifier without
+// touching the project: put both in Config/Local.xcconfig (gitignored), e.g.
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//     BUNDLE_ID_PREFIX = com.example
+//
+// and the app becomes com.example.untoldviewer signed with that team.
+BUNDLE_ID_PREFIX = com.untoldengine
+PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_PREFIX).untoldviewer
+
+#include? "Local.xcconfig"
