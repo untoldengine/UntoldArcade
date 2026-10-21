@@ -1,5 +1,7 @@
 # CoolWeb
 
+![CoolWeb demo](../docs/media/CoolWeb/demo.gif)
+
 A Spider-Man web-shooter demo for [Untold Engine](https://github.com/untoldengine/UntoldEngine),
 built as a Rendering Extension plugin. Strike the classic web-shooter pose on
 Apple Vision Pro — thumb, index and pinky extended, middle and ring curled —

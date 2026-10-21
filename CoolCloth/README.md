@@ -1,5 +1,7 @@
 # CoolCloth
 
+![CoolCloth demo](../docs/media/CoolCloth/demo.gif)
+
 A GPU cloth simulation demo for Untold Engine, packaged as a Rendering Extension
 plugin (same architecture as CoolWater). A silk-like sheet hangs in the user's
 real room on visionOS: pinch it to grab the particle under your gaze, throw the

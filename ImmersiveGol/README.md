@@ -1,5 +1,7 @@
 # ImmersiveGol
 
+![ImmersiveGol demo](../docs/media/ImmersiveGol/demo.gif)
+
 A visionOS penalty-goalie demo built with [Untold Engine](https://github.com/untoldengine/UntoldEngine) and the [UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics) plugin.
 
 This README isn't about the goalie game itself. It's a walkthrough of **how an Untold Engine XR app wires in a physics backend plugin, ARKit hand tracking, and animation-driven gameplay**, using this project's own code as the example.
