@@ -59,8 +59,7 @@ open CoolWeb/Examples/CoolWebVisionOS/CoolWebVisionOS.xcodeproj
 
 ### 🏀 CoolBasket — *visionOS · Physics Backend*
 
-<!-- MEDIA: docs/media/CoolBasket/demo.gif -->
-<!-- ![CoolBasket demo](docs/media/CoolBasket/demo.gif) -->
+![CoolBasket demo](docs/media/CoolBasket/demo.gif)
 
 Mixed-reality basketball, and the first consumer of the engine's physics backend plugin seam: a pure-Swift `PhysicsBackend` simulates the ball against your real floor, walls and furniture (ARKit plane detection), the hoop you place in your room, and your hands. Look at the floor and pinch to place the hoop, pinch near the ball to pick it up, flick to throw — a shot only counts when it comes down through the rim.
 
@@ -74,8 +73,7 @@ open CoolBasket/Examples/CoolBasketVisionOS/CoolBasketVisionOS.xcodeproj
 
 ### 🎳 CoolBowling — *visionOS · Jolt Physics*
 
-<!-- MEDIA: docs/media/CoolBowling/demo.gif -->
-<!-- ![CoolBowling demo](docs/media/CoolBowling/demo.gif) -->
+![CoolBowling demo](docs/media/CoolBowling/demo.gif)
 
 Mixed-reality bowling on the shared Jolt Physics plugin — the demo that needs a real rigid-body solver. Look at your floor to lay a lane, pinch to pick up the ball and roll it; ten pins (lathe meshes with convex-hull colliders) stack, wobble, topple and knock each other over, and the pins down are counted from their poses.
 
