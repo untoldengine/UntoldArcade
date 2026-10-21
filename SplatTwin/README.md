@@ -1,5 +1,7 @@
 # SplatTwin
 
+![SplatTwin demo: the same view as meshes and after the swap](../docs/media/SplatTwin/demo.png)
+
 A macOS demo built with [UntoldEngine](https://github.com/untoldengine/UntoldEngine): three
 objects stand on a floor, each a mesh linked to a Gaussian-splat twin. Walk up to one and the mesh
 cross-fades to its splat with no popping; walk away and it fades back. While the splat shows,

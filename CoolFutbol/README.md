@@ -1,5 +1,7 @@
 # CoolFutbol
 
+![CoolFutbol demo](../docs/media/CoolFutbol/demo.gif)
+
 A visionOS demo built with [Untold Engine](https://github.com/untoldengine/UntoldEngine) — a custom Metal-based game engine with native ARKit/CompositorServices support for Vision Pro.
 
 This README isn't about the soccer game itself. It's a walkthrough of **how an Untold Engine XR app is put together**, using this project's own code as the example — from app launch, to engine initialization, to the two functions every frame runs through: `update()` and `handleInput()`.

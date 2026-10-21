@@ -1,5 +1,7 @@
 # Building an Untold Engine Rendering Extension Plugin
 
+![CoolWater demo](../docs/media/CoolWater/demo.gif)
+
 This guide explains how to create and integrate a reusable Untold Engine Rendering Extension plugin. It covers the Swift package boundary, extension lifecycle, resource and pipeline registration, render-graph passes, custom scene drawing, Metal packaging, consumer installation, and validation. CoolWater is the complete reference implementation in this repository.
 
 The examples use `CoolWater` and the namespace `com.untoldengine.coolwater`. Replace these with names and a reverse-DNS namespace owned by your organization.

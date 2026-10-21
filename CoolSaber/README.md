@@ -1,5 +1,7 @@
 # CoolSaber
 
+![CoolSaber demo](../docs/media/CoolSaber/demo.gif)
+
 A lightsaber-duel demo plugin for [Untold Engine](https://github.com/untoldengine/UntoldEngine) on Apple Vision Pro, driven by **PSVR2 Sense controllers** (visionOS 26 accessory tracking). Pull a controller's trigger to ignite a glowing blade from its tip; start a SharePlay session on a FaceTime call and duel a friend — blades clash with sparks, haptic kicks, and synthesized saber audio.
 
 ## Layout

@@ -1,5 +1,7 @@
 # CoolMirror 🪞
 
+![CoolMirror demo](../docs/media/CoolMirror/demo.gif)
+
 A virtual mirror for Apple Vision Pro on Untold Engine: a rigged, high-poly
 character stands in front of you and moves as you do, and shows off the
 engine's character-deformation stack while it does.
