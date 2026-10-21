@@ -1,404 +1,250 @@
 # ImmersiveGol
 
-A visionOS penalty-goalie prototype built with Untold Engine and UntoldJoltPhysics.
+A visionOS penalty-goalie demo built with [Untold Engine](https://github.com/untoldengine/UntoldEngine) and the [UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics) plugin.
 
-## Experience workflow
+This README isn't about the goalie game itself. It's a walkthrough of **how an Untold Engine XR app wires in a physics backend plugin, ARKit hand tracking, and animation-driven gameplay**, using this project's own code as the example.
 
-1. Press **Start Experience**. Look at the real ground, then pinch and release.
-   The empty immersive space accepts floor input before loading the stadium.
-2. After a classified floor hit, `goaliegame` loads and the invisible physics
-   plane is placed at the measured world Y. The ball starts on the ground.
-3. Once the shooter animation is ready, press **Start Kicking**. The player and
-   ball move together to a random position 11–14 m ahead and up to 1.5 m to either
-   side of the calibrated goalie position. For the demo, shots take about one
-   second to reach the glove area. At foot contact, one tracked palm is chosen;
-   25% of shots aim directly at it and the others aim 20–30 cm around it,
-   keeping the target above the floor. If neither hand is
-   tracked, the target is a reachable spot in front of the user's chest. The
-   target stays fixed after release; the slower shot follows a gentle arc.
-   The initial ball is also 11 m ahead.
-4. Each shot has a three-second countdown, releases at animation frame 13, and
-   automatically schedules another shot after a two-second result interval.
-   The initial goalie facing stays fixed when you look toward different shooters.
-5. **Stop Kicking** cancels countdown, animation, and any active shot, returning
-   the ball to its shot position on the ground. Start again to resume.
+## 🎯 Requirements
 
-Demo console logging is removed, including shot feedback, hand-tracking changes,
-and bundle listings. Gameplay feedback remains in the control window. Engine
-and plugin diagnostics can still print. Console diagnostics described in the
-historical milestone sections below belong to earlier builds.
+- visionOS 26.0 or later
+- Xcode 26 or later
+- A physical Apple Vision Pro for hand tracking (the simulator has no hand-tracking provider, so the goalie's palm colliders stay parked)
 
-The player loops `offensiveidle.untoldanim` while waiting, during countdowns,
-between shots, and after Stop Kicking. Both clips bind to the scene's Player.
-The engine's `changeAnimation` smoothly transitions into `forwardstrike` with a
-0.05-second transition half-life, then returns to idle with a 0.15-second
-half-life. The kick remains non-looping and releases the ball at frame 13.
-Root motion now preserves the kick's authored forward travel. After kicking,
-the player returns to the position where the kick started, then transitions to
-idle. Recovery and travel to randomized kick marks use the same movement plan.
-The player's current facing determines the clip: a destination within 45 degrees
-of directly behind uses `jobbackward`; otherwise the player turns toward the
-destination and uses `jogforward`, including lateral travel. Turns happen in
-place using idle, before and after travel, so a directional jog never plays
-while the player faces the wrong travel direction. Each clip's authored horizontal
-travel sets movement speed; travel time depends on the actual distance rather
-than a mandatory full jog cycle. The final turn toward the goal finishes before
-the countdown. A player within 5 cm of its kick mark skips jogging. Stop Kicking cancels
-both recovery and relocation and returns to idle. The countdown holds the kick
-mark steady while transition velocity settles.
+## 🚀 Running It
 
-Both jog exports required the `mixamorig:` → `mixamorig5:` correction across
-all 65 joint paths, preserving its motion data. The engine's root-motion clock
-was corrected to clamp non-looping clips consistently with the pose sampler;
-that engine change remains uncommitted. Headset checks: kick-to-jog continuity,
-backward travel, no T-pose or teleport on later shots, frame-13 foot contact,
-and stopping during recovery/relocation.
-
-Contact prediction accounts for the kick's initial root heading as well as its
-horizontal root offset. The kick's first Hips yaw is about 5.82 degrees; applying
-only a translation correction after enabling root motion placed the ball beside
-the foot. Both position and facing are held at the planned kick mark through the
-countdown. At frame-13 release, the displayed right toe is checked against the intended
-contact point one ball radius behind the ball. Any remaining X/Z offset from
-root motion, transitions, or frame timing is corrected by moving the player
-before release; both the ball and the player retain their floor height. The
-correction persists into the backward jog. A standalone app math check passed 1,000 actor/root-heading
-cases; headset confirmation of the corrected contact remains pending.
-The idle export's joint namespace was corrected from `mixamorig:` to
-`mixamorig5:` to match the working player/kick rig. All 65 joint paths now match;
-translation and rotation keyframes are unchanged. Future exports must preserve
-the same full bone paths. Loading validates idle paths against the kick before
-enabling playback; registering a clip name alone does not prove rig compatibility.
-
-The experience window exposes only Start Kicking and Stop Kicking after opening.
-Distance sliders, single-shot controls, floor reset, and physics/debug buttons
-have been removed. Simulator compilation checks the integration; verify floor
-calibration, repeated randomized shots, and stopping during both countdown and
-flight on the headset before committing this update.
-
-The milestone sections below record earlier implementation and validation; their
-former debug controls have been replaced by the workflow above.
-
-## M1 — Physics setup
-
-After creating the project, the first implementation step was to import the
-**UntoldJoltPhysics plugin**:
-
-1. Add UntoldJoltPhysics to `project.yml` and link its library product to the app.
-   Use `develop` for both UntoldEngine and UntoldJoltPhysics to match the plugin's
-   engine dependency, then regenerate the Xcode project with XcodeGen.
-2. Add `import UntoldJoltPhysics` in `GameScene.swift` and implement the
-   `GameScene.installPhysics()` startup hook using `registerJoltPhysics()`.
-3. Call that hook from `ImmersiveGolApp.swift` **before creating UntoldEngineXR**,
-   then pass the installed backend into GameScene. The physics registry locks
-   its backend choice on the first simulated substep.
-4. Create a static floor and a dynamic ball using the engine's
-   `ColliderComponent` and `RigidBodyComponent`. The engine coordinator advances
-   Jolt and writes simulated transforms back to the scene automatically.
-5. Add the repeat control, drop-check diagnostics, and scene cleanup.
-
-**Status:** the visionOS simulator build passed, and the user confirmed the
-physics demo works at runtime.
-
-Open `ImmersiveGol.xcodeproj` in Xcode and run the ImmersiveGol scheme on Apple
-Vision Pro or a visionOS simulator. The deployment target is visionOS 26.
-Select **Start Experience** in the control window. Look at your real floor and
-pinch and release to set the floor height. The ball stays hidden until a detected floor
-is selected; shot and drop controls become available after placement. If no
-floor is detected at the pinch location, scan the floor and pinch again.
-
-The soccer ball model appears 3 metres ahead at a centre height of 1.5 m above
-the selected floor.
-It falls, bounces on the invisible floor collider, and rests with its centre approximately
-0.11 m above the selected floor. The Xcode console prints `ImmersiveGol M1 PASS` after
-observing a fall, a floor contact, and 0.5 seconds of rest. A check that does
-not settle within 10 seconds prints diagnostic values. Use **Repeat Physics
-Check** to drop the same ball again.
-
-M1 establishes physics. Gloves, penalty launches, the shooter,
-and the stadium follow in later milestones. The ball uses the supplied
-`GameData/Models/ball/ball.untold` asset and its diffuse/normal textures.
-The space uses passthrough while we validate the mechanics.
-
-## M2 — Tracked palms
-
-**Status:** the visionOS simulator build passed, and the user confirmed on the
-headset that both markers follow their palms correctly.
-
-`GoalieHandTracking.swift` runs an ARKit hand-tracking session and transforms the
-wrist and knuckle joints into world coordinates. Their midpoint defines each
-palm position. GameScene moves two kinematic sphere colliders to those positions,
-using the same 50 ms pose prediction as CoolBasket. Debug spheres show their
-coverage: **blue for left**, **orange for right**, each with a 0.07 m radius.
-
-The app includes `NSHandsTrackingUsageDescription`. Allow hand tracking when
-requested. On a real Vision Pro, raise both hands and verify each sphere follows
-its palm. Hands continue updating after the M1 check finishes.
-
-Use **Drop Ball Above Palm** to reset the ball 0.4 m above a tracked palm (right
-preferred, left as fallback). Hold the palm beneath the ball; Jolt resolves the
-contact and the console prints `ball blocked by left/right palm`. This control
-ends the M1 floor-check diagnostics; **Repeat Physics Check** restores that check.
-
-An untracked hand, missing required joint, paused provider, or expired streamed
-pose parks its collider 100 m below the scene. Streamed fallback poses expire
-after 150 ms. The console logs tracking acquisition and loss. Large parking and
-reacquisition jumps teleport rather than impart velocity; nearby kinematic
-motion is capped at 6 m/s by the M1 Jolt settings. Session shutdown cancels
-tracking and removes both colliders.
-
-Hand tracking requires a real headset. On an unsupported simulator, the palm
-colliders remain parked. The M1 floor check runs after floor placement. Both palm markers have
-been verified on the headset. Tracking loss/reacquisition, ball contacts, and
-closing and reopening the immersive space remain checks to confirm separately.
-Goalie gloves and catching come later.
-
-## M3 — First penalty
-
-**Status:** the user confirmed the first penalty works on the headset. The
-flatter flight (M3.b) was also confirmed on the headset. Random targeting
-(M3.c) needs a headset check.
-
-1. Start the experience. Choose **Distance** (2–10 m), **Maximum flight time**
-   (0.2–0.5 seconds) in the control window. Each shot chooses its aim randomly.
-   Defaults are 3 m and 0.35 seconds. Shorter flight times make faster shots.
-   Close-range shots may shorten the requested time further to keep the flight
-   directed toward the goalie; the launch status shows the actual time.
-2. Face the direction from which the ball should arrive and press **Repeat Shot**.
-   The current head position and horizontal heading establish the goalie frame.
-   The ball waits at the penalty spot during a three-second countdown.
-3. Raise your palms and react to the ball. A random target is chosen 0.55 m ahead
-   of the goalie, within ±0.35 m sideways and ±0.2 m vertically of the chest-height
-   center (0.35 m below head height, with a 0.6 m minimum target height).
-   The target stays fixed for that shot, allowing either hand to block it.
-   The aim picker and purple target marker have been removed.
-4. The ball launches from floor height. Jolt handles its flight and palm impacts.
-   The control window and console report which palm made contact. If the whole
-   ball passes the captured goalie plane, feedback reports **Passed goalie**,
-   including whether a palm touched it. Otherwise, after flight time plus three
-   seconds, feedback reports a deflection or an end without palm contact.
-5. Press **Repeat Shot** for another attempt using the current settings and goalie
-   frame, with a fresh random target. Repeating during a countdown or flight replaces the previous attempt.
-
-`PenaltyShot.swift` computes launch velocity with gravity, the engine's 60 Hz
-fixed step, and Jolt 5.6's default linear damping of 0.05. This keeps the ball
-aligned with the chosen target across the available settings. The flight limit keeps
-the ball rising toward the target rather than lobbing above it, and short-range
-shots favor horizontal launch velocity over vertical launch velocity. These integration
-assumptions must be revisited if physics stepping or damping changes.
-
-An independent host Jolt check exercised 54 trajectories (distance/flight-time
-limits and defaults, the original three aims, and two headings), both palm identities, repeat
-resets, and parked-hand misses. All passed. Real hand prediction and blocking
-still need headset validation: try a left-palm block, a right-palm block, and an
-unblocked shot, then change distance and repeat.
-
-M3 feedback checks palm contact and passing the goalie plane. Goal-mouth bounds,
-scoring, catching, the animated shooter, and stadium presentation come later.
-**Repeat Physics Check** and **Drop Ball Above Palm** remain available and cancel
-an active penalty. The simulator uses a fixed goalie pose if head tracking is
-unavailable; its palm colliders remain parked.
-
-### M3.c — Random targeting
-
-Each attempt samples continuous lateral and height offsets, rather than selecting
-among three lanes. Direction is selected before the countdown and never follows
-the hands during flight. The target hint is hidden so blocking requires reacting
-to the ball. Distance and maximum flight time remain configurable.
-
-The visionOS simulator build passed. Verification covered 90 trajectories at the
-random area's corners and center, both palm colliders, repeat resets, parked-hand
-misses, and 1,000 random samples within the intended bounds. Headset validation
-of random targeting remains pending.
-
-### M3.d — Soccer ball model
-
-The visible ball loads with `createEntity()` and
-`setEntityMeshAsync(entityId:filename:withExtension:)` from
-`GameData/Models/ball/ball.untold`. Its authored materials and adjacent textures
-replace the yellow placeholder. The native model is approximately 1 m across,
-so a uniform scale of 0.22 matches the existing 0.11 m sphere collider radius.
-
-The async completion publishes a readiness flag. On the XR frame thread, the
-finished model is sized and positioned before its dynamic physics body is
-registered. This avoids the loader's imported root transform overwriting a
-simulated pose. Mass, collider dimensions, random shots, and palm interactions
-retain their existing settings. The visionOS simulator build passed, and the
-model and both textures were verified in the app bundle. Headset validation of
-the model appearance remains pending.
-
-### M3.f — Ball and ghost plane
-
-On startup, look at the floor, then pinch and release. Scene setup calls
-`registerXREvents()` to enable event ingestion and restores `setSceneReady(true)`
-when reopening the immersive scene. `handleInput()` consumes the
-completed `spatialTapActive` signal and calls `pickRealSurfacePosition` with
-`.floorOnly`, using the engine's `UsingSpatialInput.md` tap flow. This requires
-ARKit to classify the selected surface as floor; scan the floor and retry while
-classification is pending. The engine-provided `hit.worldPosition.y` positions
-a horizontal mesh from `BasicPrimitives.createPlane(width:depth:)` directly at
-the detected height, attached using `setEntityMeshDirect`. The physics collider
-is a 0.1 m slab with local offset Y = -0.05, so its top meets that same height.
-The scene root is reset to identity for consistent world/physics coordinates. Misses print
-plane diagnostics and show a retry instruction. There is no assumed y = 0
-fallback, including in the simulator.
-
-The BasicPrimitives test plane is 1 m × 1 m and uses
-`updateMaterialOpacity(entityId: floorEntity, opacity: 0)`. Shadow casting is
-disabled. Its existing 32 m × 32 m static Jolt slab remains active for ball
-collisions; mesh opacity does not affect physics. The initial drop, rest-height
-check, and penalty origins use the measured floor height. The future stadium
-will supply the visible grass.
-
-**Place Floor Again** cancels the current shot and waits for a new floor tap.
-Placement is retained for the current immersive session and repeated after
-reopening. Palms keep tracking while placement is pending.
-
-Headset validation confirmed the plane was at the correct floor height: the
-large opaque surface covered real tables/chairs in passthrough, creating the
-impression that it was elevated. The device log confirms floor hit/top
-Y = -0.0000608 m and resting ball Y = 0.10993921 m. This was a visual occlusion
-issue, not a floor-height or XR rendering error. The visionOS simulator build
-passed, and the user confirmed the ball and transparent ghost-plane setup works
-on the headset.
-
-Headset check: select the floor, confirm the real furniture remains visible,
-and verify the ball bounces/rests on the real floor and can be blocked by either
-palm. Use **Place Floor Again** to repeat calibration.
-
-## M3.g — Stadium scene
-
-The demo now loads `GameData/Scenes/goaliegame.untoldscene` with
-`loadUntoldScene(named: "goaliegame")`. Its completion finds the named **Ball**
-and **PlanePhysics** entities with `findEntity(name:)`. Input is gated with
-`setSceneReady` until loading succeeds and both names are found. A load failure
-or missing name shows an error in the control window.
-
-The scene supplies the stadium, ball mesh, physics plane, camera, and light.
-The app creates only the palm proxies. Once loading finishes, the XR frame
-thread configures the loaded entities: PlanePhysics becomes transparent with
-no shadows, while Ball retains the existing 22 cm gameplay diameter and Jolt
-sphere collider. Plane collider dimensions follow the authored procedural
-plane's X/Z scale. Floor calibration changes its Y and preserves its authored
-X/Z position. Random shots, repeat controls, and palm collisions remain in place.
-
-Loaded scene entities are tracked for cleanup when the immersive experience
-closes, including the stadium hierarchy. The visionOS simulator build passed;
-the scene bundle and required names were verified. The current stadium export
-has 16 model references and 13 texture references, all present in GameData.
-The user confirmed the stadium scene and authorized the M3.g commit.
-
-## M4 — Goalie gloves
-
-The app creates separate left/right glove entities and loads `left-glove.untold`
-and `right-glove.untold` asynchronously from `GameData/Models/gloves`. Glove
-loading passes each full bundled file path: the engine's bare-name lookup
-does not search the extra `gloves` folder. Startup logs identify the requested
-path and whether each load completed successfully.
-The stadium finishes loading and becomes scene-ready before glove loading starts.
-Gloves then load left followed by right, using `blockRenderLoop: false` so their
-load duration does not pause the stadium's rendering. Short ECS registration
-sections still use the engine's mutation gate. Shutdown prevents starting a
-queued glove load after the immersive space closes.
-Glove loading does not add physics bodies: the existing 7 cm palm spheres remain the
-kinematic colliders, and their colored markers have been removed.
-
-Each frame queries one predicted palm pose per hand and uses it for both the
-collider and glove. The palm position retains the wrist/knuckle midpoint used
-in M2; rotation comes from the wrist-to-knuckle direction and across-palm axis,
-with chirality accounted for. The 50 ms prediction and 150 ms streamed fallback
-apply to the complete pose. Lost tracking hides the glove and parks the collider;
-reacquisition restores both.
-Incomplete joint poses on an otherwise tracked hand can use the last complete
-streamed pose until its 150 ms expiry. Explicitly untracked anchors still park
-the collider immediately.
-
-Fit is applied after async loading on the XR frame thread: scale 0.25 gives an
-approximately 25 cm cuff-to-fingertip length, a -90° Y rotation aligns the
-exported palm-facing axis, and a model-space palm origin provides the attachment
-offset. `gloveScale`, `gloveRotation`, and `glovePalmOrigin` in `GameScene` are
-the initial fit settings for headset tuning. Shutdown removes glove entities.
-
-The supplied `.untold` files and Blender source contain no skeleton or armature.
-These gloves therefore follow palm position/rotation as solid meshes; finger
-articulation requires a rigged export. The visionOS simulator build passed;
-both models and their three shared textures were verified in the app bundle.
-Headset validation remains pending:
-check left/right fit, turn palms over, block with either hand, hide/reveal hands,
-and close/reopen the immersive space.
-
-Headset testing confirmed the stadium and glove loads complete with the revised
-startup order. The immersive space now requests `.upperLimbVisibility(.hidden)`,
-matching CoolWeb's glove mode, so system-composited real hands do not cover the
-rendered gloves. Hand tracking continues to drive the glove poses and colliders.
-This controls compositing; any remaining physical fit offset is tuned separately.
-
-## M5 — Animated shooter
-
-After goaliegame completes, the app finds the named `Player` root and binds
-`Animations/forwardstrike.untoldanim` with `setEntityAnimations`. This uses the
-full bundled path and runs before the sequential glove loads. A missing player
-or animation does not stop stadium rendering; Repeat Shot reports the problem.
-
-The exported clip contains 40 samples at 30 fps and lasts about 1.333 seconds.
-The reviewed contact is frame 13, sample index 12, stored at about 0.433 seconds.
-The demo reads this timestamp
-from the clip rather than counting renderer frames. Repeat Shot holds the first
-stance during the existing three-second countdown, restarts the strike, and
-releases the ball exactly once when `getAnimationPlaybackTime` crosses the
-contact timestamp. Jolt then owns the ball. The player holds its final pose
-after the strike. Resets, palm-drop checks, and floor recalibration cancel kicks.
-
-For each shot, the player turns toward the goalie and is positioned using its
-sampled `RightToeBase` pose at contact. The selected distance sets the horizontal
-ball position. The ball's center stays at detected floor Y plus its 0.11 m
-radius; sampled foot height does not lift the ball. The ball stays on the ground
-until release. Aim remains randomized.
-
-The local engine now provides `restartAnimation`, `getAnimationPlaybackTime`,
-and `sampleAnimationJointPosition`; its compiled sampler also holds non-looping
-clips at the end instead of wrapping. The working Xcode project references the
-local engine, and the local `project.yml` matches that dependency. Local dependency
-configuration changes are intentionally left uncommitted. These engine changes
-must be included when building this milestone from another checkout.
-
-Restart preserves compiled animation caches unless the clip's looping setting
-changes, avoiding recompilation at each countdown/kick. Initial pose sampling
-warms playback before the first shot. The `kick started; restart CPU … ms` log
-measures the restart call; it does not measure the entire rendered frame or GPU
-skinning. Headset testing is needed to verify whether the reported start hitch
-is fully resolved.
-
-Headset testing confirmed the frame-13 launch and grounded ball work. Fast glove
-movement can still make the gloves disappear and cause stuttering. High vertex
-counts are a suspected cause, and the user plans to replace the glove model;
-that cause has not been established by profiling.
-
-The simulator build and all 18 focused animation tests passed; animation/model
-resources were verified in the bundle. Headset checks: confirm the right-foot contact and launch coincide,
-repeat several shots, change shot distance, and reset during a countdown/kick.
-
-## Integration
-
-- `GameScene.swift` owns Jolt registration, floor calibration, scene construction, and the automatic
-  kicking loop. The engine advances physics automatically; do not call `step` again.
-- `ImmersiveGolApp.swift` installs Jolt before constructing `UntoldEngineXR`.
-  Scene cleanup runs after the render loop stops, allowing the space to reopen.
-- `GoalieHandTracking.swift` publishes lock-protected palm snapshots from ARKit;
-  physics transforms and ball resets are applied on the XR frame thread.
-- Engine uses the local checkout with the M5 playback helpers; Jolt uses `develop`.
-  Retain the workspace's generated `Package.resolved` for reproducible revisions.
-- `project.yml` is the XcodeGen source of truth. Regenerate from the parent
-  directory with `xcodegen generate --spec ImmersiveGol/project.yml`.
-- `DocumentationIssues.tmp.md` tracks documentation gaps across milestones.
-
-## Build check
-
-Run from this directory:
-
-```sh
-xcodebuild -project ImmersiveGol.xcodeproj -scheme ImmersiveGol -destination 'generic/platform=visionOS Simulator' -derivedDataPath /tmp/ImmersiveGol-M1-build CODE_SIGNING_ALLOWED=NO build
+```bash
+xcodegen generate   # regenerates ImmersiveGol.xcodeproj from project.yml
+open ImmersiveGol.xcodeproj
 ```
 
-Compilation and headset validation are separate checks. Confirm the floor-first
-flow, automatic kicks, hand blocks, and Stop Kicking in an immersive space.
+Build and run (`Cmd+R`), press **Start Experience**, look at the real floor, then pinch and release to calibrate it. Once the stadium and shooter finish loading, press **Start Kicking**.
+
+> Re-run `xcodegen generate` any time you add new Swift files.
+
+---
+
+## 1. How an Untold Engine XR app boots with a physics plugin
+
+The bootstrap shape is the same as any Untold Engine XR app (see CoolFutbol's README for the baseline), with one addition: **the physics backend has to exist before `UntoldEngineXR` is created.** Found in `Sources/ImmersiveGol/ImmersiveGolApp.swift`:
+
+```swift
+CompositorLayer(configuration: UntoldEngineConfiguration(), renderer: { layerRenderer in
+    guard let physics = GameScene.installPhysics() else { return }
+    if let xr = UntoldEngineXR(layerRenderer: layerRenderer) {
+        xr.setImmersionMode(xrImmersionMode: .mixed)
+
+        let gameScene = GameScene(physics: physics)
+        xr.setupCallbacks(
+            gameUpdate: { deltaTime in gameScene.update(deltaTime: deltaTime) },
+            handleInput: { gameScene.handleInput() }
+        )
+
+        Thread {
+            xr.start()
+            xr.runLoop()          // blocking — dedicated thread, not @MainActor
+            gameScene.shutdown()  // tear down after the render loop actually stops
+        }.start()
+    }
+})
+```
+
+`GameScene.installPhysics()` is a static function, callable before any `GameScene` exists:
+
+```swift
+static func installPhysics() -> JoltPhysicsBackend? {
+    var world = PhysicsWorldConfiguration()
+    world.gravity = Self.gravity
+    PhysicsCoordinator.shared.setWorldConfiguration(world)
+
+    var settings = JoltWorldSettings()
+    settings.continuousCollision = true
+    settings.maxKinematicStep = 1.0   // lets a >1m hand reposition teleport instead of sweeping
+    settings.maxKinematicSpeed = 6.0
+
+    return registerJoltPhysics(settings: settings)
+}
+```
+
+- **`PhysicsCoordinator.shared`** is the engine's physics-backend-agnostic seam — the same one CoolBasket's plugin backend installs into. World gravity is set there regardless of which backend ends up registered.
+- **`registerJoltPhysics(settings:)`** (from `UntoldJoltPhysics`) installs Jolt as that backend and returns a `JoltPhysicsBackend` handle. **The backend choice locks on the first simulated substep**, so this must run before `UntoldEngineXR` starts ticking — and the returned handle is what `GameScene` holds on to for direct calls like `resetBody`/`bodyState`/`didRemoveBody` later (see §3).
+- From here on, `RigidBodyComponent`/`ColliderComponent` and the engine's automatic physics stepping work exactly as in any other Untold Engine physics demo — the game code never calls Jolt directly except through that one `JoltPhysicsBackend` handle.
+
+## 2. Initialization — `GameScene.init()`
+
+```swift
+@MainActor
+init(physics: JoltPhysicsBackend) {
+    self.physics = physics
+    setupAssetPaths()
+    configureEngineSystems()
+    setupPalms()
+    setupGloves()
+    setupContactEvents()
+    handTracking.start()
+}
+```
+
+Notice there's no `loadUntoldScene` call here. `configureEngineSystems()` deliberately leaves the scene empty:
+
+```swift
+private func configureEngineSystems() {
+    setRendering(.maxShadowCastingDistance(250.0))
+    gameMode = true
+    registerXREvents()
+    setSceneReady(true)   // ready with an EMPTY scene, so floor-tap input works immediately
+    AnimationSystem.shared.isEnabled = true
+}
+```
+
+The stadium (`goaliegame.untoldscene`) only loads **after** the player taps a real-world floor in `handleInput()` (§4) — at that point the measured floor height is already known, so the stadium's physics plane can be placed at the right world Y the instant it loads. This is the same `loadUntoldScene(named:completion:)` / `findEntity(name:)` pattern CoolFutbol uses, just deferred behind a gate:
+
+```swift
+loadUntoldScene(named: "goaliegame") { success in
+    let ball = success ? findEntity(name: "Ball") : nil
+    let plane = success ? findEntity(name: "PlanePhysics") : nil
+    let player = success ? findEntity(name: "Player") : nil
+    // ...publish to the frame thread; setSceneReady(true) once consumed
+}
+```
+
+## 3. Entities, Components, and a physics-backend handle
+
+Scene-authored entities get physics bodies attached the usual Untold Engine way — `registerComponent(entityId:componentType:)` plus `scene.get(component:for:)` to tune them:
+
+```swift
+registerComponent(entityId: ballEntity, componentType: ColliderComponent.self)
+registerComponent(entityId: ballEntity, componentType: RigidBodyComponent.self)
+if let collider = scene.get(component: ColliderComponent.self, for: ballEntity) {
+    collider.shape = .sphere(radius: Self.ballRadius)
+    collider.friction = 0.5
+    collider.restitution = 0.35
+}
+if let body = scene.get(component: RigidBodyComponent.self, for: ballEntity) {
+    body.motionType = .dynamic
+    body.mass = 0.43
+}
+```
+
+The two tracked-palm colliders are created the same way but with `motionType = .kinematic` — the engine drives kinematic bodies from positions you set every frame (`translateTo`/`rotateTo`) rather than from forces.
+
+Where this demo goes beyond CoolFutbol is calling the `JoltPhysicsBackend` handle directly for operations the component API doesn't expose:
+
+```swift
+physics.resetBody(entity: ballEntity, position: trajectory.origin, velocity: velocity)
+physics.bodyState(for: ballEntity)          // read back position for pass/fail checks
+physics.didRemoveBody(entity: entity)       // tell Jolt a destroyed entity's body is gone
+```
+
+`resetBody` is how the ball is teleported to the penalty spot and given its launch velocity in one call — gravity-compensated so the shot actually reaches the chosen target (see `PenaltyShot.swift`'s `launchVelocity`, which integrates the engine's fixed 60 Hz step against Jolt's default linear damping). `didRemoveBody` is called from `shutdown()` after `destroyEntity(entityId:)`, so a reopened immersive space doesn't leave stale bodies behind.
+
+Physics **events**, not polling, are how the demo knows a palm touched the ball:
+
+```swift
+contactSubscription = PhysicsEvents.shared.onContact { [weak self] event in
+    guard let self, event.phase == .began else { return }
+    for (side, entity) in self.palmEntities {
+        if (event.entityA == self.ballEntity && event.entityB == entity)
+            || (event.entityB == self.ballEntity && event.entityA == entity) {
+            // ...record which palm made first contact
+        }
+    }
+}
+```
+
+## 4. `handleInput()` — one-shot floor calibration via `pickRealSurfacePosition`
+
+```swift
+func handleInput() {
+    guard gameMode, floorY == nil else { return }   // only runs before the floor is set
+    let state = getXRSpatialInputState()
+    guard state.spatialTapActive else { return }
+    guard let hit = pickRealSurfacePosition(
+        rayOrigin: state.rayOriginWorld,
+        rayDirection: state.rayDirectionWorld,
+        filter: .floorOnly
+    ) else {
+        setShotStatus("No floor detected yet...")
+        return
+    }
+    floorY = hit.worldPosition.y
+    Task { @MainActor [weak self] in self?.loadGameScene() }
+}
+```
+
+Same `getXRSpatialInputState()` / `pickRealSurfacePosition(rayOrigin:rayDirection:filter:)` pattern CoolFutbol uses for table placement, with `.floorOnly` as the ARKit plane-classification filter instead of `.tableOnly`. Once `floorY` is set, this whole code path is dead for the rest of the session — `handleInput()` only matters once, before the stadium exists.
+
+## 5. ARKit hand tracking outside the engine's own input system
+
+The engine's `InputSystem` covers spatial pinch/tap/controller input, but **continuous palm position/orientation** isn't part of that snapshot — so `GoalieHandTracking.swift` runs its own `ARKitSession` with a `HandTrackingProvider` and a `WorldTrackingProvider`, independent of the engine:
+
+```swift
+let hands = HandTrackingProvider()
+let world = WorldTrackingProvider()
+try await session.run([hands, world])
+for await update in hands.anchorUpdates { /* publish lock-protected samples */ }
+```
+
+Every frame, `GameScene.updatePalms()` queries this tracker (50 ms forward-predicted, same scheme as CoolBasket) and feeds the result straight into the engine's transform API, the same way any other per-frame positioning works:
+
+```swift
+let pose = handTracking.palmPose(side, now: now)
+translateTo(entityId: palmEntity, position: pose?.position ?? Self.parkedPosition)
+if let pose { rotateTo(entityId: palmEntity, rotation: pose.rotation) }
+```
+
+An untracked hand parks its collider 100 m below the scene rather than leaving a stale pose active — `maxKinematicStep` (set in §1) turns that reposition into a teleport instead of a 100 m-per-frame sweep through the ball.
+
+The visible gloves ride on the same per-frame pose, loaded asynchronously and fit with a scale/rotation/offset onto the tracked palm frame:
+
+```swift
+setEntityMeshAsync(entityId: gloveEntity, filename: url.path,
+                   withExtension: "untold", blockRenderLoop: false) { success in /* ... */ }
+```
+
+`blockRenderLoop: false` keeps the stadium rendering while a glove's textures are still uploading.
+
+## 6. Animation-driven gameplay: `changeAnimation`, root motion, and joint sampling
+
+The shooter is the most engine-API-dense part of this demo. Four clips (`forwardstrike`, `offensiveidle`, `jobbackward`, `jogforward`) are bound with `setEntityAnimations(entityId:filename:withExtension:name:)`, and blending between them at runtime uses `changeAnimation(entityId:name:transitionHalflife:)`:
+
+```swift
+changeAnimation(entityId: shooterEntity, name: Self.strikeName, transitionHalflife: 0.05)
+// ...later, after the kick finishes:
+changeAnimation(entityId: shooterEntity, name: Self.idleName, transitionHalflife: 0.15)
+```
+
+Root motion is turned on so the kick's authored forward travel actually moves the entity, and playback is read back frame-by-frame rather than counted in renderer frames:
+
+```swift
+setRootMotionEnabled(entityId: shooterEntity, enabled: true)
+restartAnimation(entityId: shooterEntity, name: Self.strikeName, repeats: false)
+// every frame:
+let time = getAnimationPlaybackTime(entityId: shooterEntity)
+if time >= shooterContactTime { /* release the ball */ }
+```
+
+`shooterContactTime` itself comes from sampling the exported clip's data directly at load time — not a hardcoded guess:
+
+```swift
+let asset = try NativeFormatLoader().loadAssetSync(from: url)
+let clip = asset.animationClips.first!
+let contact = clip.channels.max(by: { $0.translations.count < $1.translations.count })!
+    .translations[Self.strikeContactFrame - 1].time   // frame 13's authored timestamp
+```
+
+Before the kick, the demo also needs to know **where the foot will land** so it can position the shooter such that contact happens exactly at the ball. `sampleAnimationJointPosition(entityId:name:jointName:time:)` previews a joint's pose at an arbitrary time in a clip without playing it:
+
+```swift
+let foot = sampleAnimationJointPosition(entityId: shooterEntity, name: Self.strikeName,
+                                        jointName: "RightToeBase", time: shooterContactTime)
+```
+
+Because root motion strips out the clip's initial translation/heading, the raw sampled joint and the displayed joint disagree by that initial offset — `PenaltyContactAlignment.predictedToe` (in `PenaltyShot.swift`) reconstructs the correction from the clip's first-frame `Hips` rotation, and any residual error is closed out by nudging the entity once contact is actually reached, read back with `getJointModelTransforms(entityId:)`.
+
+That's the full extra surface this demo adds on top of the CoolFutbol baseline: **a physics backend installed before `UntoldEngineXR` exists, direct `JoltPhysicsBackend` calls for teleport/readback, `PhysicsEvents` for contact instead of polling, an ARKit session run independently of the engine for continuous hand pose, and the animation-sampling APIs (`getAnimationPlaybackTime`, `sampleAnimationJointPosition`, `getJointModelTransforms`) for frame-accurate, root-motion-aware contact timing.**
+
+## 🔗 Untold Engine
+
+- Engine repo: [github.com/untoldengine/UntoldEngine](https://github.com/untoldengine/UntoldEngine)
+- Physics plugin: [github.com/untoldengine/UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics)
+- API docs: `docs/API/` in the engine repo — see `UsingSpatialInput.md`, `UsingInputSystem.md`, and `GettingStarted.md`; CoolBasket's and CoolBowling's READMEs cover the physics-backend plugin seam in more depth.
