@@ -1,5 +1,7 @@
 # CoolBowling 🎳
 
+![CoolBowling demo](../docs/media/CoolBowling/demo.gif)
+
 Mixed-reality bowling for Apple Vision Pro on Untold Engine, running on the
 shared [UntoldJoltPhysics](https://github.com/untoldengine/UntoldJoltPhysics) plugin — the demo
 that needs a real rigid-body solver: ten pins that stack, wobble, topple and

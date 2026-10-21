@@ -1,5 +1,7 @@
 # CoolBasket 🏀
 
+![CoolBasket demo](../docs/media/CoolBasket/demo.gif)
+
 Mixed-reality basketball for Apple Vision Pro, built on Untold Engine — and
 the first real consumer of the engine's **physics backend plugin seam**
 (untoldengine/UntoldEngine discussion #1116, PRs #1123/#1129/#1139/#1140).
