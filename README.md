@@ -129,6 +129,18 @@ Mixed-reality tabletop soccer: look at a real table and pinch to snap a stadium 
 open CoolFutbol/CoolFutbol.xcodeproj
 ```
 
+### 🔬 UntoldViewer — *visionOS · Engine vs RealityKit*
+
+The engine's comparison bench: a catalog of objects (a dartboard and four darts to start), each with an engine model and a USDZ twin made from the same source, shown at the same spot in your room by the Untold Engine or by RealityKit, one tap apart. Look at the same wire, digit or flight in both, at the same distance, and read the engine's GPU frame time next to it. Built to keep pushing the engine against what the platform renderer does.
+
+- Foveated rendering through the compositor's rasterization rate maps, render quality up to 1.0, MSAA 4× and temporal anti-aliasing, room or studio lighting — all switchable from the window
+- The same objects through `RealityView` from their USDZ twins; frame time from Instruments' RealityKit Trace
+- Adding an object is a folder and a USDZ (`UntoldViewer/README.md`)
+
+```bash
+open UntoldViewer/UntoldViewer.xcodeproj
+```
+
 ### 🏛️ ArchvizViewer — *visionOS*
 
 ![ArchvizViewer demo](docs/media/ArchvizViewer/demo.gif)
@@ -232,6 +244,7 @@ Each demo project depends on the Untold Engine via Swift Package Manager (SPM). 
 ```bash
 UntoldArcade/
 ├── CoolSaber/           # Rendering Extension — PSVR2 lightsaber duels + SharePlay
+├── UntoldViewer/        # Engine vs RealityKit comparison bench (visionOS)
 ├── CoolWater/           # Rendering Extension — real-time animated water
 ├── CoolCloth/           # Rendering Extension — GPU cloth simulation (XPBD)
 ├── CoolWeb/             # Rendering Extension — Spider-Man web-shooter demo

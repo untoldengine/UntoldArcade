@@ -61,3 +61,6 @@ Carthage/Build/
 CoolWeb/Sources/CoolWeb/Resources/Models/preview_*.png
 CoolWeb/Sources/CoolWeb/Resources/Models/palm_*.png
 *.tmp.md
+
+# Per-developer team and bundle prefix (UntoldViewer/Config/Config.xcconfig)
+Local.xcconfig

@@ -1,0 +1,84 @@
+name: UntoldViewer
+options:
+  deploymentTarget:
+    visionOS: "26.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+packages:
+  # The engine under test. A local checkout while the foveation, TAA and
+  # back-face branches are in review (the folder MUST be named UntoldEngine:
+  # SwiftPM takes the package identity from it); once they land, replace with
+  #   url: https://github.com/untoldengine/UntoldEngine.git
+  #   branch: develop
+  # and run `xcodegen generate`.
+  UntoldEngine:
+    path: ../../xr_foveation/UntoldEngine
+schemes:
+  UntoldViewer:
+    build:
+      targets:
+        UntoldViewer: all
+    run:
+      config: Debug
+      # A measurement bench: no Metal API validation (CPU cost on every call),
+      # and Metal's own performance HUD (frame rate, frame and GPU time of this
+      # process) where the system offers it.
+      enableGPUValidationMode: false
+      environmentVariables:
+        MTL_HUD_ENABLED: "1"
+    # Instruments (Product ▸ Profile) builds Debug too: the engine compiles its
+    # GPU statistics (the line's gpu figures) out of Release.
+    profile:
+      config: Debug
+      enableGPUValidationMode: false
+    archive:
+      config: Release
+targets:
+  UntoldViewer:
+    type: application
+    platform: visionOS
+    sources:
+      - path: Viewer
+        excludes: ["Resources/Info.plist", "Resources/Models", "Resources/Compare"]
+      # Folder references: the engine resolves Models/<name>/<name>.untold under
+      # the bundle's resource root, and RealityKit loads Compare/<name>.usdz.
+      - path: Viewer/Resources/Models
+        type: folder
+        buildPhase: resources
+      - path: Viewer/Resources/Compare
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: UntoldEngine
+        product: UntoldEngine
+      - package: UntoldEngine
+        product: UntoldEngineXR
+    info:
+      path: Viewer/Resources/Info.plist
+      properties:
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleDisplayName: Untold Viewer
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSWorldSensingUsageDescription: "Lights the objects with your room's light when that lighting mode is chosen."
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UIApplicationPreferredDefaultSceneSessionRole: UIWindowSceneSessionRoleApplication
+    # The bundle identifier and the team come from Config/Config.xcconfig, which
+    # a gitignored Config/Local.xcconfig overrides per developer.
+    configFiles:
+      Debug: Config/Config.xcconfig
+      Release: Config/Config.xcconfig
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "7"
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+        Release:
+          SWIFT_COMPILATION_MODE: wholemodule
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
