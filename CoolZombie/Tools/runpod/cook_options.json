@@ -1,0 +1,56 @@
+{
+ "_doc": "Per-clip cook options merged into picks.json by retarget_batch.sh: idle = static root (in-place clips), loop = close the loop seam (clips that play on repeat outside motion matching), start/end = trims in seconds (end <= 0 from the clip's end).",
+ "k_idle": {
+  "idle": true,
+  "loop": true
+ },
+ "k_hold_1": {
+  "idle": true,
+  "loop": true
+ },
+ "k_hold_2": {
+  "idle": true,
+  "loop": true
+ },
+ "k_start_walk": {
+  "start": 0.7
+ },
+ "k_start_run": {
+  "start": 0.7
+ },
+ "k_stop_walk": {
+  "end": -1.0
+ },
+ "k_stop_run": {
+  "end": -1.0
+ },
+ "k_stand_turn_l_90": {
+  "start": 0.3,
+  "end": -0.5
+ },
+ "k_stand_turn_r_90": {
+  "start": 0.3,
+  "end": -0.5
+ },
+ "k_stand_turn_l_180": {
+  "start": 0.3,
+  "end": -0.5
+ },
+ "k_stand_turn_r_180": {
+  "start": 0.3,
+  "end": -0.5
+ },
+ "k_wall_hold": {
+  "start": 2.4,
+  "idle": true,
+  "loop": true
+ },
+ "k_arms_grab": {
+  "idle": true,
+  "loop": true
+ },
+ "k_arms_high": {
+  "idle": true,
+  "loop": true
+ }
+}

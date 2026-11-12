@@ -1,0 +1,1928 @@
+diff --git a/Sources/UntoldEngine/Animation/FootIK.swift b/Sources/UntoldEngine/Animation/FootIK.swift
+index 480b630f..05d965c9 100644
+--- a/Sources/UntoldEngine/Animation/FootIK.swift
++++ b/Sources/UntoldEngine/Animation/FootIK.swift
+@@ -63,6 +63,20 @@ public struct FootIKChainDescriptor {
+     }
+ }
+ 
++/// What tells the stance lock that a foot is planted.
++public enum FootIKStanceLockSource: Sendable {
++    /// The displayed ankle's world speed: catches the slide a clip's own
++    /// root motion leaves, and lets go as soon as the foot moves — for
++    /// whatever reason, a transition included.
++    case displayedFoot
++    /// The playing clip's own ankle motion, in the clip's model space: a
++    /// foot the clip holds still is planted whatever the transition, the
++    /// root-velocity crossfade or the heading warp does to the entity, and
++    /// it is released only when the clip lifts it, so the catch-up hides
++    /// in the swing. The frame after a clip switch holds the lock as it is.
++    case clipContact
++}
++
+ /// Per-chain stance lock: while the animated ankle is (near) stationary in
+ /// world space, the IK target is pinned to the world position where it
+ /// planted, absorbing residual root-motion slide. Unlocking hands the
+@@ -87,6 +101,22 @@ struct FootIKState {
+     /// where they landed. See `FootLockState`.
+     var stanceLockEnabled = false
+     var lockStates: [FootLockState] = []
++    var lockSource: FootIKStanceLockSource = .displayedFoot
++
++    /// Clip-contact thresholds on the authored ankle speed (model space,
++    /// root travel included): slower plants, faster lifts.
++    var contactEnterSpeed: Float = 0.15
++    var contactExitSpeed: Float = 0.4
++
++    /// Scratch for the playing clip's raw pose (clip contact): the clip,
++    /// its wrapped time and the ankles' model-space positions last frame.
++    var rawSampler = ClipSampler()
++    var rawPose = PoseBuffer()
++    var rawPositions: [simd_float3] = []
++    var rawRotations: [simd_quatf] = []
++    var rawClip: ObjectIdentifier?
++    var rawTime: Float = 0
++    var rawAnkles: [simd_float3] = []
+ 
+     /// A foot slower than this locks; faster than the exit speed unlocks.
+     /// Between the two, the current state holds (hysteresis) — residual
+@@ -123,6 +153,19 @@ struct FootIKState {
+     mutating func invalidateResolution() {
+         resolvedChains = nil
+         lockStates = []
++        rawClip = nil
++        rawAnkles = []
++    }
++
++    /// Samples the playing clip's raw pose at `time` and runs FK on it.
++    mutating func refreshRawPose(compiled: CompiledAnimationClip, clip: AnimationClip, time: Float, parentIndices: [Int?]) {
++        rawSampler.sample(compiled, time: time, duration: clip.duration, speed: clip.speed, into: &rawPose)
++        computeForwardKinematics(
++            pose: rawPose,
++            parentIndices: parentIndices,
++            positions: &rawPositions,
++            rotations: &rawRotations
++        )
+     }
+ 
+     /// Refreshes the FK scratch from a pose. Lives on the state so the
+@@ -196,6 +239,37 @@ func applyFootIK(
+         animationComponent.footIK.lockStates = [FootLockState](repeating: FootLockState(), count: chains.count)
+     }
+ 
++    // Clip contact: the authored ankle speed, from the playing clip's own
++    // pose this frame against last frame's (same clip, wrap corrected).
++    var authoredSpeeds = [Float?](repeating: nil, count: chains.count)
++    if animationComponent.footIK.stanceLockEnabled,
++       animationComponent.footIK.lockSource == .clipContact,
++       let clip = animationComponent.currentAnimation,
++       deltaTime > 0
++    {
++        let compiled = animationComponent.compiledClip(for: clip, skeleton: skeleton)
++        let duration = max(clip.duration, 1e-4)
++        let time = fmod(animationComponent.currentTime, duration)
++        animationComponent.footIK.refreshRawPose(
++            compiled: compiled, clip: clip, time: time, parentIndices: skeleton.parentIndices
++        )
++        let rawPositions = animationComponent.footIK.rawPositions
++        let sameClip = animationComponent.footIK.rawClip == ObjectIdentifier(clip)
++        let wrapped = time < animationComponent.footIK.rawTime
++        if sameClip, animationComponent.footIK.rawAnkles.count == chains.count {
++            for (index, chain) in chains.enumerated() where chain.ankle < rawPositions.count {
++                var delta = rawPositions[chain.ankle] - animationComponent.footIK.rawAnkles[index]
++                if wrapped {
++                    delta += compiled.rootTranslationPerLoop
++                }
++                authoredSpeeds[index] = simd_length(delta) / deltaTime
++            }
++        }
++        animationComponent.footIK.rawClip = ObjectIdentifier(clip)
++        animationComponent.footIK.rawTime = time
++        animationComponent.footIK.rawAnkles = chains.map { $0.ankle < rawPositions.count ? rawPositions[$0.ankle] : .zero }
++    }
++
+     for (chainIndex, chain) in chains.enumerated() {
+         guard chain.hip < pose.jointCount, chain.knee < pose.jointCount, chain.ankle < pose.jointCount else {
+             continue
+@@ -216,7 +290,8 @@ func applyFootIK(
+                 lock: &animationComponent.footIK.lockStates[chainIndex],
+                 ankleWorld: ankleWorld,
+                 state: animationComponent.footIK,
+-                deltaTime: deltaTime
++                deltaTime: deltaTime,
++                authoredSpeed: authoredSpeeds[chainIndex]
+             )
+         }
+ 
+@@ -341,12 +416,15 @@ func footIKDefaultGroundSample(
+ /// Advances one chain's stance lock and returns the world position the IK
+ /// target should use horizontally. Speed thresholds are hysteretic. The
+ /// catch-up decay runs on top of whatever the lock wants, so a release and
+-/// a re-plant mid-catch-up are both continuous.
++/// a re-plant mid-catch-up are both continuous. With clip contact the
++/// planted/lifting decision comes from `authoredSpeed` (the clip's own
++/// ankle motion; nil the frame after a switch holds the state).
+ private func updateFootLock(
+     lock: inout FootLockState,
+     ankleWorld: simd_float3,
+     state: FootIKState,
+-    deltaTime: Float
++    deltaTime: Float,
++    authoredSpeed: Float? = nil
+ ) -> simd_float3 {
+     defer {
+         lock.previousAnkleWorld = ankleWorld
+@@ -355,6 +433,16 @@ private func updateFootLock(
+ 
+     guard lock.hasPreviousAnkleWorld, deltaTime > 0 else { return ankleWorld }
+     let speed = simd_length(ankleWorld - lock.previousAnkleWorld) / deltaTime
++    let planted: Bool
++    let lifting: Bool
++    switch state.lockSource {
++    case .displayedFoot:
++        planted = speed < state.lockEnterSpeed
++        lifting = speed > state.lockExitSpeed
++    case .clipContact:
++        planted = authoredSpeed.map { $0 < state.contactEnterSpeed } ?? false
++        lifting = authoredSpeed.map { $0 > state.contactExitSpeed } ?? false
++    }
+ 
+     // Where the lock wants the foot: the anchor while planted, the animated
+     // ankle otherwise.
+@@ -362,15 +450,24 @@ private func updateFootLock(
+     if lock.locked {
+         var horizontal = lock.anchorWorld - ankleWorld
+         horizontal.y = 0
+-        if speed > state.lockExitSpeed || simd_length(horizontal) > state.maxLockDistance {
++        if lifting || simd_length(horizontal) > state.maxLockDistance {
+             // Release: the pinned offset joins any catch-up still in flight
+-            // so this frame lines up with the last locked one.
++            // so this frame lines up with the last locked one. Releases
++            // that land on a catch-up still decaying would otherwise stack
++            // up past the lock distance and, at `maxAdjustment`, skip the
++            // solve for a frame (a pop): the sum is capped at the larger of
++            // the lock distance and this release's own offset.
+             lock.locked = false
+             lock.releaseOffset += horizontal
++            let cap = max(state.maxLockDistance, simd_length(horizontal))
++            let length = simd_length(lock.releaseOffset)
++            if length > cap {
++                lock.releaseOffset *= cap / length
++            }
+         } else {
+             pinned = simd_float3(lock.anchorWorld.x, ankleWorld.y, lock.anchorWorld.z)
+         }
+-    } else if speed < state.lockEnterSpeed {
++    } else if planted {
+         // Plant at the animated ankle, so an anchor never starts outside
+         // the lock distance. A catch-up still in flight keeps decaying on
+         // top of it below: re-planting mid-catch-up eases the rest of the
+diff --git a/Sources/UntoldEngine/Animation/MotionDatabase.swift b/Sources/UntoldEngine/Animation/MotionDatabase.swift
+index e6c9fc61..827e6043 100644
+--- a/Sources/UntoldEngine/Animation/MotionDatabase.swift
++++ b/Sources/UntoldEngine/Animation/MotionDatabase.swift
+@@ -23,7 +23,10 @@ import simd
+ // and yaw at the frame define the frame of reference, so the same walk
+ // matches regardless of where in the world it was authored. Future values
+ // past a clip's end wrap with the clip's per-loop root displacement/yaw
+-// (clips are assumed to loop, keys spanning the full duration).
++// (clips are assumed to loop, keys spanning the full duration) — except for
++// one-shot clips, whose root extrapolates past the end at its terminal
++// velocity and yaw rate and whose last stretch is never a jump target (see
++// `MotionMatchingDescriptor.oneShotClipNames`).
+ //
+ // The database is built at load time from clips already loaded on the
+ // entity — a few minutes of animation resamples in milliseconds. A
+@@ -37,44 +40,68 @@ public struct MotionMatchingWeights {
+     public var hipVelocity: Float
+     public var trajectoryPosition: Float
+     public var trajectoryDirection: Float
++    /// Hand positions, present only when the descriptor names the hand
++    /// joints: keeps a jump from landing on a clip whose arms sit far from
++    /// where they are, so the upper body does not flap between clips the
++    /// feet alone would call equal.
++    public var handPosition: Float
+ 
+     public init(
+         footPosition: Float = 0.75,
+         footVelocity: Float = 1.0,
+         hipVelocity: Float = 1.0,
+         trajectoryPosition: Float = 1.0,
+-        trajectoryDirection: Float = 1.25
++        trajectoryDirection: Float = 1.25,
++        handPosition: Float = 1.0
+     ) {
+         self.footPosition = footPosition
+         self.footVelocity = footVelocity
+         self.hipVelocity = hipVelocity
+         self.trajectoryPosition = trajectoryPosition
+         self.trajectoryDirection = trajectoryDirection
++        self.handPosition = handPosition
+     }
+ }
+ 
+ /// Layout of one feature vector. Order (character space):
+ /// left foot pos (3), right foot pos (3), left foot vel (3),
+-/// right foot vel (3), hip vel (3), trajectory positions x/z at each
++/// right foot vel (3), hip vel (3), [left hand pos (3), right hand pos (3)
++/// when the database tracks hands], trajectory positions x/z at each
+ /// horizon (2 each), trajectory facing x/z at each horizon (2 each).
+ enum MotionFeatureLayout {
+     static let trajectoryHorizons: [Float] = [0.33, 0.66, 1.0]
+-    static let poseDimensions = 15
++    static let basePoseDimensions = 15
++    static let handDimensions = 6
+     static var trajectoryDimensions: Int {
+         trajectoryHorizons.count * 4
+     }
+ 
++    /// The layout without hands.
++    static var poseDimensions: Int {
++        basePoseDimensions
++    }
++
+     static var dimensions: Int {
+-        poseDimensions + trajectoryDimensions
++        dimensions(hands: false)
++    }
++
++    static func poseDimensions(hands: Bool) -> Int {
++        basePoseDimensions + (hands ? handDimensions : 0)
+     }
+ 
+-    static func groupWeight(forDimension d: Int, weights: MotionMatchingWeights) -> Float {
++    static func dimensions(hands: Bool) -> Int {
++        poseDimensions(hands: hands) + trajectoryDimensions
++    }
++
++    static func groupWeight(forDimension d: Int, hands: Bool, weights: MotionMatchingWeights) -> Float {
+         switch d {
+         case 0 ..< 6: return weights.footPosition
+         case 6 ..< 12: return weights.footVelocity
+         case 12 ..< 15: return weights.hipVelocity
+         default:
+-            let t = d - poseDimensions
++            let pose = poseDimensions(hands: hands)
++            if d < pose { return weights.handPosition }
++            let t = d - pose
+             return t % 4 < 2 ? weights.trajectoryPosition : weights.trajectoryDirection
+         }
+     }
+@@ -93,7 +120,19 @@ final class MotionDatabase {
+     let frames: [Frame]
+     /// First frame index of each clip's contiguous run in `frames`.
+     let clipFrameOffsets: [Int]
+-    let dimensions = MotionFeatureLayout.dimensions
++    /// Per clip: never wraps (see `MotionMatchingDescriptor.oneShotClipNames`).
++    let oneShotClips: [Bool]
++    /// Per frame: may be returned by `search`. False for the tail of a
++    /// one-shot clip, which playback could not stay on.
++    let searchable: [Bool]
++    /// Per frame: cost added in `search` — zero for looping clips, rising
++    /// over the last second of a one-shot clip (see
++    /// `MotionMatchingDescriptor.oneShotRunwayPenalty`).
++    let runwayPenalties: [Float]
++    private static let runwayWindow: Float = 1.0
++    /// Whether hand positions are part of every feature vector.
++    let hasHands: Bool
++    let dimensions: Int
+     let sampleInterval: Float
+ 
+     /// Feature vectors, flattened, pre-scaled by `scales` so the search is
+@@ -107,6 +146,8 @@ final class MotionDatabase {
+     let rootJointIndex: Int
+     let leftFootIndex: Int
+     let rightFootIndex: Int
++    let leftHandIndex: Int?
++    let rightHandIndex: Int?
+ 
+     init?(
+         clips: [AnimationClip],
+@@ -114,8 +155,13 @@ final class MotionDatabase {
+         skeleton: Skeleton,
+         leftFootPath: String,
+         rightFootPath: String,
++        leftHandPath: String? = nil,
++        rightHandPath: String? = nil,
+         sampleRate: Float,
+-        weights: MotionMatchingWeights
++        weights: MotionMatchingWeights,
++        oneShotClipNames: Set<String> = [],
++        oneShotTail: Float = 0,
++        oneShotRunwayPenalty: Float = 0
+     ) {
+         guard clips.count == compiledClips.count, clips.isEmpty == false, sampleRate > 0 else { return nil }
+         guard let leftFoot = skeleton.jointPaths.firstIndex(of: leftFootPath),
+@@ -128,24 +174,53 @@ final class MotionDatabase {
+         rootJointIndex = root
+         leftFootIndex = leftFoot
+         rightFootIndex = rightFoot
++        // Hands are tracked only when both are named and found.
++        let leftHand = leftHandPath.flatMap { skeleton.jointPaths.firstIndex(of: $0) }
++        let rightHand = rightHandPath.flatMap { skeleton.jointPaths.firstIndex(of: $0) }
++        let hands = leftHand != nil && rightHand != nil
++        hasHands = hands
++        leftHandIndex = hands ? leftHand : nil
++        rightHandIndex = hands ? rightHand : nil
++        dimensions = MotionFeatureLayout.dimensions(hands: hands)
+         sampleInterval = 1.0 / sampleRate
+ 
+         var frames: [Frame] = []
+         var clipFrameOffsets: [Int] = []
++        var searchable: [Bool] = []
++        var runwayPenalties: [Float] = []
+         var rawFeatures: [Float] = []
++        oneShotClips = clips.map { oneShotClipNames.contains($0.name) }
+ 
+         var sampler = ClipSampler()
+         var pose = PoseBuffer()
+         var positions: [simd_float3] = []
+         var rotations: [simd_quatf] = []
+ 
++        // Terminal state of a one-shot clip: its last pose's time, root
++        // position and yaw, and the velocity/yaw rate over the final 0.1 s.
++        struct Terminal {
++            let time: Float
++            let position: simd_float3
++            let yaw: Float
++            let velocity: simd_float3
++            let yawRate: Float
++        }
++
+         /// Samples the root's model-space translation and yaw at an
+         /// unwrapped time, correcting whole loops with the clip's per-loop
+-        /// displacement so future trajectory values never snap backward.
++        /// displacement so future trajectory values never snap backward. A
++        /// one-shot clip (`terminal` given) holds its last pose past the end
++        /// and extrapolates the root at its terminal velocity and yaw rate.
+         func rootSample(
+             clip: AnimationClip, compiled: CompiledAnimationClip,
+-            at time: Float, sampler: inout ClipSampler, pose: inout PoseBuffer
++            at time: Float, sampler: inout ClipSampler, pose: inout PoseBuffer,
++            terminal: Terminal? = nil
+         ) -> (position: simd_float3, yaw: Float) {
++            if let terminal, time > terminal.time {
++                sampler.sample(compiled, time: terminal.time, duration: clip.duration, speed: clip.speed, into: &pose)
++                let ahead = time - terminal.time
++                return (terminal.position + terminal.velocity * ahead, terminal.yaw + terminal.yawRate * ahead)
++            }
+             let duration = max(clip.duration, 1e-4)
+             let loops = floor(time / duration)
+             let wrapped = time - loops * duration
+@@ -162,7 +237,25 @@ final class MotionDatabase {
+             let duration = clip.duration
+             guard duration > 0 else { continue }
+ 
+-            let frameCount = max(1, Int((duration / sampleInterval).rounded()))
++            var frameCount = max(1, Int((duration / sampleInterval).rounded()))
++            var terminal: Terminal?
++            if oneShotClips[clipIndex] {
++                // The last sample is dropped so every stored frame has a
++                // real next sample for its velocities; the trajectory past
++                // the end continues at the rate of the final 0.1 s.
++                frameCount = max(1, frameCount - 1)
++                let endTime = max(0, duration - 1e-3)
++                let window = min(0.1, endTime)
++                let end = rootSample(clip: clip, compiled: compiled, at: endTime, sampler: &sampler, pose: &pose)
++                let before = rootSample(clip: clip, compiled: compiled, at: endTime - window, sampler: &sampler, pose: &pose)
++                terminal = Terminal(
++                    time: endTime,
++                    position: end.position,
++                    yaw: end.yaw,
++                    velocity: window > 1e-4 ? (end.position - before.position) / window : .zero,
++                    yawRate: window > 1e-4 ? wrapAngle(end.yaw - before.yaw) / window : 0
++                )
++            }
+             for frameIndex in 0 ..< frameCount {
+                 let time = Float(frameIndex) * sampleInterval
+                 let dt = sampleInterval
+@@ -188,7 +281,7 @@ final class MotionDatabase {
+                 // Next-sample pose for velocities (feet and hips), with the
+                 // loop-wrap correction on the root.
+                 var nextSampler = sampler
+-                let nextRoot = rootSample(clip: clip, compiled: compiled, at: time + dt, sampler: &nextSampler, pose: &pose)
++                let nextRoot = rootSample(clip: clip, compiled: compiled, at: time + dt, sampler: &nextSampler, pose: &pose, terminal: terminal)
+                 computeForwardKinematics(
+                     pose: pose, parentIndices: skeleton.parentIndices,
+                     positions: &positions, rotations: &rotations
+@@ -200,16 +293,30 @@ final class MotionDatabase {
+                 let hipVelocity = inverseYaw.act(nextRoot.position - rootPosition) / dt
+ 
+                 var vector: [Float] = []
+-                vector.reserveCapacity(MotionFeatureLayout.dimensions)
++                vector.reserveCapacity(dimensions)
+                 for value in [leftFootCS, rightFootCS, leftFootVelocity, rightFootVelocity, hipVelocity] {
+                     vector.append(value.x)
+                     vector.append(value.y)
+                     vector.append(value.z)
+                 }
++                if let leftHand, let rightHand, hands {
++                    // The next-sample FK above overwrote `positions`; the
++                    // hands are read from this frame's pose again.
++                    sampler.sample(compiled, time: time, duration: duration, speed: clip.speed, into: &pose)
++                    computeForwardKinematics(
++                        pose: pose, parentIndices: skeleton.parentIndices,
++                        positions: &positions, rotations: &rotations
++                    )
++                    for value in [toCharacterSpace(positions[leftHand]), toCharacterSpace(positions[rightHand])] {
++                        vector.append(value.x)
++                        vector.append(value.y)
++                        vector.append(value.z)
++                    }
++                }
+ 
+                 for horizon in MotionFeatureLayout.trajectoryHorizons {
+                     var futureSampler = sampler
+-                    let future = rootSample(clip: clip, compiled: compiled, at: time + horizon, sampler: &futureSampler, pose: &pose)
++                    let future = rootSample(clip: clip, compiled: compiled, at: time + horizon, sampler: &futureSampler, pose: &pose, terminal: terminal)
+                     let relative = inverseYaw.act(future.position - rootHorizontal)
+                     vector.append(relative.x)
+                     vector.append(relative.z)
+@@ -219,6 +326,9 @@ final class MotionDatabase {
+                 }
+ 
+                 frames.append(Frame(clipIndex: clipIndex, time: time))
++                searchable.append(terminal == nil || time <= duration - oneShotTail)
++                let runway = terminal == nil ? 1 : max(0, 1 - (duration - time) / Self.runwayWindow)
++                runwayPenalties.append(terminal == nil ? 0 : oneShotRunwayPenalty * runway * runway)
+                 rawFeatures.append(contentsOf: vector)
+             }
+         }
+@@ -226,11 +336,13 @@ final class MotionDatabase {
+         guard frames.isEmpty == false else { return nil }
+         self.frames = frames
+         self.clipFrameOffsets = clipFrameOffsets
++        self.searchable = searchable
++        self.runwayPenalties = runwayPenalties
+ 
+         // Per-dimension standard deviation for normalization; degenerate
+         // dimensions (constant across the database) get scale from weight
+         // alone so they cannot blow up the distance.
+-        let dims = MotionFeatureLayout.dimensions
++        let dims = dimensions
+         let count = frames.count
+         var scales = [Float](repeating: 1, count: dims)
+         for d in 0 ..< dims {
+@@ -246,7 +358,7 @@ final class MotionDatabase {
+             }
+             variance /= Float(count)
+             let std = sqrt(variance)
+-            let weight = MotionFeatureLayout.groupWeight(forDimension: d, weights: weights)
++            let weight = MotionFeatureLayout.groupWeight(forDimension: d, hands: hands, weights: weights)
+             scales[d] = std > 1e-5 ? weight / std : weight
+         }
+         self.scales = scales
+@@ -260,6 +372,12 @@ final class MotionDatabase {
+         features = scaled
+     }
+ 
++    /// Whether the clip is in the database as one that never wraps.
++    func isOneShot(clip: AnimationClip) -> Bool {
++        guard let clipIndex = clips.firstIndex(where: { $0 === clip }) else { return false }
++        return oneShotClips[clipIndex]
++    }
++
+     /// Nearest stored frame index for a (clip, wrapped time) position, or
+     /// nil when the clip is not part of the database.
+     func frameIndex(ofClip clip: AnimationClip, time: Float) -> Int? {
+@@ -297,7 +415,7 @@ final class MotionDatabase {
+         var bestCost = Float.greatestFiniteMagnitude
+         var incumbentCost: Float?
+         if let preferredIndex, preferredIndex >= 0, preferredIndex < frames.count {
+-            var cost: Float = 0
++            var cost: Float = runwayPenalties[preferredIndex]
+             let base = preferredIndex * dimensions
+             for d in 0 ..< dimensions {
+                 let delta = features[base + d] - scaledQuery[d]
+@@ -308,8 +426,8 @@ final class MotionDatabase {
+             incumbentCost = cost
+         }
+         features.withUnsafeBufferPointer { buffer in
+-            for f in 0 ..< frames.count {
+-                var cost: Float = 0
++            for f in 0 ..< frames.count where searchable[f] {
++                var cost: Float = runwayPenalties[f]
+                 let base = f * dimensions
+                 for d in 0 ..< dimensions {
+                     let delta = buffer[base + d] - scaledQuery[d]
+diff --git a/Sources/UntoldEngine/Animation/MotionMatching.swift b/Sources/UntoldEngine/Animation/MotionMatching.swift
+index 1f3a4996..7e79b544 100644
+--- a/Sources/UntoldEngine/Animation/MotionMatching.swift
++++ b/Sources/UntoldEngine/Animation/MotionMatching.swift
+@@ -30,6 +30,13 @@ public struct MotionMatchingDescriptor {
+     public var leftFootPath: String
+     public var rightFootPath: String
+ 
++    /// Hand joints, optional: when both are given their positions join the
++    /// pose features (weighted by `weights.handPosition`), so a jump
++    /// prefers a clip whose arms are near where they already are instead
++    /// of flapping the upper body between clips the feet call equal.
++    public var leftHandPath: String?
++    public var rightHandPath: String?
++
+     /// Database resample rate in frames per second.
+     public var sampleRate: Float
+ 
+@@ -63,6 +70,14 @@ public struct MotionMatchingDescriptor {
+     /// default) disables it; a few radians per second is typical.
+     public var headingCorrectionRate: Float
+ 
++    /// Travel speed at which the orientation warp reaches its full rate;
++    /// below it the rate scales down linearly, to nothing when standing.
++    /// The default 0.5 m/s lets a shamble bend its path at nearly the full
++    /// rate, which on a character taking slow steps reads as a rigid turn
++    /// with no footwork. Raise it so slow motion turns through pivot and
++    /// arc clips and only a moving character's path is bent.
++    public var headingCorrectionSpeed: Float
++
+     /// Absolute floor on the cost improvement a candidate frame needs over
+     /// the incumbent before a jump fires (scaled feature-space units). The
+     /// relative switch margin is meaningless when both costs are tiny — a
+@@ -78,11 +93,35 @@ public struct MotionMatchingDescriptor {
+     /// pose that never advances through the cycle.
+     public var minPlayTime: Float
+ 
++    /// Clips that must never wrap: starts, stops, pivots, or a long
++    /// capture. The database assumes every other clip loops — a frame near
++    /// the end predicts its trajectory into the clip's own beginning and
++    /// playback runs straight through the wrap, which for a stop clip is a
++    /// hard cut from standing back into the run. A one-shot clip instead
++    /// extrapolates its trajectory past the end at its terminal velocity and
++    /// yaw rate, forces a search — with no incumbent bias — as playback
++    /// comes within a search interval of the end, and keeps the frames that
++    /// could not play for `minPlayTime` before that out of the candidate
++    /// set, so it always leaves through an inertialized jump and never
++    /// bounces straight back out. Should the search find nothing, playback
++    /// holds the last frame rather than wrapping.
++    public var oneShotClipNames: Set<String>
++
++    /// Cost added to a one-shot clip's frame as its playable time runs out
++    /// (nothing with a second or more left, all of it at the end), so an
++    /// equally good frame with runway wins: without it a standing goal
++    /// settles on the still tail of a stop clip, is forced out at its end,
++    /// and lands straight back on it — a half-second loop of jumps where a
++    /// looping idle was available.
++    public var oneShotRunwayPenalty: Float
++
+     public var weights: MotionMatchingWeights
+ 
+     public init(
+         leftFootPath: String,
+         rightFootPath: String,
++        leftHandPath: String? = nil,
++        rightHandPath: String? = nil,
+         clipNames: [String] = [],
+         sampleRate: Float = 30,
+         searchInterval: Float = 0.1,
+@@ -90,12 +129,17 @@ public struct MotionMatchingDescriptor {
+         predictionHalflife: Float = 0.25,
+         maxTurnRate: Float = 2.0,
+         headingCorrectionRate: Float = 0,
++        headingCorrectionSpeed: Float = 0.5,
+         switchMinimumGain: Float = 0.05,
+         minPlayTime: Float = 0.3,
++        oneShotClipNames: Set<String> = [],
++        oneShotRunwayPenalty: Float = 1,
+         weights: MotionMatchingWeights = MotionMatchingWeights()
+     ) {
+         self.leftFootPath = leftFootPath
+         self.rightFootPath = rightFootPath
++        self.leftHandPath = leftHandPath
++        self.rightHandPath = rightHandPath
+         self.clipNames = clipNames
+         self.sampleRate = sampleRate
+         self.searchInterval = searchInterval
+@@ -103,8 +147,11 @@ public struct MotionMatchingDescriptor {
+         self.predictionHalflife = predictionHalflife
+         self.maxTurnRate = maxTurnRate
+         self.headingCorrectionRate = headingCorrectionRate
++        self.headingCorrectionSpeed = headingCorrectionSpeed
+         self.switchMinimumGain = switchMinimumGain
+         self.minPlayTime = minPlayTime
++        self.oneShotClipNames = oneShotClipNames
++        self.oneShotRunwayPenalty = oneShotRunwayPenalty
+         self.weights = weights
+     }
+ }
+@@ -163,6 +210,12 @@ struct MotionMatchingState {
+     var fkRotations: [simd_quatf] = []
+     var query: [Float] = []
+ 
++    /// Scratch for the playing clip's raw pose (hand features).
++    var rawSampler = ClipSampler()
++    var rawPose = PoseBuffer()
++    var rawPositions: [simd_float3] = []
++    var rawRotations: [simd_quatf] = []
++
+     mutating func reset() {
+         database = nil
+         simulatedVelocity = .zero
+@@ -238,7 +291,7 @@ func updateMotionMatching(
+         let travel = animationComponent.rootMotion.isEnabled
+             ? simd_length(animationComponent.rootMotion.lastWorldVelocity)
+             : simd_length(animationComponent.motionMatching.simulatedVelocity)
+-        let movementScale = min(1, travel / 0.5)
++        let movementScale = min(1, travel / max(descriptor.headingCorrectionSpeed, 1e-3))
+         let maxStep = descriptor.headingCorrectionRate * deltaTime * movementScale
+         let step = max(-maxStep, min(maxStep, goalYawDelta))
+         if abs(step) > 1e-6 {
+@@ -253,6 +306,25 @@ func updateMotionMatching(
+     animationComponent.motionMatching.searchClock += deltaTime
+     animationComponent.motionMatching.historyElapsed += deltaTime
+     animationComponent.motionMatching.timeSinceJump += deltaTime
++
++    // A one-shot clip leaves through a search, never through the wrap:
++    // within the last search interval (plus two samples of slack) every
++    // update searches with no incumbent bias, and playback is held short of
++    // the end in case nothing is found, so the pose freezes on the last
++    // frame instead of cutting to the first.
++    var forced = false
++    if let current = animationComponent.currentAnimation, database.isOneShot(clip: current) {
++        let duration = max(current.duration, 1e-4)
++        let step = deltaTime * animationComponent.playbackSpeed
++        if duration - animationComponent.currentTime <= descriptor.searchInterval + 2 * database.sampleInterval {
++            forced = true
++            animationComponent.motionMatching.searchClock = descriptor.searchInterval
++        }
++        if animationComponent.currentTime + step >= duration - 1e-3 {
++            animationComponent.currentTime = max(0, duration - 1e-3 - step)
++        }
++    }
++
+     guard animationComponent.motionMatching.searchClock >= descriptor.searchInterval else { return }
+     animationComponent.motionMatching.searchClock = 0
+ 
+@@ -273,9 +345,9 @@ func updateMotionMatching(
+     }
+ 
+     // Seed the search with where playback currently is, so equal-cost
+-    // frames never cause a jump.
++    // frames never cause a jump (not when forced out of a one-shot clip).
+     var preferredIndex: Int?
+-    if let current = animationComponent.currentAnimation {
++    if !forced, let current = animationComponent.currentAnimation {
+         let wrapped = fmod(animationComponent.currentTime, max(current.duration, 1e-4))
+         preferredIndex = database.frameIndex(ofClip: current, time: wrapped)
+     }
+@@ -295,7 +367,7 @@ func updateMotionMatching(
+ 
+     // Continuity: when the winner is (near) where playback would naturally
+     // be anyway, keep playing instead of re-transitioning every search.
+-    if let current = animationComponent.currentAnimation, current === clip {
++    if !forced, let current = animationComponent.currentAnimation, current === clip {
+         let duration = max(clip.duration, 1e-4)
+         let wrapped = fmod(animationComponent.currentTime, duration)
+         var difference = abs(wrapped - frame.time)
+@@ -305,7 +377,7 @@ func updateMotionMatching(
+         }
+     }
+ 
+-    guard animationComponent.motionMatching.timeSinceJump >= descriptor.minPlayTime else { return }
++    guard forced || animationComponent.motionMatching.timeSinceJump >= descriptor.minPlayTime else { return }
+ 
+     motionMatchingJump(
+         entityId: entityId,
+@@ -387,6 +459,39 @@ private func buildMotionMatchingQuery(
+         query.append(value.y)
+         query.append(value.z)
+     }
++    if let leftHand = database.leftHandIndex, let rightHand = database.rightHandIndex {
++        // The hands come from the playing clip's own pose, not the displayed
++        // one: right after a jump the displayed arms still carry the decaying
++        // transition offset, and matching against that had the search chase
++        // its own blend from frame to frame. The clip's hands say where the
++        // arms are headed; a candidate is judged against that.
++        var handPositions = positions
++        var handRootHorizontal = rootHorizontal
++        var handInverseYaw = inverseRootYaw
++        if let current = animationComponent.currentAnimation {
++            let compiled = animationComponent.compiledClip(for: current, skeleton: skeleton)
++            animationComponent.motionMatching.refreshRawPose(
++                compiled: compiled, clip: current,
++                time: fmod(animationComponent.currentTime, max(current.duration, 1e-4)),
++                parentIndices: skeleton.parentIndices
++            )
++            handPositions = animationComponent.motionMatching.rawPositions
++            let rawRoot = handPositions[root]
++            handRootHorizontal = simd_float3(rawRoot.x, 0, rawRoot.z)
++            handInverseYaw = simd_quatf(
++                angle: -yawTwist(animationComponent.motionMatching.rawRotations[root]).yaw,
++                axis: simd_float3(0, 1, 0)
++            )
++        }
++        for value in [
++            handInverseYaw.act(handPositions[leftHand] - handRootHorizontal),
++            handInverseYaw.act(handPositions[rightHand] - handRootHorizontal),
++        ] {
++            query.append(value.x)
++            query.append(value.y)
++            query.append(value.z)
++        }
++    }
+ 
+     // Predicted trajectory: a turn-rate-limited arc toward the goal.
+     // Heading rotates at most `maxTurnRate` toward the goal direction, and
+@@ -452,8 +557,15 @@ func buildMotionDatabase(
+         skeleton: skeleton,
+         leftFootPath: descriptor.leftFootPath,
+         rightFootPath: descriptor.rightFootPath,
++        leftHandPath: descriptor.leftHandPath,
++        rightHandPath: descriptor.rightHandPath,
+         sampleRate: descriptor.sampleRate,
+-        weights: descriptor.weights
++        weights: descriptor.weights,
++        oneShotClipNames: descriptor.oneShotClipNames,
++        // A target must be playable for minPlayTime before the end guard
++        // (a search interval plus two samples from the end) forces it out.
++        oneShotTail: descriptor.minPlayTime + descriptor.searchInterval + 2 / max(descriptor.sampleRate, 1),
++        oneShotRunwayPenalty: descriptor.oneShotRunwayPenalty
+     )
+ }
+ 
+@@ -495,4 +607,15 @@ extension MotionMatchingState {
+             rotations: &fkRotations
+         )
+     }
++
++    /// Samples the playing clip's raw pose at `time` and runs FK on it.
++    mutating func refreshRawPose(compiled: CompiledAnimationClip, clip: AnimationClip, time: Float, parentIndices: [Int?]) {
++        rawSampler.sample(compiled, time: time, duration: clip.duration, speed: clip.speed, into: &rawPose)
++        computeForwardKinematics(
++            pose: rawPose,
++            parentIndices: parentIndices,
++            positions: &rawPositions,
++            rotations: &rawRotations
++        )
++    }
+ }
+diff --git a/Sources/UntoldEngine/Animation/PoseLayer.swift b/Sources/UntoldEngine/Animation/PoseLayer.swift
+new file mode 100644
+index 00000000..5f77a926
+--- /dev/null
++++ b/Sources/UntoldEngine/Animation/PoseLayer.swift
+@@ -0,0 +1,167 @@
++//
++//  PoseLayer.swift
++//  UntoldEngine
++//
++// Copyright (C) Untold Engine Studios
++//
++// This Source Code Form is subject to the terms of the Mozilla Public
++// License, v. 2.0. If a copy of the MPL was not distributed with this
++// file, You can obtain one at https://mozilla.org/MPL/2.0/.
++
++import Foundation
++import simd
++
++// Pose layer: one override clip on top of whatever the entity is playing,
++// sampled on its own clock, whose local rotations replace those of a joint
++// subset — an upper-body posture (arms hanging, arms raised) over any
++// locomotion, hand-picked or motion matched. The subset is given as
++// subtree roots (both clavicles: everything under them). Layer clip
++// switches crossfade over a halflife and the layer's influence eases to its
++// target weight, so a posture change reads as a movement, not a cut. Runs
++// after the base clip's transition offsets and before IK, so motion
++// matching (which reads feet and hips) never sees it and reach IK bends
++// the layered arms. See docs/API/UsingPoseLayers.md.
++
++private let ln2: Float = 0.693_147_18
++
++/// Per-entity pose layer state.
++struct PoseLayerState {
++    /// Joint paths whose subtrees the layer overrides.
++    var maskRootPaths: [String] = []
++    /// Per-joint mask resolved against the skeleton; nil until first use or
++    /// after reconfiguration.
++    var mask: [Bool]?
++
++    var clip: AnimationClip?
++    var time: Float = 0
++    var sampler = ClipSampler()
++    var pose = PoseBuffer()
++
++    /// The layer clip on its way out, sampled alongside while `crossfade`
++    /// (its remaining share) is above zero.
++    var previousClip: AnimationClip?
++    var previousTime: Float = 0
++    var previousSampler = ClipSampler()
++    var previousPose = PoseBuffer()
++    var crossfade: Float = 0
++    var crossfadeHalflife: Float = 0
++
++    var weight: Float = 0
++    var targetWeight: Float = 0
++    var weightHalflife: Float = 0.2
++
++    var isConfigured: Bool {
++        maskRootPaths.isEmpty == false
++    }
++
++    mutating func invalidateResolution() {
++        mask = nil
++    }
++
++    /// Joints at or under any mask root, cached against the skeleton.
++    mutating func resolvedMask(skeleton: Skeleton) -> [Bool] {
++        if let mask, mask.count == skeleton.jointPaths.count {
++            return mask
++        }
++        let resolved = skeleton.jointPaths.map { path in
++            maskRootPaths.contains { root in path == root || path.hasPrefix(root + "/") }
++        }
++        mask = resolved
++        return resolved
++    }
++
++    /// Eases the weight, advances both clocks and samples the layer pose
++    /// (the outgoing clip folded in by its remaining share). Returns false
++    /// when there is nothing to blend this frame.
++    mutating func advance(
++        deltaTime: Float,
++        compiled: CompiledAnimationClip?,
++        previousCompiled: CompiledAnimationClip?
++    ) -> Bool {
++        let step = 1 - exp(-ln2 * deltaTime / max(weightHalflife, 1e-4))
++        weight += (targetWeight - weight) * step
++        if abs(targetWeight - weight) < 1e-3 {
++            weight = targetWeight
++        }
++        guard let clip, let compiled, weight > 1e-4 else { return false }
++
++        time += deltaTime
++        sampler.sample(compiled, time: time, duration: clip.duration, speed: clip.speed, into: &pose)
++
++        if crossfade > 1e-3, let previousClip, let previousCompiled {
++            // The outgoing clip's share decays before it is used, like the
++            // weight above: the first frame after a switch already moves.
++            crossfade *= exp(-ln2 * deltaTime / max(crossfadeHalflife, 1e-4))
++            previousTime += deltaTime
++            previousSampler.sample(
++                previousCompiled, time: previousTime, duration: previousClip.duration, speed: previousClip.speed,
++                into: &previousPose
++            )
++            if previousPose.jointCount == pose.jointCount {
++                for index in 0 ..< pose.jointCount {
++                    pose.rotations[index] = simd_normalize(
++                        simd_slerp(pose.rotations[index], previousPose.rotations[index], crossfade)
++                    )
++                }
++            }
++            if crossfade < 1e-3 {
++                crossfade = 0
++                self.previousClip = nil
++            }
++        } else {
++            crossfade = 0
++            previousClip = nil
++        }
++        return true
++    }
++
++    /// Switches the layer to `clip`, keeping the current one fading out
++    /// over `halflife` (zero cuts). Restating the current clip is a no-op.
++    mutating func play(_ newClip: AnimationClip, halflife: Float) {
++        guard clip !== newClip else { return }
++        if let clip, halflife > 0 {
++            previousClip = clip
++            previousTime = time
++            previousSampler = ClipSampler()
++            crossfade = 1
++            crossfadeHalflife = halflife
++        } else {
++            previousClip = nil
++            crossfade = 0
++        }
++        clip = newClip
++        time = 0
++        sampler = ClipSampler()
++    }
++}
++
++/// Blends the layer clip's rotations into the masked joints of the
++/// displayed pose, by the layer's current weight.
++func applyPoseLayer(
++    animationComponent: AnimationComponent,
++    skeleton: Skeleton,
++    deltaTime: Float
++) {
++    guard animationComponent.poseLayer.isConfigured else { return }
++
++    let compiled = animationComponent.poseLayer.clip.map { animationComponent.compiledClip(for: $0, skeleton: skeleton) }
++    let previousCompiled = animationComponent.poseLayer.previousClip.map {
++        animationComponent.compiledClip(for: $0, skeleton: skeleton)
++    }
++    guard animationComponent.poseLayer.advance(
++        deltaTime: deltaTime, compiled: compiled, previousCompiled: previousCompiled
++    ) else { return }
++
++    let mask = animationComponent.poseLayer.resolvedMask(skeleton: skeleton)
++    let weight = animationComponent.poseLayer.weight
++    let layerPose = animationComponent.poseLayer.pose
++    guard layerPose.jointCount == animationComponent.localPose.jointCount,
++          mask.count == layerPose.jointCount
++    else { return }
++
++    for index in 0 ..< mask.count where mask[index] {
++        animationComponent.localPose.rotations[index] = simd_normalize(
++            simd_slerp(animationComponent.localPose.rotations[index], layerPose.rotations[index], weight)
++        )
++    }
++}
+diff --git a/Sources/UntoldEngine/Animation/ReachIK.swift b/Sources/UntoldEngine/Animation/ReachIK.swift
+new file mode 100644
+index 00000000..88018fa9
+--- /dev/null
++++ b/Sources/UntoldEngine/Animation/ReachIK.swift
+@@ -0,0 +1,192 @@
++//
++//  ReachIK.swift
++//  UntoldEngine
++//
++// Copyright (C) Untold Engine Studios
++//
++// This Source Code Form is subject to the terms of the Mozilla Public
++// License, v. 2.0. If a copy of the MPL was not distributed with this
++// file, You can obtain one at https://mozilla.org/MPL/2.0/.
++
++import Foundation
++import simd
++
++// Reach IK: bends arm chains (shoulder → elbow → hand) toward a world
++// target with the two-bone solver foot IK uses. A target within reach is
++// touched; one beyond it is pointed at, the arm extended to a fraction of
++// its length along the direction so the elbow never locks. The influence
++// eases in and out, and the solve blends over whatever the pose (or the
++// pose layer) put the arms in, so the elbow keeps the posture's bend. Runs
++// after the pose layer and before foot IK. See docs/API/UsingPoseLayers.md.
++
++private let ln2: Float = 0.693_147_18
++
++/// One arm chain, identified by skeleton joint paths.
++public struct ReachIKChainDescriptor {
++    public var shoulderPath: String
++    public var elbowPath: String
++    public var handPath: String
++
++    /// Model-space direction the elbow bows toward when the arm is straight
++    /// and the pose gives no bend to follow (default: down).
++    public var bendDirection: simd_float3
++
++    public init(
++        shoulderPath: String,
++        elbowPath: String,
++        handPath: String,
++        bendDirection: simd_float3 = simd_float3(0, -1, 0)
++    ) {
++        self.shoulderPath = shoulderPath
++        self.elbowPath = elbowPath
++        self.handPath = handPath
++        self.bendDirection = bendDirection
++    }
++}
++
++/// Per-entity reach IK state.
++struct ReachIKState {
++    var descriptors: [ReachIKChainDescriptor] = []
++    var resolvedChains: [(shoulder: Int, elbow: Int, hand: Int, bendDirection: simd_float3)]?
++
++    /// World-space target; kept while the influence fades out.
++    var targetWorld: simd_float3?
++    /// The target the solve actually uses: eases toward `targetWorld` with
++    /// `targetHalflife`, so a target that jumps (a tracked head that
++    /// jitters, a player who teleports) moves the hands over a few frames
++    /// instead of one. Nil until the first target.
++    var smoothedTarget: simd_float3?
++    var targetHalflife: Float = 0.08
++    var weight: Float = 0
++    var targetWeight: Float = 0
++    var halflife: Float = 0.25
++    /// Fraction of the chain length used when the target is beyond reach.
++    var reach: Float = 0.95
++    /// Per-chain multipliers on the influence, index-aligned with the
++    /// chains (empty: 1 for all) — one hand lunging while the other holds.
++    var chainWeights: [Float] = []
++
++    var jointPositions: [simd_float3] = []
++    var jointRotations: [simd_quatf] = []
++
++    mutating func invalidateResolution() {
++        resolvedChains = nil
++    }
++
++    mutating func refreshForwardKinematics(pose: PoseBuffer, parentIndices: [Int?]) {
++        computeForwardKinematics(
++            pose: pose, parentIndices: parentIndices,
++            positions: &jointPositions, rotations: &jointRotations
++        )
++    }
++
++    mutating func resolvedChains(skeleton: Skeleton) -> [(shoulder: Int, elbow: Int, hand: Int, bendDirection: simd_float3)] {
++        if let resolvedChains {
++            return resolvedChains
++        }
++        var resolved: [(shoulder: Int, elbow: Int, hand: Int, bendDirection: simd_float3)] = []
++        for descriptor in descriptors {
++            guard let shoulder = skeleton.jointPaths.firstIndex(of: descriptor.shoulderPath),
++                  let elbow = skeleton.jointPaths.firstIndex(of: descriptor.elbowPath),
++                  let hand = skeleton.jointPaths.firstIndex(of: descriptor.handPath)
++            else { continue }
++            resolved.append((shoulder: shoulder, elbow: elbow, hand: hand, bendDirection: descriptor.bendDirection))
++        }
++        resolvedChains = resolved
++        return resolved
++    }
++}
++
++/// Eases the influence and bends each chain toward the target.
++func applyReachIK(
++    entityId: EntityID,
++    animationComponent: AnimationComponent,
++    skeleton: Skeleton,
++    deltaTime: Float
++) {
++    guard animationComponent.reachIK.descriptors.isEmpty == false else { return }
++
++    let step = 1 - exp(-ln2 * deltaTime / max(animationComponent.reachIK.halflife, 1e-4))
++    animationComponent.reachIK.weight += (animationComponent.reachIK.targetWeight - animationComponent.reachIK.weight) * step
++    if abs(animationComponent.reachIK.targetWeight - animationComponent.reachIK.weight) < 1e-3 {
++        animationComponent.reachIK.weight = animationComponent.reachIK.targetWeight
++    }
++    let weight = animationComponent.reachIK.weight
++    guard weight > 1e-4, let rawTarget = animationComponent.reachIK.targetWorld else {
++        if animationComponent.reachIK.targetWeight <= 0 {
++            animationComponent.reachIK.targetWorld = nil
++            animationComponent.reachIK.smoothedTarget = nil
++        }
++        return
++    }
++    let targetWorld: simd_float3
++    if let previous = animationComponent.reachIK.smoothedTarget {
++        let ease = 1 - exp(-ln2 * deltaTime / max(animationComponent.reachIK.targetHalflife, 1e-4))
++        targetWorld = previous + (rawTarget - previous) * ease
++    } else {
++        targetWorld = rawTarget
++    }
++    animationComponent.reachIK.smoothedTarget = targetWorld
++
++    let chains = animationComponent.reachIK.resolvedChains(skeleton: skeleton)
++    guard chains.isEmpty == false else { return }
++    let pose = animationComponent.localPose
++    guard pose.jointCount == skeleton.jointPaths.count else { return }
++
++    animationComponent.reachIK.refreshForwardKinematics(pose: pose, parentIndices: skeleton.parentIndices)
++    let positions = animationComponent.reachIK.jointPositions
++    let rotations = animationComponent.reachIK.jointRotations
++
++    let worldMatrix = scene.get(component: WorldTransformComponent.self, for: entityId)?.space ?? .identity
++    let targetModel4 = worldMatrix.inverse * simd_float4(targetWorld, 1)
++    let targetModel = simd_float3(targetModel4.x, targetModel4.y, targetModel4.z)
++    let reach = animationComponent.reachIK.reach
++    let chainWeights = animationComponent.reachIK.chainWeights
++
++    for (index, chain) in chains.enumerated() {
++        let chainWeight = weight * (index < chainWeights.count ? min(max(chainWeights[index], 0), 1) : 1)
++        guard chainWeight > 1e-4 else { continue }
++        guard chain.shoulder < pose.jointCount, chain.elbow < pose.jointCount, chain.hand < pose.jointCount else {
++            continue
++        }
++        let shoulder = positions[chain.shoulder]
++        let elbow = positions[chain.elbow]
++        let hand = positions[chain.hand]
++        let armLength = simd_length(elbow - shoulder) + simd_length(hand - elbow)
++        guard armLength > 1e-4 else { continue }
++
++        // Beyond reach the arm points at the target, a little short of
++        // straight.
++        var goal = targetModel
++        let toTarget = goal - shoulder
++        let distance = simd_length(toTarget)
++        guard distance > 1e-4 else { continue }
++        let maxReach = armLength * reach
++        if distance > maxReach {
++            goal = shoulder + toTarget / distance * maxReach
++        }
++
++        var bendHint = elbow - (shoulder + hand) * 0.5
++        if simd_length_squared(simd_cross(hand - shoulder, bendHint)) < 1e-8 {
++            bendHint = chain.bendDirection
++        }
++
++        var shoulderLocal = pose.rotations[chain.shoulder]
++        var elbowLocal = pose.rotations[chain.elbow]
++        solveTwoBoneIK(
++            a: shoulder, b: elbow, c: hand,
++            target: goal,
++            bendHint: bendHint,
++            aGlobalRotation: rotations[chain.shoulder],
++            bGlobalRotation: rotations[chain.elbow],
++            aLocalRotation: &shoulderLocal,
++            bLocalRotation: &elbowLocal
++        )
++        animationComponent.localPose.rotations[chain.shoulder] = simd_normalize(
++            simd_slerp(pose.rotations[chain.shoulder], shoulderLocal, chainWeight)
++        )
++        animationComponent.localPose.rotations[chain.elbow] = simd_normalize(
++            simd_slerp(pose.rotations[chain.elbow], elbowLocal, chainWeight)
++        )
++    }
++}
+diff --git a/Sources/UntoldEngine/ECS/Components.swift b/Sources/UntoldEngine/ECS/Components.swift
+index b5f13c68..df01571e 100644
+--- a/Sources/UntoldEngine/ECS/Components.swift
++++ b/Sources/UntoldEngine/ECS/Components.swift
+@@ -342,6 +342,8 @@ public class AnimationComponent: Component {
+     var rootMotion = RootMotionState()
+     var footIK = FootIKState()
+     var motionMatching = MotionMatchingState()
++    var poseLayer = PoseLayerState()
++    var reachIK = ReachIKState()
+ 
+     public required init() {}
+ 
+@@ -360,6 +362,8 @@ public class AnimationComponent: Component {
+         rootMotion = RootMotionState()
+         footIK = FootIKState()
+         motionMatching = MotionMatchingState()
++        poseLayer = PoseLayerState()
++        reachIK = ReachIKState()
+     }
+ 
+     func getAllAnimationClips() -> [String] {
+diff --git a/Sources/UntoldEngine/Systems/AnimationSystem.swift b/Sources/UntoldEngine/Systems/AnimationSystem.swift
+index 7c85349b..84c39b38 100644
+--- a/Sources/UntoldEngine/Systems/AnimationSystem.swift
++++ b/Sources/UntoldEngine/Systems/AnimationSystem.swift
+@@ -219,6 +219,19 @@ private func updateAnimationSystem(deltaTime: Float) {
+             to: &animationComponent.localPose,
+             deltaTime: deltaTime
+         )
++        // The override layer (an upper-body posture) and reach IK shape the
++        // displayed pose before the feet are planted.
++        applyPoseLayer(
++            animationComponent: animationComponent,
++            skeleton: skeletonComponent.skeleton,
++            deltaTime: deltaTime
++        )
++        applyReachIK(
++            entityId: entity,
++            animationComponent: animationComponent,
++            skeleton: skeletonComponent.skeleton,
++            deltaTime: deltaTime
++        )
+         // Foot IK corrects the final pose: plant feet on real geometry
+         // after root motion and transitions have settled the pose.
+         applyFootIK(
+@@ -412,12 +425,15 @@ public func setFootIKEnabled(entityId: EntityID, enabled: Bool) {
+ }
+ 
+ /// Enables or disables stance locking for the entity's foot IK chains:
+-/// while a foot is planted (its animated world velocity is below the
+-/// enter threshold) the IK target pins to the world position where it
+-/// landed, absorbing residual root-motion slide; the lock releases when
+-/// the animation swings the foot away, with a short catch-up decay.
+-/// Requires foot IK chains to be configured and enabled.
+-public func setFootIKStanceLocking(entityId: EntityID, enabled: Bool) {
++/// while a foot is planted the IK target pins to the world position where
++/// it landed, absorbing slide; the lock releases when the foot lifts, with
++/// a short catch-up decay. `source` says what counts as planted: the
++/// displayed ankle's own speed (the default: catches slide baked into a
++/// clip's root motion), or the playing clip's contact (`.clipContact`: a
++/// foot the clip holds still stays pinned through a transition, the
++/// root-velocity crossfade or the heading warp, and lets go only when the
++/// clip lifts it). Requires foot IK chains to be configured and enabled.
++public func setFootIKStanceLocking(entityId: EntityID, enabled: Bool, source: FootIKStanceLockSource = .displayedFoot) {
+     let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
+     guard animationComponents.isEmpty == false else {
+         handleError(.noAnimationComponent, entityId)
+@@ -432,7 +448,10 @@ public func setFootIKStanceLocking(entityId: EntityID, enabled: Bool) {
+             )
+         }
+         animationComponent.footIK.stanceLockEnabled = enabled
++        animationComponent.footIK.lockSource = source
+         animationComponent.footIK.lockStates = []
++        animationComponent.footIK.rawClip = nil
++        animationComponent.footIK.rawAnkles = []
+     }
+ }
+ 
+@@ -475,6 +494,126 @@ public func setFootIKGroundQuery(entityId: EntityID, query: FootIKGroundQuery?)
+     }
+ }
+ 
++/// Configures the pose layer's joint subset: every joint at or under the
++/// given paths (both clavicles, for the arms). Reconfiguring keeps the
++/// layer's clip and weight. See `setPoseLayerClip`.
++public func setPoseLayerMask(entityId: EntityID, rootJointPaths: [String]) {
++    let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
++    guard animationComponents.isEmpty == false else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    for (_, animationComponent) in animationComponents {
++        animationComponent.poseLayer.maskRootPaths = rootJointPaths
++        animationComponent.poseLayer.invalidateResolution()
++    }
++}
++
++/// Plays the named clip on the pose layer: it loops on its own clock, and
++/// the local rotations of the masked joints (`setPoseLayerMask`) follow it
++/// by the layer's weight (`setPoseLayerWeight`) on top of whatever the
++/// entity plays or motion-matches. The layer's previous clip fades out
++/// over `transitionHalflife` (zero cuts); restating the current clip is a
++/// no-op. The clip must be loaded on the entity.
++public func setPoseLayerClip(entityId: EntityID, name: String, transitionHalflife: Float = defaultAnimationTransitionHalflife) {
++    guard hasAnyAnimationComponent(entityId: entityId) else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    let matchingComponents = animationComponentsContainingClip(entityId: entityId, name: name)
++    guard matchingComponents.isEmpty == false else {
++        handleError(.noAnimationClip, name, entityId)
++        return
++    }
++
++    for (_, animationComponent, animationClip) in matchingComponents {
++        animationComponent.poseLayer.play(animationClip, halflife: transitionHalflife)
++    }
++}
++
++/// Eases the pose layer's influence to `weight` — 0 leaves the base pose
++/// untouched, 1 replaces the masked joints' rotations — over `halflife`.
++public func setPoseLayerWeight(entityId: EntityID, weight: Float, halflife: Float = 0.2) {
++    let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
++    guard animationComponents.isEmpty == false else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    for (_, animationComponent) in animationComponents {
++        animationComponent.poseLayer.targetWeight = min(max(weight, 0), 1)
++        animationComponent.poseLayer.weightHalflife = max(halflife, 0)
++        if halflife <= 0 {
++            animationComponent.poseLayer.weight = animationComponent.poseLayer.targetWeight
++        }
++    }
++}
++
++/// Configures the arm chains reach IK bends toward a target
++/// (`setReachIKTarget`). Chains whose joint paths do not exist in the
++/// skeleton are ignored.
++public func setReachIKChains(entityId: EntityID, chains: [ReachIKChainDescriptor]) {
++    let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
++    guard animationComponents.isEmpty == false else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    for (_, animationComponent) in animationComponents {
++        animationComponent.reachIK.descriptors = chains
++        animationComponent.reachIK.invalidateResolution()
++    }
++}
++
++/// Points the reach chains at a world position: a hand lands on it within
++/// reach and points at it beyond, the arm extended to `reach` of its
++/// length. The influence eases to `weight` over `halflife`; a nil position
++/// eases it back out.
++public func setReachIKTarget(
++    entityId: EntityID,
++    worldPosition: simd_float3?,
++    weight: Float = 1,
++    halflife: Float = 0.25,
++    reach: Float = 0.95
++) {
++    let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
++    guard animationComponents.isEmpty == false else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    for (_, animationComponent) in animationComponents {
++        if let worldPosition {
++            animationComponent.reachIK.targetWorld = worldPosition
++            animationComponent.reachIK.targetWeight = min(max(weight, 0), 1)
++        } else {
++            animationComponent.reachIK.targetWeight = 0
++        }
++        animationComponent.reachIK.halflife = max(halflife, 0)
++        animationComponent.reachIK.reach = min(max(reach, 0.05), 1)
++        if halflife <= 0 {
++            animationComponent.reachIK.weight = animationComponent.reachIK.targetWeight
++        }
++    }
++}
++
++/// Per-chain multipliers on the reach influence, index-aligned with the
++/// chains: 0 leaves that arm to the pose, 1 gives it the full influence —
++/// one hand lunging while the other holds back.
++public func setReachIKChainWeights(entityId: EntityID, weights: [Float]) {
++    let animationComponents = animationComponentsForEntityOrDescendants(entityId: entityId)
++    guard animationComponents.isEmpty == false else {
++        handleError(.noAnimationComponent, entityId)
++        return
++    }
++
++    for (_, animationComponent) in animationComponents {
++        animationComponent.reachIK.chainWeights = weights
++    }
++}
++
+ /// Configures motion matching for the entity (or its descendants that
+ /// carry an `AnimationComponent`). The motion database is built lazily on
+ /// the first enabled update, from the clips loaded on the entity. Enable
+diff --git a/Tests/UntoldEngineTests/AnimationMotionMatchingTests.swift b/Tests/UntoldEngineTests/AnimationMotionMatchingTests.swift
+index a29eca21..d45d77b9 100644
+--- a/Tests/UntoldEngineTests/AnimationMotionMatchingTests.swift
++++ b/Tests/UntoldEngineTests/AnimationMotionMatchingTests.swift
+@@ -114,6 +114,40 @@ final class AnimationMotionMatchingTests: XCTestCase {
+         scene.get(component: AnimationComponent.self, for: entityId)!
+     }
+ 
++    /// Stop clip: the root travels +z at 1 m/s through the first second of
++    /// the 2 s clip and stands through the second.
++    private func makeStopClip() -> AnimationClip {
++        let rootChannel = RuntimeAnimationChannel(
++            jointPath: "root",
++            translations: [
++                .init(time: 0.0, value: simd_float3(0, 0.9, 0)),
++                .init(time: 1.0, value: simd_float3(0, 0.9, 1)),
++                .init(time: 2.0, value: simd_float3(0, 0.9, 1)),
++            ],
++            rotations: [
++                .init(time: 0.0, value: SIMD4<Float>(0, 0, 0, 1)),
++                .init(time: 2.0, value: SIMD4<Float>(0, 0, 0, 1)),
++            ]
++        )
++        return AnimationClip(runtimeClip: RuntimeAnimationClip(name: "stop", duration: 2.0, channels: [rootChannel]))
++    }
++
++    private func buildDatabase(clips: [AnimationClip], oneShot: Set<String>, tail: Float) -> MotionDatabase? {
++        let skeleton = scene.get(component: SkeletonComponent.self, for: entityId)!.skeleton!
++        let compiled = clips.map { animationComponent.compiledClip(for: $0, skeleton: skeleton) }
++        return MotionDatabase(
++            clips: clips,
++            compiledClips: compiled,
++            skeleton: skeleton,
++            leftFootPath: "root/foot_l",
++            rightFootPath: "root/foot_r",
++            sampleRate: 30,
++            weights: MotionMatchingWeights(),
++            oneShotClipNames: oneShot,
++            oneShotTail: tail
++        )
++    }
++
+     private func buildDatabase() -> MotionDatabase? {
+         let skeleton = scene.get(component: SkeletonComponent.self, for: entityId)!.skeleton!
+         let clips = [animationComponent.animationClips["walk"]!, animationComponent.animationClips["idle"]!]
+@@ -393,4 +427,136 @@ extension AnimationMotionMatchingTests {
+             "The component's child entity must not drift inside the asset"
+         )
+     }
++
++    // MARK: - Hands and runway
++
++    func testHandFeaturesExtendTheLayout() throws {
++        let skeleton = try XCTUnwrap(scene.get(component: SkeletonComponent.self, for: entityId)?.skeleton)
++        let walk = try XCTUnwrap(animationComponent.animationClips["walk"])
++        let clips = [walk]
++        let compiled = clips.map { animationComponent.compiledClip(for: $0, skeleton: skeleton) }
++        // The feet stand in for hands on this skeleton: the six extra
++        // dimensions must mirror the foot positions.
++        let database = try XCTUnwrap(MotionDatabase(
++            clips: clips, compiledClips: compiled, skeleton: skeleton,
++            leftFootPath: "root/foot_l", rightFootPath: "root/foot_r",
++            leftHandPath: "root/foot_l", rightHandPath: "root/foot_r",
++            sampleRate: 30, weights: MotionMatchingWeights()
++        ))
++        XCTAssertTrue(database.hasHands)
++        XCTAssertEqual(database.dimensions, 33)
++        let raw = database.rawFeatures(at: 10)
++        for d in 0 ..< 6 {
++            XCTAssertEqual(raw[15 + d], raw[d], accuracy: 1e-5)
++        }
++        // Without hand paths the layout is unchanged.
++        let plain = try XCTUnwrap(buildDatabase())
++        XCTAssertFalse(plain.hasHands)
++        XCTAssertEqual(plain.dimensions, 27)
++    }
++
++    func testRunwayPenaltyMovesAStandingMatchOffAOneShotTail() throws {
++        let stop = makeStopClip()
++        let skeleton = try XCTUnwrap(scene.get(component: SkeletonComponent.self, for: entityId)?.skeleton)
++        let compiled = [animationComponent.compiledClip(for: stop, skeleton: skeleton)]
++        func database(penalty: Float) throws -> MotionDatabase {
++            try XCTUnwrap(MotionDatabase(
++                clips: [stop], compiledClips: compiled, skeleton: skeleton,
++                leftFootPath: "root/foot_l", rightFootPath: "root/foot_r",
++                sampleRate: 30, weights: MotionMatchingWeights(),
++                oneShotClipNames: ["stop"], oneShotTail: 0, oneShotRunwayPenalty: penalty
++            ))
++        }
++        // Standing near the end: without a penalty the incumbent holds
++        // (every standing frame costs the same); with one, an equal frame
++        // a second earlier wins.
++        let free = try database(penalty: 0)
++        let taxed = try database(penalty: 1)
++        let tail = try XCTUnwrap(free.frameIndex(ofClip: stop, time: 1.9))
++        let query = free.rawFeatures(at: tail)
++        let held = try XCTUnwrap(free.search(query: query, preferredIndex: tail, minimumGain: 0.05))
++        XCTAssertEqual(held, tail)
++        let moved = try XCTUnwrap(taxed.search(query: query, preferredIndex: tail, minimumGain: 0.05))
++        XCTAssertNotEqual(moved, tail)
++        XCTAssertLessThanOrEqual(taxed.frames[moved].time, 1.0 + 1e-4)
++        XCTAssertEqual(taxed.runwayPenalties[tail], 0.81, accuracy: 0.02)
++        XCTAssertEqual(taxed.runwayPenalties[moved], 0, accuracy: 1e-6)
++    }
++
++    // MARK: - One-shot clips
++
++    func testOneShotTrajectoryExtrapolatesInsteadOfWrapping() throws {
++        let stop = makeStopClip()
++        let looping = try XCTUnwrap(buildDatabase(clips: [stop], oneShot: [], tail: 0))
++        let oneShot = try XCTUnwrap(buildDatabase(clips: [stop], oneShot: ["stop"], tail: 0))
++
++        // Standing at 1.5 s, one second ahead: the looping database wraps
++        // into the clip's travel, the one-shot database keeps standing.
++        let zAtOneSecond = MotionFeatureLayout.poseDimensions + 2 * 4 + 1
++        let loopingFrame = try XCTUnwrap(looping.frameIndex(ofClip: stop, time: 1.5))
++        let oneShotFrame = try XCTUnwrap(oneShot.frameIndex(ofClip: stop, time: 1.5))
++        XCTAssertGreaterThan(looping.rawFeatures(at: loopingFrame)[zAtOneSecond], 0.4)
++        XCTAssertEqual(oneShot.rawFeatures(at: oneShotFrame)[zAtOneSecond], 0, accuracy: 1e-3)
++
++        // A one-shot clip drops its last sample so no velocity wraps either.
++        XCTAssertEqual(looping.frames.count, 60)
++        XCTAssertEqual(oneShot.frames.count, 59)
++        XCTAssertTrue(oneShot.isOneShot(clip: stop))
++        XCTAssertFalse(looping.isOneShot(clip: stop))
++    }
++
++    func testOneShotTailIsNotSearchable() throws {
++        let stop = makeStopClip()
++        let database = try XCTUnwrap(buildDatabase(clips: [stop], oneShot: ["stop"], tail: 0.5))
++
++        // Frames past 1.5 s are never returned, even for their own features.
++        let tailFrame = try XCTUnwrap(database.frameIndex(ofClip: stop, time: 1.8))
++        XCTAssertFalse(database.searchable[tailFrame])
++        let best = try XCTUnwrap(database.search(query: database.rawFeatures(at: tailFrame)))
++        XCTAssertTrue(database.searchable[best])
++        XCTAssertLessThanOrEqual(database.frames[best].time, 1.5 + 1e-4)
++        XCTAssertEqual(database.searchable.filter { $0 == false }.count, 14)
++    }
++
++    func testOneShotPlaybackLeavesThroughAJumpBeforeTheEnd() throws {
++        animationComponent.animationClips["stop"] = makeStopClip()
++        setMotionMatching(entityId: entityId, descriptor: MotionMatchingDescriptor(
++            leftFootPath: "root/foot_l",
++            rightFootPath: "root/foot_r",
++            clipNames: ["stop", "idle"],
++            oneShotClipNames: ["stop"],
++            weights: MotionMatchingWeights(footVelocity: 0.5)
++        ))
++        setMotionMatchingEnabled(entityId: entityId, enabled: true)
++        setMotionMatchingGoal(entityId: entityId, desiredVelocity: .zero)
++        prepareMotionMatching(entityId: entityId)
++        AnimationSystem.shared.update(deltaTime) // hard start on the first database frame
++
++        // Standing in the stop clip's second half with a standing goal:
++        // nothing beats the incumbent, so only the end guard can move it.
++        let stop = try XCTUnwrap(animationComponent.animationClips["stop"])
++        animationComponent.currentAnimation = stop
++        animationComponent.currentTime = 1.2
++
++        var time: Float = 0
++        var maxTime: Float = 0
++        var sawJump = false
++        var wrapped = false
++        while time < 1.5, sawJump == false {
++            let before = animationComponent.currentTime
++            AnimationSystem.shared.update(deltaTime)
++            time += deltaTime
++            if animationComponent.motionMatching.timeSinceJump == 0 {
++                sawJump = true
++            } else if animationComponent.currentAnimation === stop {
++                maxTime = max(maxTime, animationComponent.currentTime)
++                if animationComponent.currentTime < before {
++                    wrapped = true
++                }
++            }
++        }
++        XCTAssertFalse(wrapped, "a one-shot clip must never wrap")
++        XCTAssertLessThan(maxTime, 2.0)
++        XCTAssertTrue(sawJump, "playback should leave a one-shot clip through a search before its end")
++    }
+ }
+diff --git a/Tests/UntoldEngineTests/AnimationPoseLayerTests.swift b/Tests/UntoldEngineTests/AnimationPoseLayerTests.swift
+new file mode 100644
+index 00000000..c43bbfda
+--- /dev/null
++++ b/Tests/UntoldEngineTests/AnimationPoseLayerTests.swift
+@@ -0,0 +1,209 @@
++//
++//  AnimationPoseLayerTests.swift
++//
++//
++// Copyright (C) Untold Engine Studios
++//
++// This Source Code Form is subject to the terms of the Mozilla Public
++// License, v. 2.0. If a copy of the MPL was not distributed with this
++// file, You can obtain one at https://mozilla.org/MPL/2.0/.
++
++import simd
++@testable import UntoldEngine
++import XCTest
++
++@MainActor
++final class AnimationPoseLayerTests: XCTestCase {
++    var entityId: EntityID!
++
++    private let deltaTime: Float = 1.0 / 60.0
++
++    // Chain: root at origin, shoulder at y=1.4, elbow 0.3 below, hand 0.3
++    // below that — an arm hanging straight down, reach 0.6.
++    private let jointPaths = ["root", "root/shoulder", "root/shoulder/elbow", "root/shoulder/elbow/hand"]
++    private let raised = simd_quatf(angle: .pi / 2, axis: simd_float3(1, 0, 0))
++
++    override func setUp() async throws {
++        resetEngineTestState()
++
++        entityId = createEntity()
++        registerComponent(entityId: entityId, componentType: SkeletonComponent.self)
++        registerComponent(entityId: entityId, componentType: AnimationComponent.self)
++        registerComponent(entityId: entityId, componentType: RenderComponent.self)
++        registerComponent(entityId: entityId, componentType: ScenegraphComponent.self)
++        registerComponent(entityId: entityId, componentType: LocalTransformComponent.self)
++        registerComponent(entityId: entityId, componentType: WorldTransformComponent.self)
++
++        let locals = [
++            simd_float4x4.identity,
++            simd_float4x4(translation: simd_float3(0, 1.4, 0)),
++            simd_float4x4(translation: simd_float3(0, -0.3, 0)),
++            simd_float4x4(translation: simd_float3(0, -0.3, 0)),
++        ]
++        let binds = [
++            simd_float4x4.identity,
++            simd_float4x4(translation: simd_float3(0, 1.4, 0)),
++            simd_float4x4(translation: simd_float3(0, 1.1, 0)),
++            simd_float4x4(translation: simd_float3(0, 0.8, 0)),
++        ]
++        scene.get(component: SkeletonComponent.self, for: entityId)?.skeleton = Skeleton(runtimeSkeleton: RuntimeSkeleton(
++            jointPaths: jointPaths, parentIndices: [nil, 0, 1, 2], bindTransforms: binds, restTransforms: locals
++        ))
++
++        func clip(name: String, shoulder: simd_quatf) -> AnimationClip {
++            let channels = jointPaths.enumerated().map { index, path in
++                let rotation = index == 1 ? shoulder : simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
++                let key = SIMD4<Float>(rotation.imag.x, rotation.imag.y, rotation.imag.z, rotation.real)
++                return RuntimeAnimationChannel(
++                    jointPath: path,
++                    translations: [
++                        .init(time: 0.0, value: localTranslation(of: locals[index])),
++                        .init(time: 1.0, value: localTranslation(of: locals[index])),
++                    ],
++                    rotations: [.init(time: 0.0, value: key), .init(time: 1.0, value: key)]
++                )
++            }
++            return AnimationClip(runtimeClip: RuntimeAnimationClip(name: name, duration: 1.0, channels: channels))
++        }
++        let animationComponent = scene.get(component: AnimationComponent.self, for: entityId)!
++        animationComponent.animationClips["hang"] = clip(name: "hang", shoulder: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1))
++        animationComponent.animationClips["raise"] = clip(name: "raise", shoulder: raised)
++        changeAnimation(entityId: entityId, name: "hang", transitionHalflife: 0)
++    }
++
++    override func tearDown() async throws {
++        destroyEntity(entityId: entityId)
++    }
++
++    private var animationComponent: AnimationComponent {
++        scene.get(component: AnimationComponent.self, for: entityId)!
++    }
++
++    private func localTranslation(of matrix: simd_float4x4) -> simd_float3 {
++        simd_float3(matrix.columns.3.x, matrix.columns.3.y, matrix.columns.3.z)
++    }
++
++    private func shoulderAngle() -> Float {
++        simd_length(toScaledAngleAxis(animationComponent.localPose.rotations[1]))
++    }
++
++    private func handPosition() -> simd_float3 {
++        var positions: [simd_float3] = []
++        var rotations: [simd_quatf] = []
++        computeForwardKinematics(
++            pose: animationComponent.localPose, parentIndices: [nil, 0, 1, 2],
++            positions: &positions, rotations: &rotations
++        )
++        return positions[3]
++    }
++
++    // MARK: - Pose layer
++
++    func testLayerReplacesMaskedJointsAtFullWeight() {
++        setPoseLayerMask(entityId: entityId, rootJointPaths: ["root/shoulder"])
++        setPoseLayerClip(entityId: entityId, name: "raise", transitionHalflife: 0)
++        setPoseLayerWeight(entityId: entityId, weight: 1, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++
++        XCTAssertEqual(shoulderAngle(), .pi / 2, accuracy: 1e-3)
++        XCTAssertEqual(simd_length(toScaledAngleAxis(animationComponent.localPose.rotations[0])), 0, accuracy: 1e-5)
++        XCTAssertEqual(simd_length(toScaledAngleAxis(animationComponent.localPose.rotations[2])), 0, accuracy: 1e-5)
++    }
++
++    func testLayerWeightBlendsHalfway() {
++        setPoseLayerMask(entityId: entityId, rootJointPaths: ["root/shoulder"])
++        setPoseLayerClip(entityId: entityId, name: "raise", transitionHalflife: 0)
++        setPoseLayerWeight(entityId: entityId, weight: 0.5, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++
++        XCTAssertEqual(shoulderAngle(), .pi / 4, accuracy: 1e-2)
++    }
++
++    func testLayerWeightAndClipSwitchEaseInsteadOfCutting() {
++        setPoseLayerMask(entityId: entityId, rootJointPaths: ["root/shoulder"])
++        setPoseLayerClip(entityId: entityId, name: "raise", transitionHalflife: 0)
++        setPoseLayerWeight(entityId: entityId, weight: 1, halflife: 0.1)
++
++        // Weight: one halflife brings the arm halfway, a second none of it.
++        var angles: [Float] = []
++        for _ in 0 ..< 60 {
++            AnimationSystem.shared.update(deltaTime)
++            angles.append(shoulderAngle())
++        }
++        XCTAssertEqual(angles[5], .pi / 4, accuracy: 0.08)
++        XCTAssertEqual(angles[59], .pi / 2, accuracy: 1e-2)
++        XCTAssertTrue(zip(angles, angles.dropFirst()).allSatisfy { $0 <= $1 + 1e-5 })
++
++        // Clip switch: the outgoing clip fades over its halflife.
++        setPoseLayerClip(entityId: entityId, name: "hang", transitionHalflife: 0.1)
++        angles.removeAll()
++        for _ in 0 ..< 60 {
++            AnimationSystem.shared.update(deltaTime)
++            angles.append(shoulderAngle())
++        }
++        XCTAssertEqual(angles[5], .pi / 4, accuracy: 0.08)
++        XCTAssertEqual(angles[59], 0, accuracy: 1e-2)
++        XCTAssertTrue(zip(angles, angles.dropFirst()).allSatisfy { $0 >= $1 - 1e-5 })
++    }
++
++    // MARK: - Reach IK
++
++    private func configureReach() {
++        setReachIKChains(entityId: entityId, chains: [
++            ReachIKChainDescriptor(
++                shoulderPath: "root/shoulder", elbowPath: "root/shoulder/elbow", handPath: "root/shoulder/elbow/hand",
++                bendDirection: simd_float3(1, 0, 0)
++            ),
++        ])
++    }
++
++    func testReachTouchesATargetWithinReach() {
++        configureReach()
++        let target = simd_float3(0.3, 1.0, 0.2)
++        setReachIKTarget(entityId: entityId, worldPosition: target, weight: 1, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++
++        XCTAssertLessThan(simd_distance(handPosition(), target), 0.01)
++    }
++
++    func testReachPointsAtATargetBeyondReach() {
++        configureReach()
++        setReachIKTarget(entityId: entityId, worldPosition: simd_float3(0, 1.4, 5), weight: 1, halflife: 0, reach: 0.95)
++        AnimationSystem.shared.update(deltaTime)
++
++        // 95% of the 0.6 m arm along +z from the shoulder.
++        XCTAssertLessThan(simd_distance(handPosition(), simd_float3(0, 1.4, 0.57)), 0.01)
++    }
++
++    func testReachFollowsAJumpingTargetOverSeveralFrames() {
++        configureReach()
++        setReachIKTarget(entityId: entityId, worldPosition: simd_float3(0.3, 1.0, 0.2), weight: 1, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++        let before = handPosition()
++        // The target jumps to the other side: the hand crosses over in a
++        // few frames, not one.
++        setReachIKTarget(entityId: entityId, worldPosition: simd_float3(-0.3, 1.0, 0.2), weight: 1, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++        let afterOne = handPosition()
++        XCTAssertLessThan(abs(afterOne.x - before.x), 0.15)
++        for _ in 0 ..< 40 {
++            AnimationSystem.shared.update(deltaTime)
++        }
++        XCTAssertLessThan(simd_distance(handPosition(), simd_float3(-0.3, 1.0, 0.2)), 0.01)
++    }
++
++    func testReachEasesOutWhenReleased() {
++        configureReach()
++        setReachIKTarget(entityId: entityId, worldPosition: simd_float3(0, 1.4, 5), weight: 1, halflife: 0)
++        AnimationSystem.shared.update(deltaTime)
++        setReachIKTarget(entityId: entityId, worldPosition: nil, halflife: 0.1)
++        var hands: [simd_float3] = []
++        for _ in 0 ..< 60 {
++            AnimationSystem.shared.update(deltaTime)
++            hands.append(handPosition())
++        }
++        XCTAssertGreaterThan(hands[5].z, 0.2)
++        XCTAssertLessThan(hands[59].z, 0.01)
++        XCTAssertNil(animationComponent.reachIK.targetWorld)
++    }
++}
+diff --git a/docs/API/UsingFootIK.md b/docs/API/UsingFootIK.md
+index 49a47db8..f73696b6 100644
+--- a/docs/API/UsingFootIK.md
++++ b/docs/API/UsingFootIK.md
+@@ -96,6 +96,26 @@ finished, so a foot that re-plants mid catch-up eases the last few
+ centimetres into place instead of snapping. Thresholds are hysteretic so
+ a foot never flickers between states.
+ 
++What counts as planted is the `source`:
++
++```swift
++setFootIKStanceLocking(entityId: player, enabled: true, source: .clipContact)
++```
++
++- `.displayedFoot` (default) watches the displayed ankle's world speed. It
++  catches slide baked into a clip's own root motion, and it lets go as
++  soon as the foot moves for any reason — a transition's blend included,
++  which is when a foot most needs holding.
++- `.clipContact` watches the playing clip's own ankle motion, in the
++  clip's model space. A foot the clip holds still stays pinned through an
++  inertialized jump, the root-velocity crossfade and the heading warp,
++  whatever those do to the entity, and is released only when the clip
++  lifts it, so the catch-up hides in the swing. Motion-matched characters
++  want this one: in the headless chase harness the drift of a foot the
++  clip calls planted fell from 12 to 4 cm/s. The frame after a clip
++  switch holds the lock as it is (there is no previous sample to compare
++  against). Thresholds: planted below 0.15 m/s, lifting above 0.4 m/s.
++
+ ## Tips and Best Practices
+ 
+ - Feed the query point terrain, not props: with the default ray probe, a
+diff --git a/docs/API/UsingMotionMatching.md b/docs/API/UsingMotionMatching.md
+index e584c754..e97cd8da 100644
+--- a/docs/API/UsingMotionMatching.md
++++ b/docs/API/UsingMotionMatching.md
+@@ -59,8 +59,9 @@ That's the whole integration — no `changeAnimation` calls, no states.
+    30 Hz). Each frame stores a 27-dimensional feature vector in character
+    space: foot positions and velocities, hip velocity, and the root's
+    future positions and facings at 0.33/0.66/1.0 s (loop-wrapped with the
+-   clip's per-loop displacement). Features are normalized per dimension
+-   and weighted per group (`MotionMatchingWeights`).
++   clip's per-loop displacement, or extrapolated at the terminal velocity
++   for a one-shot clip). Features are normalized per dimension and
++   weighted per group (`MotionMatchingWeights`).
+ 2. **Query:** on each search (default every 0.1 s) the current pose's foot
+    features are measured, velocities as world-space finite differences
+    rotated into the character frame, and the future trajectory is
+@@ -93,6 +94,17 @@ That's the whole integration — no `changeAnimation` calls, no states.
+ - `searchInterval` trades responsiveness for cost; 0.1 s is a good
+   default. Databases of a few thousand frames need no acceleration
+   structure.
++- Name the hand joints (`leftHandPath`/`rightHandPath`) to add their
++  positions to the features, weighted by `weights.handPosition`: a jump
++  then prefers a clip whose arms are near where they already are, instead
++  of flapping the upper body between clips the feet alone call equal.
++  Or take the arms away from the clips altogether with a pose layer
++  (`UsingPoseLayers.md`).
++- `headingCorrectionRate` bends a moving character's path toward the goal
++  when no clip turns sharply enough; `headingCorrectionSpeed` (default
++  0.5 m/s) is the travel speed at which that reaches its full rate. Raise
++  it (1-2 m/s) when slow steps must turn through pivot and arc clips —
++  a shamble bent at the full rate reads as a rigid turn with no footwork.
+ - Hierarchical assets (loaded via `setEntityMeshAsync`) keep their
+   `AnimationComponent` on a skinned child, but heading, world position,
+   and root-motion deltas all anchor to the entity you called the APIs on
+@@ -101,7 +113,21 @@ That's the whole integration — no `changeAnimation` calls, no states.
+   (`.forceOff`) as a distance LOD lever — freeze far characters and stop
+   calling `setMotionMatchingGoal` for them.
+ - Clips are assumed to loop with keys spanning their full duration
+-  (standard for locomotion loops).
++  (standard for locomotion loops). Name the ones that do not in
++  `oneShotClipNames` — starts, stops, pivots, long captures, or any
++  generated take whose last frame does not meet its first. A looping
++  database predicts a one-shot clip's future into its own beginning (a
++  stop clip looks like "stand, then run again") and playback runs through
++  the wrap as a hard cut. A one-shot clip instead extrapolates its
++  trajectory past the end, forces a search as playback comes within a
++  search interval of the end, and keeps the frames that could not play
++  for `minPlayTime` before that out of the candidates, so it always
++  leaves through an inertialized jump — often back to its own beginning,
++  which is a seamless loop for a walk whose ends do not quite match.
++  `oneShotRunwayPenalty` (default 1) taxes a one-shot frame as its
++  playable time runs out, so a standing goal settles on a looping idle
++  rather than bouncing off the still tail of a stop clip every half
++  second.
+ 
+ ## Running the Feature
+ 
+diff --git a/docs/API/UsingPoseLayers.md b/docs/API/UsingPoseLayers.md
+new file mode 100644
+index 00000000..cc3d03d9
+--- /dev/null
++++ b/docs/API/UsingPoseLayers.md
+@@ -0,0 +1,103 @@
++# Pose Layers and Reach IK
++
++## Introduction
++
++Motion matching (and plain clip playback) decides what the legs do. It
++does not decide what the arms do: a jump is chosen on feet, hips and path,
++so the upper body lands wherever the winning clip put it. A **pose layer**
++takes a joint subset — both arms, say — away from the playing clip and
++gives it a posture of its own: a second clip, looping on its own clock,
++whose rotations replace those joints by an eased weight. **Reach IK** then
++bends the arms toward a world target: a hand touches what it can reach and
++points at what it cannot.
++
++## Why Use It
++
++- **Coherent upper body.** The arms hang while roaming and rise while
++  chasing because gameplay says so, not because the clips that won the
++  search happened to agree.
++- **Fewer clips.** One posture take covers every gait; the locomotion set
++  does not need an "arms up" variant of every walk.
++- **Intent.** Hands that point at the player read as a threat no clip can
++  aim.
++
++## Step-by-Step Implementation
++
++1. Name the joint subtrees the layer owns (every joint at or under each
++   path):
++
++```swift
++setPoseLayerMask(entityId: zombie, rootJointPaths: [
++    "/root/pelvis/spine_01/spine_02/spine_03/clavicle_l",
++    "/root/pelvis/spine_01/spine_02/spine_03/clavicle_r",
++])
++```
++
++2. Give it a clip (loaded on the entity like any other) and a weight. The
++   clip loops on its own clock; a later clip fades the previous one out
++   over the halflife, and the weight eases to its target:
++
++```swift
++setPoseLayerClip(entityId: zombie, name: "arms_raised", transitionHalflife: 0.4)
++setPoseLayerWeight(entityId: zombie, weight: 1, halflife: 0.3)
++```
++
++   Weight 0 hands the joints back to the base clip; weight 1 replaces
++   their rotations entirely.
++
++3. Optionally point the arms at something:
++
++```swift
++setReachIKChains(entityId: zombie, chains: [
++    ReachIKChainDescriptor(shoulderPath: ".../upperarm_l", elbowPath: ".../lowerarm_l", handPath: ".../hand_l"),
++    ReachIKChainDescriptor(shoulderPath: ".../upperarm_r", elbowPath: ".../lowerarm_r", handPath: ".../hand_r"),
++])
++// every frame, from gameplay:
++setReachIKTarget(entityId: zombie, worldPosition: playerHead, weight: 1, halflife: 0.25)
++// and to let go:
++setReachIKTarget(entityId: zombie, worldPosition: nil)
++// per-arm multipliers on the influence, for a grab cycle — one hand
++// lunging while the other pulls back:
++setReachIKChainWeights(entityId: zombie, weights: [0.9, 0.2])
++```
++
++## What Happens Behind the Scenes
++
++Every frame, after the base clip is sampled, root motion extracted and
++the inertialized transition applied — and before foot IK plants the feet:
++
++1. The layer eases its weight, advances its clip (and the outgoing clip
++   while a crossfade is in flight), and slerps the masked joints' local
++   rotations toward the layer pose by the weight.
++2. Reach IK eases its influence, runs forward kinematics on the result,
++   and for each chain solves the two-bone problem (the solver foot IK
++   uses) toward the target: within reach the hand lands on it; beyond
++   reach the target is pulled in to `reach` (default 95%) of the chain's
++   length along the same direction, so the arm points without locking the
++   elbow. The target itself is eased over a short halflife (80 ms), so a
++   tracked head that jitters or a player who moves abruptly pulls the
++   hands over a few frames instead of one. The elbow keeps the bend plane
++   the pose already has — the layer's posture decides where the elbows go
++   — and the solved rotations blend in by the influence.
++
++Motion matching reads feet and hips before any of this and never sees
++the layer, so a layered character matches exactly as an unlayered one.
++Hand positions can be added to the matching features
++(`MotionMatchingDescriptor.leftHandPath`/`rightHandPath`) to keep jumps
++from landing on clips whose arms are far from the current ones; with a
++layer at full weight that mostly stops mattering.
++
++## Tips and Best Practices
++
++- One layer per entity. Masks are subtrees, so include the clavicles for
++  a whole arm and leave the spine to the locomotion clip: the torso keeps
++  swaying with the gait.
++- Posture clips are best in place and looping (a hold idle, an "arms up"
++  take). Their own motion — a slow sway — plays over any gait; arms will
++  not swing with the legs, which suits a stiff character and not a
++  sprinter.
++- Halflives of 0.3-0.5 s make a posture change read as the character
++  lifting its arms; 0.1 s reads as a cut.
++- Reach IK aims the whole chain. For a hand that should also *orient*
++  toward the target (a palm on a wall), align the hand joint yourself
++  after the solve or author it in the posture clip.

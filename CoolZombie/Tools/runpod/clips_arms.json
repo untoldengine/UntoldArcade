@@ -1,0 +1,48 @@
+{
+ "_doc": [
+  "Third Kimodo batch: arm postures for the pose layer (in place, retarget with :idle :loop).",
+  "The layer takes only the arms from these, so the legs are irrelevant; what matters is",
+  "that the arms keep moving \u2014 reaching and grasping at something in front, or raised high",
+  "and grabbing at the air \u2014 the way a chasing zombie's would. Same frame conventions as clips.json."
+ ],
+ "model": "Kimodo-SOMA-RP-v1.1",
+ "fps": 30,
+ "samples": 3,
+ "seed": 5000,
+ "diffusion_steps": 100,
+ "cfg": [
+  2.0,
+  2.0
+ ],
+ "heading": true,
+ "clips": [
+  {
+   "name": "k_arms_grab",
+   "note": "chase/hold arms: reaching forward and grasping at someone just out of reach (in place)",
+   "prompts": [
+    "A zombie stands in place reaching forward with both arms and grasping at someone just out of reach opening and closing its hands",
+    "A zombie stands in place lunging with its arms again and again trying to grab someone in front of it"
+   ],
+   "path": [
+    {
+     "type": "stop",
+     "duration": 8.0
+    }
+   ]
+  },
+  {
+   "name": "k_arms_high",
+   "note": "hyper chase arms: raised high, frantic grabbing at the air (in place)",
+   "prompts": [
+    "A zombie stands in place with both arms raised high above its head frantically grabbing and clawing at the air",
+    "A furious zombie stands in place waving both raised arms wildly and clawing at the air"
+   ],
+   "path": [
+    {
+     "type": "stop",
+     "duration": 8.0
+    }
+   ]
+  }
+ ]
+}

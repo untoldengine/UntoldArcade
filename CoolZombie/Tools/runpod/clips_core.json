@@ -1,0 +1,204 @@
+{
+  "_doc": [
+    "Second Kimodo batch: the locomotion core in one consistent zombie style, so a pure-Kimodo",
+    "clip set exists (idle + hold idles + shamble/walk ladder + backward/side walks + 45 deg arcs +",
+    "standing pivots). Same frame conventions as clips.json. direction_deg moves relative to the",
+    "heading (180 = walking backward, +90 = strafing left) while the heading is held."
+  ],
+  "model": "Kimodo-SOMA-RP-v1.1",
+  "fps": 30,
+  "samples": 2,
+  "seed": 3000,
+  "diffusion_steps": 100,
+  "cfg": [2.0, 2.0],
+  "heading": true,
+  "clips": [
+    {
+      "name": "k_idle",
+      "note": "the waiting idle: long, in place (retarget with :idle), calm sway",
+      "prompts": [
+        "A zombie stands still swaying slightly with its head tilted and arms hanging loosely",
+        "An injured person stands still swaying slightly like a zombie with arms hanging loosely"
+      ],
+      "path": [{"type": "stop", "duration": 8.0}]
+    },
+    {
+      "name": "k_hold_1",
+      "note": "aggressive standing idle for the hold phase (in place)",
+      "prompts": [
+        "A zombie stands in place snarling and reaching out with both arms toward someone in front of it",
+        "An angry injured person stands in place like a zombie reaching out with both arms toward someone in front"
+      ],
+      "path": [{"type": "stop", "duration": 5.0}]
+    },
+    {
+      "name": "k_hold_2",
+      "note": "second hold idle: shifting weight, clawing (in place)",
+      "prompts": [
+        "A zombie stands in place shifting its weight from foot to foot and clawing at the air",
+        "An injured person stands in place like a zombie shifting weight from foot to foot and clawing at the air"
+      ],
+      "path": [{"type": "stop", "duration": 5.0}]
+    },
+    {
+      "name": "k_shamble",
+      "note": "slow shamble 0.4 m/s (the 100STYLE walk speed)",
+      "prompts": [
+        "A zombie shambles forward very slowly dragging one leg with arms hanging loosely",
+        "An injured person shambles forward very slowly dragging one leg like a zombie"
+      ],
+      "path": [{"type": "straight", "speed": 0.4, "duration": 6.0}]
+    },
+    {
+      "name": "k_walk",
+      "note": "walk 0.8 m/s",
+      "prompts": [
+        "A zombie walks forward with a stiff lurching gait and arms hanging loosely",
+        "An injured person walks forward with a stiff lurching gait like a zombie"
+      ],
+      "path": [{"type": "straight", "speed": 0.8, "duration": 6.0}]
+    },
+    {
+      "name": "k_walk_fast",
+      "note": "fast walk 1.2 m/s (the 100STYLE run speed)",
+      "prompts": [
+        "A zombie walks forward quickly with a stiff lurching gait and arms reaching forward",
+        "An injured person walks forward quickly with a stiff lurching gait like a zombie with arms reaching forward"
+      ],
+      "path": [{"type": "straight", "speed": 1.2, "duration": 5.0}]
+    },
+    {
+      "name": "k_run",
+      "note": "jog 1.8 m/s, bridging to k_run_fast at 2.5",
+      "prompts": [
+        "A zombie jogs forward with a lurching stride and arms reaching out",
+        "An injured person jogs forward with a lurching stride like a zombie with arms reaching out"
+      ],
+      "path": [{"type": "straight", "speed": 1.8, "duration": 5.0}]
+    },
+    {
+      "name": "k_walk_back",
+      "note": "walking backward 0.6 m/s while facing forward",
+      "prompts": [
+        "A zombie walks backward slowly with stiff legs keeping its head facing forward",
+        "An injured person walks backward slowly like a zombie keeping its head facing forward"
+      ],
+      "path": [{"type": "straight", "speed": 0.6, "duration": 4.0, "direction_deg": 180}]
+    },
+    {
+      "name": "k_side_walk_l",
+      "note": "strafing left 0.5 m/s",
+      "prompts": [
+        "A zombie sidesteps to its left with stiff legs while facing forward",
+        "An injured person sidesteps to the left like a zombie while facing forward"
+      ],
+      "path": [{"type": "straight", "speed": 0.5, "duration": 4.0, "direction_deg": 90}]
+    },
+    {
+      "name": "k_side_walk_r",
+      "note": "strafing right 0.5 m/s",
+      "prompts": [
+        "A zombie sidesteps to its right with stiff legs while facing forward",
+        "An injured person sidesteps to the right like a zombie while facing forward"
+      ],
+      "path": [{"type": "straight", "speed": 0.5, "duration": 4.0, "direction_deg": -90}]
+    },
+    {
+      "name": "k_walk_turn_l_45",
+      "prompts": [
+        "A zombie walks forward with a stiff lurching gait and curves gently to the left",
+        "An injured person walks forward like a zombie and curves gently to the left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": 45, "radius": 1.5},
+        {"type": "straight", "speed": 0.8, "duration": 1.5}
+      ]
+    },
+    {
+      "name": "k_walk_turn_r_45",
+      "prompts": [
+        "A zombie walks forward with a stiff lurching gait and curves gently to the right",
+        "An injured person walks forward like a zombie and curves gently to the right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": -45, "radius": 1.5},
+        {"type": "straight", "speed": 0.8, "duration": 1.5}
+      ]
+    },
+    {
+      "name": "k_run_turn_l_45",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and curves to the left",
+        "An injured person runs forward like a zombie and curves to the left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": 45, "radius": 2.5},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_run_turn_r_45",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and curves to the right",
+        "An injured person runs forward like a zombie and curves to the right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": -45, "radius": 2.5},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_stand_turn_l_90",
+      "note": "standing pivot: stop, turn in place, stop",
+      "prompts": [
+        "A zombie standing still turns in place to its left and stands still again",
+        "An injured person standing still turns in place to the left like a zombie and stands still again"
+      ],
+      "path": [
+        {"type": "stop", "duration": 0.7},
+        {"type": "pivot", "angle_deg": 90, "duration": 0.8},
+        {"type": "stop", "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_stand_turn_r_90",
+      "prompts": [
+        "A zombie standing still turns in place to its right and stands still again",
+        "An injured person standing still turns in place to the right like a zombie and stands still again"
+      ],
+      "path": [
+        {"type": "stop", "duration": 0.7},
+        {"type": "pivot", "angle_deg": -90, "duration": 0.8},
+        {"type": "stop", "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_stand_turn_l_180",
+      "prompts": [
+        "A zombie standing still turns around in place to its left and stands still again",
+        "An injured person standing still turns around in place to the left like a zombie and stands still again"
+      ],
+      "path": [
+        {"type": "stop", "duration": 0.7},
+        {"type": "pivot", "angle_deg": 180, "duration": 1.1},
+        {"type": "stop", "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_stand_turn_r_180",
+      "prompts": [
+        "A zombie standing still turns around in place to its right and stands still again",
+        "An injured person standing still turns around in place to the right like a zombie and stands still again"
+      ],
+      "path": [
+        {"type": "stop", "duration": 0.7},
+        {"type": "pivot", "angle_deg": -180, "duration": 1.1},
+        {"type": "stop", "duration": 1.0}
+      ]
+    }
+  ]
+}

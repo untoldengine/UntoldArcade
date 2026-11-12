@@ -1,0 +1,33 @@
+{
+  "originHash" : "7f8797d4c7874140726a6f8cc32bfe220e8f410cf17034c04e3a7017882019a5",
+  "pins" : [
+    {
+      "identity" : "joltphysics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/untoldengine/JoltPhysics.git",
+      "state" : {
+        "revision" : "31563d34c249147beadee0eb61994dc3b65b57bf",
+        "version" : "5.6.0-spm.1"
+      }
+    },
+    {
+      "identity" : "untoldengine",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/miolabs/UntoldEngine",
+      "state" : {
+        "branch" : "develop",
+        "revision" : "b2571c3734188af9db788d6f6b20c3c71fc777a4"
+      }
+    },
+    {
+      "identity" : "untoldjoltphysics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/miolabs/UntoldJoltPhysics.git",
+      "state" : {
+        "branch" : "feature/ragdoll",
+        "revision" : "8b084f5449968fc5308e31448fccf1c686999473"
+      }
+    }
+  ],
+  "version" : 3
+}

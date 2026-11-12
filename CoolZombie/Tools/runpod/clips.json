@@ -1,0 +1,244 @@
+{
+  "_doc": [
+    "Gap clips for the CoolZombie motion-matching set, generated with NVIDIA Kimodo (see README.md).",
+    "Paths are Kimodo's canonical frame: metres, Y-up, start at the origin facing +Z, +X = the character's LEFT.",
+    "Step types: straight{speed,duration} ramp{from,to,duration} arc{speed,angle_deg,radius} pivot{angle_deg,duration} stop{duration}.",
+    "angle_deg > 0 turns LEFT. Keep every prompt a single sentence (Kimodo splits prompts on periods).",
+    "samples = variations per prompt; every clip gets len(prompts) * samples candidates to pick from."
+  ],
+  "model": "Kimodo-SOMA-RP-v1.1",
+  "fps": 30,
+  "samples": 2,
+  "seed": 1000,
+  "diffusion_steps": 100,
+  "cfg": [2.0, 2.0],
+  "heading": true,
+  "clips": [
+    {
+      "name": "k_run_fast",
+      "note": "straight chase run ~2.5 m/s (the 100STYLE run tops out at 1.2 m/s)",
+      "prompts": [
+        "A zombie runs forward aggressively with a lurching stride and arms reaching out",
+        "An injured person runs forward with a stiff lurching stride and arms reaching out like a zombie"
+      ],
+      "path": [{"type": "straight", "speed": 2.5, "duration": 4.0}]
+    },
+    {
+      "name": "k_run_hyper",
+      "note": "frantic sprint ~3.5 m/s",
+      "prompts": [
+        "A zombie sprints forward frantically with flailing arms",
+        "A frantic person sprints forward with wild flailing arms like a zombie"
+      ],
+      "path": [{"type": "straight", "speed": 3.5, "duration": 4.0}]
+    },
+    {
+      "name": "k_walk_turn_l_90",
+      "prompts": [
+        "A zombie shuffles forward with stiff legs and drooping arms and turns to the left",
+        "An injured person shuffles forward with stiff legs and drooping arms like a zombie and turns left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": 90, "radius": 0.8},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_walk_turn_r_90",
+      "prompts": [
+        "A zombie shuffles forward with stiff legs and drooping arms and turns to the right",
+        "An injured person shuffles forward with stiff legs and drooping arms like a zombie and turns right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": -90, "radius": 0.8},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_walk_turn_l_180",
+      "prompts": [
+        "A zombie shuffles forward with stiff legs and drooping arms and turns around to the left",
+        "An injured person shuffles forward like a zombie and turns around to the left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": 180, "radius": 0.5},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_walk_turn_r_180",
+      "prompts": [
+        "A zombie shuffles forward with stiff legs and drooping arms and turns around to the right",
+        "An injured person shuffles forward like a zombie and turns around to the right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "arc", "speed": 0.8, "angle_deg": -180, "radius": 0.5},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_run_turn_l_90",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and arms reaching out and turns to the left",
+        "An injured person runs forward with a lurching stride like a zombie and turns left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": 90, "radius": 1.5},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_run_turn_r_90",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and arms reaching out and turns to the right",
+        "An injured person runs forward with a lurching stride like a zombie and turns right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": -90, "radius": 1.5},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_run_turn_l_180",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and turns around sharply to the left",
+        "An injured person runs forward like a zombie and turns around sharply to the left"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": 180, "radius": 1.0},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_run_turn_r_180",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and turns around sharply to the right",
+        "An injured person runs forward like a zombie and turns around sharply to the right"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 1.0},
+        {"type": "arc", "speed": 2.5, "angle_deg": -180, "radius": 1.0},
+        {"type": "straight", "speed": 2.5, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_pivot_l_90",
+      "note": "in-place pivot at walking pace",
+      "prompts": [
+        "A zombie shuffles forward and pivots on the spot to the left and keeps shuffling",
+        "An injured person shuffles forward like a zombie and turns on the spot to the left and continues"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "pivot", "angle_deg": 90, "duration": 0.7},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_pivot_r_90",
+      "prompts": [
+        "A zombie shuffles forward and pivots on the spot to the right and keeps shuffling",
+        "An injured person shuffles forward like a zombie and turns on the spot to the right and continues"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "pivot", "angle_deg": -90, "duration": 0.7},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_pivot_l_180",
+      "prompts": [
+        "A zombie shuffles forward and turns around on the spot to the left and keeps shuffling",
+        "An injured person shuffles forward like a zombie and turns around on the spot to the left and continues"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "pivot", "angle_deg": 180, "duration": 1.0},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_pivot_r_180",
+      "prompts": [
+        "A zombie shuffles forward and turns around on the spot to the right and keeps shuffling",
+        "An injured person shuffles forward like a zombie and turns around on the spot to the right and continues"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.0},
+        {"type": "pivot", "angle_deg": -180, "duration": 1.0},
+        {"type": "straight", "speed": 0.8, "duration": 1.0}
+      ]
+    },
+    {
+      "name": "k_start_walk",
+      "prompts": [
+        "A zombie stands still and then starts shuffling forward with stiff legs",
+        "An injured person stands still and then starts shuffling forward like a zombie"
+      ],
+      "path": [
+        {"type": "stop", "duration": 1.0},
+        {"type": "ramp", "from": 0.0, "to": 0.8, "duration": 1.0},
+        {"type": "straight", "speed": 0.8, "duration": 2.0}
+      ]
+    },
+    {
+      "name": "k_start_run",
+      "prompts": [
+        "A zombie stands still and then bursts into a frantic lurching run forward",
+        "An injured person stands still and then bursts into a frantic run forward like a zombie"
+      ],
+      "path": [
+        {"type": "stop", "duration": 1.0},
+        {"type": "ramp", "from": 0.0, "to": 2.5, "duration": 1.0},
+        {"type": "straight", "speed": 2.5, "duration": 2.0}
+      ]
+    },
+    {
+      "name": "k_stop_walk",
+      "prompts": [
+        "A zombie shuffles forward with stiff legs and comes to a stop and stands swaying",
+        "An injured person shuffles forward like a zombie and comes to a stop and stands swaying"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 2.0},
+        {"type": "ramp", "from": 0.8, "to": 0.0, "duration": 0.7},
+        {"type": "stop", "duration": 1.5}
+      ]
+    },
+    {
+      "name": "k_stop_run",
+      "prompts": [
+        "A zombie runs forward with a lurching stride and stops abruptly and stands swaying",
+        "An injured person runs forward like a zombie and stops abruptly and stands swaying"
+      ],
+      "path": [
+        {"type": "straight", "speed": 2.5, "duration": 2.0},
+        {"type": "ramp", "from": 2.5, "to": 0.0, "duration": 1.0},
+        {"type": "stop", "duration": 1.5}
+      ]
+    },
+    {
+      "name": "k_wall_hands",
+      "note": "hands-on-wall contact: pass 1 = prompt + approach path; pass 2 (ee_hold) pins both hands where the best sample reached furthest forward, for hold_seconds",
+      "prompts": [
+        "A zombie walks up to a wall and stops and presses both hands against the wall leaning into it",
+        "An injured person walks up to a wall like a zombie and stops and leans on the wall with both hands"
+      ],
+      "path": [
+        {"type": "straight", "speed": 0.8, "duration": 1.5},
+        {"type": "ramp", "from": 0.8, "to": 0.0, "duration": 0.5},
+        {"type": "stop", "duration": 3.0}
+      ],
+      "ee_hold": {"window": [60, 150], "hold_seconds": 2.5, "step": 5, "sample": 0,
+                  "joints": ["LeftHand", "RightHand"]}
+    }
+  ]
+}

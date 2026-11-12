@@ -1,0 +1,4 @@
+# Rooms captured on a headset are the owner's own home or office: they
+# stay out of the repository (the bundled sample room lives under
+# Sources/CoolZombieKit/Resources/Rooms).
+Tools/rooms/
