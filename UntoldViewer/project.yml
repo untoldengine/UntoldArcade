@@ -5,14 +5,17 @@ options:
   xcodeVersion: "27.0"
   createIntermediateGroups: true
 packages:
-  # The engine under test. A local checkout while the foveation, TAA and
-  # back-face branches are in review (the folder MUST be named UntoldEngine:
-  # SwiftPM takes the package identity from it); once they land, replace with
+  # The engine under test. The branch of untoldengine/UntoldEngine#1415 (the
+  # frame-time work: FrameTime, the pose at the predicted presentation time)
+  # until it merges; then replace with
   #   url: https://github.com/untoldengine/UntoldEngine.git
   #   branch: develop
-  # and run `xcodegen generate`.
+  # and run `xcodegen generate`. To try an engine branch of your own, use
+  # `path:` to a local checkout instead (the folder MUST be named UntoldEngine:
+  # SwiftPM takes the package identity from it) and keep it out of the commit.
   UntoldEngine:
-    path: ../../xr_foveation/UntoldEngine
+    url: https://github.com/miolabs/UntoldEngine.git
+    branch: feature/presentation_time_frame
 schemes:
   UntoldViewer:
     build:

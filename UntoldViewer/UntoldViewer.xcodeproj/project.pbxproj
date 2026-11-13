@@ -39,7 +39,6 @@
 		B7816610606D8F4C4917D937 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		C3AC2B4CB382B75F63E8981E /* Compare */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Compare; path = Viewer/Resources/Compare; sourceTree = SOURCE_ROOT; };
 		CAA4D1ED2ED6BE0DA07D1BD4 /* MeasurementRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementRun.swift; sourceTree = "<group>"; };
-		CF80647D17D5BF754B7F8561 /* UntoldEngine */ = {isa = PBXFileReference; lastKnownFileType = folder; name = UntoldEngine; path = ../../xr_foveation/UntoldEngine; sourceTree = SOURCE_ROOT; };
 		E069BB847CF044F742217D65 /* CalibrationObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationObject.swift; sourceTree = "<group>"; };
 		E07365FBBB5AEF7DA3AEBA6A /* Models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Models; path = Viewer/Resources/Models; sourceTree = SOURCE_ROOT; };
 		FB5E636168D356AB64EB0538 /* HeadPose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadPose.swift; sourceTree = "<group>"; };
@@ -70,7 +69,6 @@
 			isa = PBXGroup;
 			children = (
 				02271BA670179354D8E5890B /* Config */,
-				67BD4F61905DA051DE29F38C /* Packages */,
 				798FC6504B1C6EFA7054D53E /* Viewer */,
 				741CF4D850280E3E6FFF6FAE /* Products */,
 			);
@@ -83,14 +81,6 @@
 				B31198BB3CA291248A329FE7 /* MeasureStatusView.swift */,
 			);
 			path = UI;
-			sourceTree = "<group>";
-		};
-		67BD4F61905DA051DE29F38C /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				CF80647D17D5BF754B7F8561 /* UntoldEngine */,
-			);
-			name = Packages;
 			sourceTree = "<group>";
 		};
 		741CF4D850280E3E6FFF6FAE /* Products */ = {
@@ -185,7 +175,7 @@
 			mainGroup = 08707377D381B173DB67627A;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				D0264F8EB0A2125C47EEF19E /* XCLocalSwiftPackageReference "../../xr_foveation/UntoldEngine" */,
+				9840DEB2C3B8F607AE57BD4B /* XCRemoteSwiftPackageReference "UntoldEngine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 741CF4D850280E3E6FFF6FAE /* Products */;
@@ -414,20 +404,26 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		D0264F8EB0A2125C47EEF19E /* XCLocalSwiftPackageReference "../../xr_foveation/UntoldEngine" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../xr_foveation/UntoldEngine;
+/* Begin XCRemoteSwiftPackageReference section */
+		9840DEB2C3B8F607AE57BD4B /* XCRemoteSwiftPackageReference "UntoldEngine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/miolabs/UntoldEngine.git";
+			requirement = {
+				branch = feature/presentation_time_frame;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		4AEFC58CD00D168EB416C80F /* UntoldEngineXR */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 9840DEB2C3B8F607AE57BD4B /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldEngineXR;
 		};
 		8269E7850A1FEFC622A6AA9F /* UntoldEngine */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 9840DEB2C3B8F607AE57BD4B /* XCRemoteSwiftPackageReference "UntoldEngine" */;
 			productName = UntoldEngine;
 		};
 /* End XCSwiftPackageProductDependency section */

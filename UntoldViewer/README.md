@@ -226,7 +226,9 @@ Info.plist reads the identifier from the build setting.
 
 ## Engine dependency
 
-`project.yml` points at a local engine checkout while the foveation, temporal anti-aliasing and
-back-face lighting pull requests (untoldengine/UntoldEngine #1342, #1343, #1344) are in review;
-once they land, switch it to the engine's `develop` branch as the comment there says and
-regenerate the project.
+`project.yml` takes the engine from the branch of untoldengine/UntoldEngine#1415
+(`feature/presentation_time_frame` at `https://github.com/miolabs/UntoldEngine.git`), which holds
+the frame-time work the tour needs (`FrameTime`, the pose at the predicted presentation time);
+once it merges, switch the package to the upstream repository's `develop` branch as the comment
+there says and regenerate the project. To test an engine branch of your own, point the package
+at a local checkout in a folder named `UntoldEngine` and keep that change out of the commit.
